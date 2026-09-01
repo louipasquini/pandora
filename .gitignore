@@ -24,6 +24,9 @@ backend/src/generated/
 .vite/
 frontend/.vite/
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Logs
 *.log
 npm-debug.log*
