@@ -140,25 +140,55 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
 - **Vínculo Asaas↔Guru:** liga o pagamento Asaas à transação Guru da mesma venda. Só a Guru
   soma receita.
 
-## Decisões em aberto (resolver ANTES de codificar o schema que tocam — Princípio II)
+## Decisões da Parte 7 (visão)
 
-Parte 7 da visão. Ainda pendentes: granularidade de Contrato e de Oferta; estratégia de
-resolução de oferta Hotmart (`product_id` + janela de data vs catálogo completo de
-`price.code`); política de atualização (reativar webhook Hotmart?); ferramenta externa de
-CRM/suporte vs 100% in-house; fontes reais e modelo de atribuição de Marketing; provedor de
-WhatsApp Business API; moedas reais além de BRL e necessidade de conversão para moeda de
-relatório; manter ou trocar a stack. Já resolvidas: escopo de CRM (completo), Central de
-Clientes (portal da aluna), identidade/merge (dedup automático; auto-declarado = 100%
-humano), LGPD (pseudonimização).
+**Resolvidas em 2026-09-01:**
 
-## Stack de referência
+- **Contrato:** vínculo `(pessoa, produto)` — não muda para household. Toda compra do mesmo
+  produto pela mesma pessoa é aditivo ao mesmo contrato. *Renovação* = comprou sem ter mais
+  acesso (expirado); *prorrogação* = comprou com acesso ainda ativo. O rótulo é derivado do
+  estado de acesso na data do aditivo; a fórmula de `fim_acesso` já cobre os dois casos.
+- **Oferta:** ID surrogate; resolvida por `(tag AEN, plataforma)`. A mesma oferta comercial
+  em 2 plataformas = 2 registros de `oferta` com a mesma tag AEN.
+- **Resolução Hotmart:** catálogo completo de `price.code`, validado por schema antes de
+  processar. Sem fallback por `product_id` + data. Sem match → oferta `null` + evento
+  `REVISAR`.
+- **Política de atualização:** webhook primário + API sob demanda mantidos. Webhook da
+  Hotmart será ativado, mas **não na v1**.
+- **Marketing (fontes):** Meta Ads, Google Ads, **Mautic**, landing pages.
+- **Moeda:** nunca converter; registrar e somar por moeda separadamente. Sem moeda de
+  relatório nem câmbio histórico.
+- **Stack:** Node.js + TypeScript + NestJS + Prisma sobre PostgreSQL.
+- **CRM:** 100% in-house, sem ferramenta externa; construção priorizada (ver Ordem de
+  construção).
+- (Anteriores) escopo de CRM completo; Central = portal da aluna; identidade/merge (dedup
+  automático, auto-declarado = 100% humano); LGPD = pseudonimização.
 
-- **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0 async + Alembic, Pydantic v2, PyJWT,
-  httpx, APScheduler, PostgreSQL.
+**Ainda em aberto (resolver ANTES do schema que tocam — Princípio II):**
+
+- Default do **modelo de atribuição** de Marketing (a tabela `atribuicao` já suporta vários
+  modelos versionáveis).
+- Decisões específicas de CRM (visão Parte 8.12): provedor de WhatsApp Business API;
+  critério de endereçamento de chamado; escopo de `conta` (household) na v1; retenção e
+  anonimização de conversas de WhatsApp; volume esperado de atendimento.
+
+## Stack
+
+- **Backend:** Node.js + TypeScript + **NestJS** + **Prisma**, sobre **PostgreSQL**
+  (decisão de 2026-09-01 — substitui o Python/FastAPI da v1; código e ~329 testes da v1
+  não são reaproveitados). Os módulos do NestJS mapeiam os contextos delimitados.
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind v4, TanStack Query, React Router.
   Um único nível de acesso; login = credenciais de serviço da API.
 - **Identidade visual:** azul `#2E4E78`, coral `#EC5F6A`, menta `#68C0B2`, fonte Inter.
-- Trocar qualquer peça é decisão em aberto e exige o Princípio II.
+- Trocar qualquer peça exige emenda da constituição e o Princípio II.
+
+## Ordem de construção
+
+Prioridade do dono do produto: **CRM > Financeiro > Marketing > Central de Clientes**.
+Antes do CRM entram as fatias transversais de que ele depende: `core` (dinheiro, tempo,
+ids, status canônico), fundação de `clientes` (`pessoa`, identidade/dedup) e de `ingestao`
+(`evento_origem`) — o Workflow do CRM consome `evento_origem` e o `lead` vira `pessoa` pela
+engine de identidade.
 
 ## Fluxo de trabalho (Spec Kit)
 

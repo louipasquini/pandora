@@ -33,6 +33,8 @@ O Pandora normaliza tudo para um modelo canônico e mantém quatro visões consi
 | **Marketing** | "Git do marketing": lançamentos e perpétuo versionados de forma imutável, diff visual campo a campo, notificação ao Slack na publicação. |
 | **Central de Clientes** | Read model (BFF) **e** portal que a própria aluna acessa: LGPD, preferências de comunicação, histórico de contratos e economia, recomendações. |
 
+> **Ordem de construção acordada:** CRM → Financeiro → Marketing → Central de Clientes.
+
 ## Princípios de arquitetura
 
 Detalhe completo em [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
@@ -66,12 +68,13 @@ Detalhe completo em [`.specify/memory/constitution.md`](.specify/memory/constitu
 
 ## Stack
 
-- **Backend:** Python 3.12 · FastAPI · SQLAlchemy 2.0 async · Alembic · Pydantic v2 ·
-  PostgreSQL
+- **Backend:** Node.js · TypeScript · NestJS · Prisma · PostgreSQL
 - **Frontend:** React 19 · TypeScript · Vite · Tailwind v4 · TanStack Query · React Router
 - **Auth:** um único nível de acesso de serviço (`POST /auth/token` → JWT)
 
-A escolha de manter ou trocar a stack é uma decisão em aberto (ver visão, Parte 7).
+O backend da v1 era Python/FastAPI; a v2 migra para Node.js/TypeScript (TS ponta a ponta com
+o frontend; os módulos do NestJS mapeiam os contextos). O código e os testes da v1 não são
+reaproveitados — a validação vem da re-ingestão do histórico real das 7 contas.
 
 ## Estrutura do repositório
 
@@ -126,5 +129,11 @@ de verdade, pelos endpoints de curadoria da v2.
 
 ## Status
 
-Reconstrução em fase de definição. Constituição ratificada em 2026-09-01. Próximo passo:
-resolver as decisões em aberto da Parte 7 da visão e abrir as primeiras specs por contexto.
+Reconstrução em fase de definição. Constituição ratificada em 2026-09-01 (v1.1.0). A maior
+parte das decisões em aberto da Parte 7 da visão foi resolvida (stack, granularidade de
+Contrato e Oferta, resolução Hotmart, moeda, fontes de Marketing, política de atualização).
+
+Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**.
+Próximo passo: abrir a primeira spec (`speckit-specify`) para as fundações transversais
+(`core`, `pessoa`/identidade, `evento_origem`) e o CRM. Restam em aberto o default do modelo
+de atribuição de Marketing e as decisões específicas de CRM (visão Parte 8.12).

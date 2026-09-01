@@ -1,8 +1,14 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Versão: (template não versionado) → 1.0.0
-Tipo de bump: ratificação inicial (MAJOR) — primeira constituição concreta do projeto.
+Versão: (template não versionado) → 1.0.0 → 1.1.0
+
+1.0.0 → 1.1.0 (2026-09-01, MINOR): decisões da Parte 7 da visão resolvidas com o dono do
+produto. Stack de referência trocada de Python/FastAPI para Node.js + TypeScript + NestJS +
+Prisma (Postgres mantido). Adicionada "Ordem de construção" (CRM > Financeiro > Marketing >
+Central de Clientes) na seção de Fluxo de Desenvolvimento. Nenhum princípio alterado.
+
+1.0.0 (2026-09-01, MAJOR): ratificação inicial — primeira constituição concreta do projeto.
 
 Princípios definidos (8):
   I.    Modelagem Orientada ao Domínio, Não à Origem
@@ -233,9 +239,10 @@ dizem. Fonte: Parte 3 do documento de visão (confirmadas com o dono do produto)
    Nenhuma transação, cliente ou contrato existe 2× por ter vindo de 2 plataformas.
 2. **Venda Guru + Asaas conta 1×.** A Guru é a venda de registro; o pagamento Asaas
    vinculado não gera receita nem contrato próprios. Asaas avulsa resolve tudo normalmente.
-3. **Contrato é único por `(cliente, produto)` e perpétuo.** Renovar em outra turma =
-   aditivo ao mesmo contrato, nunca um contrato novo. (Granularidade final: ver Decisões em
-   Aberto — Princípio II.)
+3. **Contrato é único por `(pessoa, produto)` e perpétuo.** Toda compra do mesmo produto
+   pela mesma pessoa é aditivo ao mesmo contrato, nunca um contrato novo — *renovação* se o
+   acesso estava expirado na data do aditivo, *prorrogação* se ainda ativo (rótulo derivado
+   do estado de acesso, não um campo próprio).
 4. **`fim_acesso` do aditivo** = `max(fim_acesso vigente, data do aditivo) + tempo_acesso`.
 5. **Status de acesso ≠ status financeiro.** `PENDENTE` conta como Ativo para
    acesso/tolerância, mas **não** como "pago de fato". São dois sistemas separados de
@@ -271,18 +278,25 @@ generalização opcional (nunca aplicação automática direta).
 - **Constitution Check** é portão no `plan`: o plano declara explicitamente como respeita
   os Princípios I–VIII e os Padrões Transversais, ou registra a violação em Complexity
   Tracking com alternativa mais simples rejeitada e justificada.
-- **Testes contra Postgres real com dados de produção** são mantidos. Adaptadores de borda
-  testados contra fixtures reais de cada plataforma.
+- **Testes contra Postgres real** (não só mocks), com dados de produção, seguem sendo a
+  disciplina de teste da v1. Adaptadores de borda testados contra fixtures reais de cada
+  plataforma. Os testes Python da v1 não são portados — são reescritos na stack nova.
 - **Estratégia de migração:** não migrar dado tabela-a-tabela. Re-ingerir a partir dos
   payloads crus / exportações CSV das 7 contas para o novo `evento_origem` e deixar as
   projeções se reconstruírem. Congelar a v1 (read-only) no corte e comparar agregados-chave
   (receita por conta/mês/moeda, contratos ativos, clientes) — têm que bater ou a diferença
   tem que ser explicável. Catálogo curado é o único dado migrado de verdade, pelos
   endpoints de curadoria da v2.
-- **Stack de referência:** Python 3.12 + FastAPI + SQLAlchemy 2.0 async + Alembic +
-  Pydantic v2 + PostgreSQL no backend; React 19 + TypeScript + Vite + Tailwind v4 no
-  frontend. Trocar qualquer peça é decisão em aberto (Parte 7, item 11) e exige o
-  Princípio II.
+- **Stack:** backend em **Node.js + TypeScript + NestJS + Prisma** sobre **PostgreSQL**
+  (decisão resolvida em 2026-09-01, visão Parte 7 item 11 — substitui o Python/FastAPI da
+  v1; código e testes da v1 não são reaproveitados). Frontend em React 19 + TypeScript +
+  Vite + Tailwind v4. Os módulos do NestJS mapeiam os contextos delimitados (Princípio VI).
+  Trocar qualquer peça exige emenda desta constituição e o Princípio II.
+- **Ordem de construção:** CRM → Financeiro → Marketing → Central de Clientes (prioridade do
+  dono do produto). As fatias transversais de `core` (dinheiro, tempo, ids, status canônico)
+  e as fundações de `clientes` (`pessoa`, identidade/dedup) e `ingestao` (`evento_origem`)
+  precedem o CRM porque ele depende delas (o Workflow consome `evento_origem`; o `lead` vira
+  `pessoa` pela engine de identidade).
 
 ## Governança
 
@@ -302,4 +316,4 @@ generalização opcional (nunca aplicação automática direta).
   cláusulas desta constituição; são pré-requisitos de spec, governados pelo Princípio II.
 - Orientação de desenvolvimento em runtime: ver `CLAUDE.md` e o `plan.md` da feature ativa.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-01 | **Last Amended**: 2026-09-01
+**Version**: 1.1.0 | **Ratified**: 2026-09-01 | **Last Amended**: 2026-09-01

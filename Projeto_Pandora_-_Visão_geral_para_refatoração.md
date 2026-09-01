@@ -625,21 +625,58 @@ Um evento com etapas 4–6 pendentes é retentável por um worker sem tocar as e
 Estas precisam de resposta do dono do produto (Princípio II). Sem elas, a reconstrução
 repete os erros da Parte 4.
 
-1. **Granularidade de Contrato.** Hoje é `(cliente, produto)`. Isso está certo para o
+> **Status em 2026-09-01:** itens 1–4, 6 (parcial), 9 e 11 resolvidos nesta rodada, somados
+> aos 5, 7, 8 e 10 já resolvidos antes. Resta em aberto: o **default do modelo de atribuição**
+> de Marketing (item 6) e as decisões específicas de CRM da Parte 8.12 (provedor de WhatsApp
+> API, critério de endereçamento de chamado, escopo de `conta`, retenção de conversas,
+> volume esperado).
+
+1. **Granularidade de Contrato.** ~~Hoje é `(cliente, produto)`. Isso está certo para o
    negócio, ou deveria ser `(conta/household, produto)` agora que CRM introduz `conta`?
-   Renovação em turma diferente continua sendo o mesmo contrato?
-2. **Granularidade de Oferta.** É por `hotmart_code`? Por tag AEN? Por "turma de um
-   produto"? O que acontece quando a mesma oferta real é vendida em 2 plataformas?
-3. **Resolução de oferta Hotmart.** Caminho primário = `product_id` + janela de data
-   (cobre ~88%), ou exigir catálogo completo de `price.code`? (ver 4.7)
-4. **Política de atualização.** Confirmar: webhook primário + API 100% sob demanda continua?
-   Vale a pena reativar webhook da Hotmart (hoje só API)?
+   Renovação em turma diferente continua sendo o mesmo contrato?~~ **Resolvido (2026-09-01):**
+   Contrato é o vínculo `(pessoa, produto)` — **não** muda para `(conta/household, produto)`.
+   Toda compra do mesmo produto pela mesma pessoa é aditivo ao mesmo contrato (nunca um novo),
+   classificada pelo estado de acesso na data do aditivo:
+   - **Renovação:** a pessoa já teve acesso ao produto e **não tem mais** (acesso expirado).
+   - **Prorrogação:** compra do mesmo produto enquanto o acesso **ainda está ativo**.
+   O rótulo renovação/prorrogação é **derivado** do estado de acesso vigente na data do
+   aditivo; a fórmula `fim_acesso = max(fim_acesso vigente, data do aditivo) + tempo_acesso`
+   (Parte 3, regra #4) já cobre os dois casos sem ramificação.
+2. **Granularidade de Oferta.** ~~É por `hotmart_code`? Por tag AEN? Por "turma de um
+   produto"? O que acontece quando a mesma oferta real é vendida em 2 plataformas?~~
+   **Resolvido (2026-09-01):** Oferta tem **ID surrogate opaco** como identidade (Princípio I).
+   A **tag AEN** é a chave de busca/resolução (alias em `oferta_origem_ref`), combinada com a
+   **`plataforma_origem`** — resolução por `(tag AEN, plataforma)`. A mesma oferta comercial
+   vendida em 2 plataformas vira **2 registros de `oferta`** que compartilham a tag AEN mas se
+   distinguem pela plataforma. (Confirmar no schema se `oferta_catalogo` — ticket, preço de
+   tabela, bônus — é compartilhado entre as duas ou também por plataforma.)
+3. **Resolução de oferta Hotmart.** ~~Caminho primário = `product_id` + janela de data
+   (cobre ~88%), ou exigir catálogo completo de `price.code`? (ver 4.7)~~
+   **Resolvido (2026-09-01):** exigir **catálogo completo de `price.code`**. A resolução de
+   oferta Hotmart depende de um `ofertas.csv` completo e validado contra o schema de colunas
+   esperado antes de processar qualquer linha; **não** há fallback por `product_id` + janela
+   de data como caminho primário. Venda Hotmart sem `price.code` no catálogo → oferta fica
+   `null` e o evento vai para a fila de `REVISAR` (Princípio II — nunca chuta).
+4. **Política de atualização.** ~~Confirmar: webhook primário + API 100% sob demanda continua?
+   Vale a pena reativar webhook da Hotmart (hoje só API)?~~ **Resolvido (2026-09-01):**
+   mantém-se webhook como caminho primário + API 100% sob demanda com confirmação no backend
+   (Princípio VIII). O **webhook da Hotmart será ativado**, mas **não na v1** — o adapter
+   `hotmart/webhook` fica previsto na arquitetura e entra numa feature futura; até lá a
+   Hotmart segue só por API sob demanda.
 5. **Escopo de CRM na v1 da reconstrução.** ~~Mínimo viável = `interacao` + `tag` + `nota`?
    Ou já entra `pipeline`/`oportunidade`?~~ **Resolvido:** entra completo (`pipeline`/
-   `oportunidade`, disparos, automação) — ver Parte 8. Em aberto: há ferramenta externa de
-   CRM/suporte a integrar (RD Station, HubSpot, Intercom, Zendesk…) ou é 100% built in-house?
-6. **Escopo de Marketing.** Quais fontes reais existem hoje (Meta Ads, Google Ads,
-   ActiveCampaign/RD, landing pages)? Modelo de atribuição desejado?
+   `oportunidade`, disparos, automação) — ver Parte 8. ~~Em aberto: há ferramenta externa de
+   CRM/suporte a integrar (RD Station, HubSpot, Intercom, Zendesk…) ou é 100% built in-house?~~
+   **Resolvido (2026-09-01):** CRM é **100% construído in-house**, sem ferramenta externa de
+   CRM/suporte. Além disso, a **construção do CRM é priorizada** sobre os demais escopos —
+   ordem de prioridade: **CRM > Financeiro > Marketing > Central de Clientes**.
+6. **Escopo de Marketing.** ~~Quais fontes reais existem hoje (Meta Ads, Google Ads,
+   ActiveCampaign/RD, landing pages)? Modelo de atribuição desejado?~~
+   **Resolvido parcialmente (2026-09-01):** fontes reais = **Meta Ads, Google Ads, Mautic**
+   (automação de marketing open-source, no lugar de ActiveCampaign/RD) e **landing pages**.
+   O `evento_marketing` genérico (Parte 5.2‑F) integra essas 4 fontes. **Em aberto:** o
+   default do modelo de atribuição (primeiro toque / último toque / linear / multi-toque) —
+   a tabela `atribuicao` já suporta múltiplos modelos versionáveis; falta escolher o padrão.
 7. **Central de Clientes.** ~~É só visualização 360, ou também executa ações...~~
    **Resolvido:** é portal auto-atendimento da própria aluna (não só uso interno), com
    ações auditadas — ver Parte 10. Uso interno **resolvido**: suporte, comercial, CS e
@@ -652,8 +689,12 @@ repete os erros da Parte 4.
    merge **auto-declarado pela aluna** foge desse caminho automático e exige revisão 100%
    humana (regra Parte 10.2.3/10.6) — critério de risco (auto-relato de terceiro é mais
    suscetível a fraude do que identificador batendo igual nos dados de origem).
-9. **Moeda.** Quais moedas reais aparecem além de BRL? Precisa de conversão para uma moeda
-   de relatório (com taxa de câmbio histórica) ou nunca se converte?
+9. **Moeda.** ~~Quais moedas reais aparecem além de BRL? Precisa de conversão para uma moeda
+   de relatório (com taxa de câmbio histórica) ou nunca se converte?~~
+   **Resolvido (2026-09-01):** **nunca converter.** Cada moeda é registrada e somada
+   separadamente (`dict[moeda, valor]`, Parte 3, regra #6) — não há moeda de relatório nem
+   tabela de câmbio histórica. Relatórios que cruzam moedas mostram os valores lado a lado
+   por moeda, nunca um total consolidado.
 10. **Retenção de payload cru / PII / LGPD.** ~~Guardar `payload_bruto` para sempre é
     aceitável? Precisa de anonimização/expurgo? Como apagar uma pessoa mantendo os agregados
     financeiros?~~ **Resolvido:** pseudonimização de `pessoa` (remove/ofusca dados de
@@ -661,8 +702,14 @@ repete os erros da Parte 4.
     preserva receita/contratos/histórico agregado sem reter PII da pessoa excluída. Fluxo de
     solicitação pela própria aluna definido na Parte 10.5.1; esta é a mecânica técnica de
     execução (substitui os itens 10 e 11 originais).
-11. **Stack da reconstrução.** Manter Python/FastAPI/SQLAlchemy/Postgres (recomendado —
-    time já conhece, testes já existem)? Ou é oportunidade de trocar algo?
+11. **Stack da reconstrução.** ~~Manter Python/FastAPI/SQLAlchemy/Postgres (recomendado —
+    time já conhece, testes já existem)? Ou é oportunidade de trocar algo?~~
+    **Resolvido (2026-09-01):** trocar para **Node.js + TypeScript + NestJS + Prisma**, sobre
+    **PostgreSQL** (mantido). Racional do dono do produto: TypeScript ponta a ponta com o
+    frontend facilita a manipulação futura; os módulos/DI do NestJS mapeiam bem os bounded
+    contexts (Parte 5.2). O código e os ~329 testes Python da v1 **não são reaproveitados** —
+    a validação da v2 vem da re-ingestão dos payloads crus / CSVs das 7 contas (Parte 6) e da
+    comparação de agregados-chave contra a v1 congelada.
 
 ---
 
