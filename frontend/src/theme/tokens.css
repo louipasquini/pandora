@@ -1,0 +1,18 @@
+/*
+ * Tokens da identidade visual da AEN — PONTO ÚNICO de definição (FR-027, SC-007).
+ * Nenhum componente deve conter hex de marca literal; use as classes utilitárias
+ * geradas (bg-brand-azul, text-brand-coral, ...) ou var(--color-brand-*).
+ *
+ * Tailwind v4 config CSS-first: o bloco @theme gera os utilitários.
+ */
+@theme {
+  --color-brand-azul: #2e4e78;
+  --color-brand-coral: #ec5f6a;
+  --color-brand-menta: #68c0b2;
+
+  --color-brand-azul-contraste: #ffffff;
+
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+}

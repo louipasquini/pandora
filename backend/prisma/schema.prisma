@@ -1,0 +1,17 @@
+// Projeto Pandora — schema base (spec 001).
+// SEM model de negócio nesta spec. As entidades entram nas specs 002+.
+// Convenções para models futuros (ver docs/001-bootstrap-projeto.md):
+//   - PK: `id String @id @db.Uuid` gerado na aplicação via EntidadeId.novo() (UUID v7)
+//   - Auditoria: `criadoEm DateTime @default(now()) @db.Timestamptz` +
+//                `atualizadoEm DateTime @updatedAt @db.Timestamptz`
+//   - Instantes sempre @db.Timestamptz (UTC)
+//   - IDs de origem NUNCA como PK — tabelas `<entidade>_origem_ref`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

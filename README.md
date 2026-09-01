@@ -78,24 +78,77 @@ reaproveitados — a validação vem da re-ingestão do histórico real das 7 co
 
 ## Estrutura do repositório
 
-```
-src/
-  ingestao/    adapters/{tmb,asaas,guru,hotmart}/{webhook,csv,api} + evento_origem + worker
-  financeiro/  transacao, vinculo, receita (queries), reconciliacao
-  catalogo/    produto, oferta, oferta_catalogo, janela_lancamento, resolucao
-  contratos/   contrato, aditivo, fold (recálculo puro), acesso
-  clientes/    pessoa, conta, identidade (dedup), merge
-  crm/         interacao, oportunidade, pipeline, tarefa, nota, tag, lead, workflow, faq
-  marketing/   campanha, artefato, versao_campo (diff), tratamento_cliente, atribuicao
-  central/     composição read-model + comandos
-  core/        dinheiro, tempo, ids, status_canonico, auditoria, config
-  api/         routers finos por contexto
-  admin/       sync sob demanda, imports CSV, curadoria
+Monorepo **npm workspaces** (`backend`, `frontend`), Node 24, um `package-lock.json` na raiz.
 
-tests/         unit, contract, integration (contra Postgres real com dados de produção)
+```
+package.json            workspaces + scripts agregados (lint, typecheck, build, test)
+docker-compose.yml      Postgres 16 de desenvolvimento (host :55432)
+.env.example            todas as variáveis (runtime, banco, auth, 7 contas de origem)
+.github/workflows/ci.yml  install → lint → typecheck → build → test (unit + e2e c/ Postgres real)
+
+backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
+  src/
+    core/        ids (EntidadeId/UUID v7), PlataformaOrigem  · dinheiro/tempo/status → spec 002
+    config/      env.schema.ts (zod) — config tipada e validada no boot
+    prisma/      PrismaService / PrismaModule
+    health/      GET /health (composição + banco)
+    ingestao/ financeiro/ catalogo/ contratos/ clientes/ crm/ marketing/ central/
+                 um módulo vazio por contexto (domain/ application/ infra/)
+    api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
+  prisma/        schema.prisma (sem entidade de negócio ainda) + migração baseline
+  test/          harness e2e contra Postgres real (schema isolado por execução)
+
+frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
+  src/
+    theme/       tokens.css — ponto único das cores da marca + Inter
+    shell/       AppShell (header + nav + conteúdo roteável)
+    app/         router + query client
+    pages/       telas (placeholder na 001)
+
+docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
 specs/         uma pasta por feature: spec.md, plan.md, tasks.md, contracts/
 .specify/      constituição, templates e workflow do Spec Kit
 ```
+
+## Como rodar
+
+Pré-requisitos: **Node.js 24** (`nvm use` — há `.nvmrc`), **Docker + Docker Compose**
+(ou um PostgreSQL 16 acessível), `git`.
+
+```bash
+# 1. Instalar (raiz — npm workspaces instala backend e frontend)
+npm ci        # ou: npm install
+#    Ambiente que bloqueia postinstall? rode `npm approve-scripts --all` e reinstale.
+
+# 2. Configuração
+cp .env.example .env
+#    edite só se for usar um Postgres próprio (troque DATABASE_URL / TEST_DATABASE_URL)
+
+# 3. Subir o Postgres de desenvolvimento (porta host 55432)
+npm run db:up
+#    sem Docker: aponte DATABASE_URL/TEST_DATABASE_URL para seu Postgres e crie os
+#    bancos `pandora` e `pandora_test`
+
+# 4. Aplicar as migrações (baseline)
+npm run prisma:migrate:deploy --workspace backend
+
+# 5. Subir backend (porta 3001) e frontend (porta 5174) — dois terminais
+npm run start:dev --workspace backend
+npm run dev --workspace frontend
+
+# 6. Verificar
+curl http://localhost:3001/health          # {"status":"ok","db":"up","contexts":[... 11 ...]}
+#    abrir http://localhost:5174            # shell da marca com a navegação
+
+# 7. Qualidade e testes
+npm run lint && npm run typecheck && npm run build
+npm test                                    # unitários (backend + frontend)
+npm run test:e2e                             # e2e do backend contra Postgres real
+```
+
+Portas (todas configuráveis por `.env`, nenhuma fixa): backend `PORT=3001`, frontend
+`VITE_PORT=5174`, Postgres dev host `55432`. Detalhe e mapa contexto→módulo em
+[`docs/001-bootstrap-projeto.md`](docs/001-bootstrap-projeto.md).
 
 ## Fluxo de desenvolvimento
 
@@ -129,11 +182,16 @@ de verdade, pelos endpoints de curadoria da v2.
 
 ## Status
 
-Reconstrução em fase de definição. Constituição ratificada em 2026-09-01 (v1.1.0). A maior
-parte das decisões em aberto da Parte 7 da visão foi resolvida (stack, granularidade de
-Contrato e Oferta, resolução Hotmart, moeda, fontes de Marketing, política de atualização).
+Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em andamento.**
 
-Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**.
-Próximo passo: abrir a primeira spec (`speckit-specify`) para as fundações transversais
-(`core`, `pessoa`/identidade, `evento_origem`) e o CRM. Restam em aberto o default do modelo
-de atribuição de Marketing e as decisões específicas de CRM (visão Parte 8.12).
+- ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
+  com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
+  contra Postgres real com isolamento por schema, CI no GitHub Actions, frontend Vite +
+  React 19 + Tailwind v4 com o shell da marca). Ver [`ROADMAP.md`](ROADMAP.md) e
+  [`docs/001-bootstrap-projeto.md`](docs/001-bootstrap-projeto.md).
+- ⏭️ Próxima: **002 — core-value-objects** (`Dinheiro`, tempo, status canônico).
+
+Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
+(precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
+default do modelo de atribuição de Marketing e as decisões específicas de CRM (visão
+Parte 8.12).

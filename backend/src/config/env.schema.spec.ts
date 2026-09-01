@@ -1,0 +1,91 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { accountConfig, envSchema } from './env.schema';
+import { PlataformaOrigem } from '../core/plataforma-origem.enum';
+
+/** Parser mínimo de .env (KEY=VALUE, ignora comentários e linhas vazias). */
+function parseDotenv(content: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    out[trimmed.slice(0, eq).trim()] = trimmed.slice(eq + 1).trim();
+  }
+  return out;
+}
+
+const EXAMPLE_PATH = join(__dirname, '../../../.env.example');
+const exampleEnv = parseDotenv(readFileSync(EXAMPLE_PATH, 'utf8'));
+
+describe('envSchema', () => {
+  it('o .env.example da raiz parseia sem erro', () => {
+    expect(() => envSchema.parse(exampleEnv)).not.toThrow();
+  });
+
+  it('falha citando DATABASE_URL quando ausente', () => {
+    const { DATABASE_URL: _omit, ...rest } = exampleEnv;
+    const result = envSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('DATABASE_URL'))).toBe(true);
+    }
+  });
+
+  it('falha citando PORT quando não numérico', () => {
+    const result = envSchema.safeParse({ ...exampleEnv, PORT: 'abc' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('PORT'))).toBe(true);
+    }
+  });
+
+  it('falha citando SERVICE_JWT_SECRET quando presente mas curto', () => {
+    const result = envSchema.safeParse({ ...exampleEnv, SERVICE_JWT_SECRET: 'curto' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('SERVICE_JWT_SECRET'))).toBe(true);
+    }
+  });
+
+  it('não falha quando TODAS as chaves de conta estão ausentes (opcionais na 001)', () => {
+    const semContas: Record<string, string> = {};
+    for (const [k, v] of Object.entries(exampleEnv)) {
+      if (!/_(API_BASE_URL|API_KEY|WEBHOOK_TOKEN)$/.test(k)) semContas[k] = v;
+    }
+    expect(() => envSchema.parse(semContas)).not.toThrow();
+  });
+
+  it('falha citando a chave de conta quando a URL é inválida', () => {
+    const result = envSchema.safeParse({ ...exampleEnv, TMB_API_BASE_URL: 'não-é-url' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('TMB_API_BASE_URL'))).toBe(true);
+    }
+  });
+
+  it('exige TEST_DATABASE_URL quando NODE_ENV=test', () => {
+    const { TEST_DATABASE_URL: _omit, ...rest } = exampleEnv;
+    const result = envSchema.safeParse({ ...rest, NODE_ENV: 'test' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('TEST_DATABASE_URL'))).toBe(true);
+    }
+  });
+
+  it('accountConfig agrupa as 3 chaves de uma conta e retorna undefined quando vazia', () => {
+    const parsed = envSchema.parse(exampleEnv);
+    const tmb = accountConfig(parsed, PlataformaOrigem.TMB);
+    expect(tmb?.apiBaseUrl).toBe(exampleEnv.TMB_API_BASE_URL);
+
+    const parsedSemContas = envSchema.parse(
+      Object.fromEntries(
+        Object.entries(exampleEnv).filter(
+          ([k]) => !/_(API_BASE_URL|API_KEY|WEBHOOK_TOKEN)$/.test(k),
+        ),
+      ),
+    );
+    expect(accountConfig(parsedSemContas, PlataformaOrigem.TMB)).toBeUndefined();
+  });
+});

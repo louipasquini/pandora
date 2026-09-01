@@ -174,11 +174,20 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
 
 ## Stack
 
-- **Backend:** Node.js + TypeScript + **NestJS** + **Prisma**, sobre **PostgreSQL**
+- **Backend:** Node.js 24 + TypeScript + **NestJS 11** + **Prisma 6**, sobre **PostgreSQL 16**
   (decisão de 2026-09-01 — substitui o Python/FastAPI da v1; código e ~329 testes da v1
-  não são reaproveitados). Os módulos do NestJS mapeiam os contextos delimitados.
-- **Frontend:** React 19 + TypeScript + Vite + Tailwind v4, TanStack Query, React Router.
-  Um único nível de acesso; login = credenciais de serviço da API.
+  não são reaproveitados). Um módulo NestJS por bounded context (`backend/src/<contexto>/`);
+  lista canônica em `backend/src/app.context-modules.ts`. Config tipada por zod em
+  `backend/src/config/env.schema.ts` (falha cedo, sem default silencioso). `core` já expõe
+  `EntidadeId` (Value Object, UUID v7), `uuidv7()` e o enum `PlataformaOrigem` (7 contas);
+  `Dinheiro`/tempo/status canônico entram na spec 002.
+- **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
+  TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço.
+  Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
+- **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
+  nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`.
+- **Testes:** unitários sem banco; e2e do backend contra Postgres real, schema isolado por
+  execução (`backend/test/setup-db.ts`). CI: `.github/workflows/ci.yml`.
 - **Identidade visual:** azul `#2E4E78`, coral `#EC5F6A`, menta `#68C0B2`, fonte Inter.
 - Trocar qualquer peça exige emenda da constituição e o Princípio II.
 
@@ -205,6 +214,10 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+Plano ativo: [`specs/001-bootstrap-projeto/plan.md`](specs/001-bootstrap-projeto/plan.md)
+(Fase 0 · spec 001 — esqueleto do monorepo: npm workspaces, backend NestJS 11 com módulo
+por bounded context, Prisma 6 + PostgreSQL, config zod por conta, harness de teste
+schema-per-worker, CI GitHub Actions, frontend Vite + React 19 + Tailwind v4 + TanStack
+Query + React Router). Artefatos: `research.md`, `data-model.md`, `contracts/`,
+`quickstart.md` na mesma pasta.
 <!-- SPECKIT END -->

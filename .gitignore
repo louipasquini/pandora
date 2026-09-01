@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+frontend/dist/
+backend/dist/
+
+# Test / coverage
+coverage/
+*.lcov
+
+# Prisma generated client
+backend/node_modules/.prisma/
+backend/src/generated/
+
+# Env — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Vite
+.vite/
+frontend/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
