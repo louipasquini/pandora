@@ -1,0 +1,894 @@
+
+# Asaas - Documentação API Documentation
+
+> API para desenvolvimento de soluções financeiras para seu sistema.
+
+## Guides
+- [Introdução](https://docs.asaas.com/docs/visao-geral.md): Encontre guias para integrar as APIs financeiras do Asaas.
+- [Canais de suporte](https://docs.asaas.com/docs/entre-em-contato.md): Está com algum problema ou dúvida na integração?
+- [Postman](https://docs.asaas.com/docs/postman.md): Utilize a coleção do Postman para testar endpoints da API do Asaas com autenticação, ambiente e troubleshooting corretos.
+- [Insomnia](https://docs.asaas.com/docs/insomnia.md): Importe a especificação OpenAPI do Asaas no Insomnia para gerar uma Collection, configurar requisições e resolver problemas comuns de importação.
+- [Como o Asaas trata receitas na conta?](https://docs.asaas.com/docs/como-o-asaas-trata-receitas-na-conta.md): No Asaas a principal fonte de receitas são as cobranças.
+- [BaaS (Banking As A Service) com o Asaas](https://docs.asaas.com/docs/sobre-baas.md): Entenda se este é o formato ideal para você.
+- [Autenticação](https://docs.asaas.com/docs/autenticação-1.md): De que forma o Asaas identifica quem é você?
+- [Chaves de API](https://docs.asaas.com/docs/chaves-de-api.md)
+- [Padrão de chave com $ e clientes PHP](https://docs.asaas.com/docs/padrão-de-chave-com-e-clientes-php.md)
+- [Mecanismo para validação de saque via webhooks](https://docs.asaas.com/docs/mecanismo-para-validacao-de-saque-via-webhooks.md): Uma forma de confirmar transferências via um Webhook especial.
+- [Whitelist de IPs](https://docs.asaas.com/docs/whitelist-de-ips.md)
+- [PCI-DSS](https://docs.asaas.com/docs/pci-dss-1.md): Como garantir que suas transações estejam em conformidade de segurança?
+- [MCP Server (IA)](https://docs.asaas.com/docs/mcp-1.md)
+- [Sandbox](https://docs.asaas.com/docs/sandbox.md): Introdução
+- [Como configurar sua conta no Sandbox](https://docs.asaas.com/docs/como-configurar-sua-conta-no-sandbox.md)
+- [Adicionando saldo em uma conta Sandbox](https://docs.asaas.com/docs/como-adicionar-dinheiro-para-testes.md)
+- [Como testar funcionalidades em sandbox](https://docs.asaas.com/docs/como-testar-funcionalidades.md)
+- [Testando pagamento com cartão de crédito](https://docs.asaas.com/docs/testando-pagamento-com-cartão-de-crédito.md)
+- [Testando pagamento de contas](https://docs.asaas.com/docs/testando-pagamento-de-contas.md)
+- [Testando transferências](https://docs.asaas.com/docs/testando-transferências.md)
+- [Testar pagamento de QRCodes Pix](https://docs.asaas.com/docs/testar-pagamento-de-qrcodes-pix.md)
+- [Tentar pagar QR Code Pix no Sandbox sem chave cadastrada = erro 404](https://docs.asaas.com/docs/tentar-pagar-qr-code-pix-no-sandbox-sem-chave-cadastrada-erro-404.md)
+- [Como testar ações críticas](https://docs.asaas.com/docs/como-testar-ações-críticas.md)
+- [Como gerar novas cobranças de uma assinatura](https://docs.asaas.com/docs/como-gerar-novas-cobranças-de-uma-assinatura.md)
+- [O que pode ser testado?](https://docs.asaas.com/docs/o-que-pode-ser-testado.md)
+- [FAQ - Sandbox](https://docs.asaas.com/docs/faq-sandbox.md)
+- [Introdução - Cobranças](https://docs.asaas.com/docs/guia-de-cobrancas.md): Aprenda o passo a passo para criar cobranças no Asaas.
+- [Cadastro de clientes](https://docs.asaas.com/docs/criando-um-cliente.md): Antes de criar uma cobrança, você precisa de um cliente.
+- [Cobranças via boleto](https://docs.asaas.com/docs/cobrancas-via-boleto.md): Comece a aceitar pagamentos de boletos online com o Asaas.
+- [Cobranças via cartão de crédito](https://docs.asaas.com/docs/cobrancas-via-cartao-de-credito.md): Segurança e praticidade nas cobranças online.
+- [Criar uma cobrança parcelada](https://docs.asaas.com/docs/criar-uma-cobranca-parcelada.md)
+- [Redirecionamento após o pagamento](https://docs.asaas.com/docs/redirecionamento-apos-o-pagamento.md): Redirecione o cliente de volta para a sua aplicação depois de um pagamento bem sucedido em nossa fatura
+- [Chargeback](https://docs.asaas.com/docs/chargeback.md): Entenda os campos status e reason retornados no objeto chargeback e como interpretá-los na integração.
+- [Estornos](https://docs.asaas.com/docs/estornos.md): Como interpretar o atributo refunds retornado em cobranças com estornos.
+- [Introdução - Pix](https://docs.asaas.com/docs/pix.md)
+- [Cobranças via Pix / QR Code dinâmico](https://docs.asaas.com/docs/cobrancas-via-pix.md): A forma mais rápida de ter o dinheiro na conta.
+- [Criando um QR Code estático](https://docs.asaas.com/docs/o-que-e-qr-code-estatico.md)
+- [Pix Recorrente](https://docs.asaas.com/docs/pix-recorrente.md)
+- [Diferença entre Pix Recorrente e Pix Automático](https://docs.asaas.com/docs/diferença-entre-pix-recorrente-e-pix-automático.md): Apesar dos nomes semelhantes, **Pix Recorrente** e **Pix Automático** possuem finalidades, fluxos e responsabilidades diferentes. A seguir, apresentamos as principais diferenças entre as duas modalidades.
+- [Consultar Chave Pix](https://docs.asaas.com/docs/consultar-chave-pix.md)
+- [Pix Automático](https://docs.asaas.com/docs/pix-automatico.md)
+- [Implementação](https://docs.asaas.com/docs/pix-automatico-implementacao.md): Um guia de implementação para auxiliar na integração com a API de autorizações na jornada 3.
+- [Fluxos de Webhook do Pix Automático](https://docs.asaas.com/docs/fluxos-de-webhook.md)
+- [Motivos de Recusa](https://docs.asaas.com/docs/motivos-de-recusa.md)
+- [Diferença entre Pix Automático e Assinaturas](https://docs.asaas.com/docs/diferença-entre-pix-automático-e-assinaturas.md)
+- [Processo de retentativas (Jornada 3 API)](https://docs.asaas.com/docs/pix-automático-processo-de-retentativas-jornada-3-api.md)
+- [FAQ do Pix Automático](https://docs.asaas.com/docs/faq-2.md): Veja aqui respostas para dúvidas comuns na implementação e gestão dos Pix automáticos.
+- [Assinaturas (recorrência)](https://docs.asaas.com/docs/assinaturas-recorrência.md)
+- [Introdução - assinaturas](https://docs.asaas.com/docs/assinaturas.md)
+- [Criando uma assinatura](https://docs.asaas.com/docs/criando-uma-assinatura.md)
+- [Criando assinatura com cartão de crédito](https://docs.asaas.com/docs/criando-assinatura-com-cartao-de-credito.md)
+- [Emitir notas fiscais automaticamente para assinaturas](https://docs.asaas.com/docs/emitir-notas-fiscais-automaticamente-para-assinaturas.md)
+- [Fluxo de bloqueio de assinatura por divergência de split](https://docs.asaas.com/docs/fluxo-de-bloqueio-de-assinatura-por-divergência-de-split.md)
+- [Diferença entre Pix Automático e Assinaturas](https://docs.asaas.com/docs/diferença-entre-pix-automático-e-assinaturas-1.md)
+- [FAQ - Assinaturas](https://docs.asaas.com/docs/faq-assinaturas.md)
+- [Introdução - Link de pagamento](https://docs.asaas.com/docs/link-de-pagamentos.md)
+- [Criando um link de pagamentos](https://docs.asaas.com/docs/criando-um-link-de-pagamentos.md)
+- [Asaas Checkout](https://docs.asaas.com/docs/checkout-asaas.md): Crie e integre uma página de pagamento hospedada pelo Asaas com Pix, cartão, assinaturas, parcelamentos, callbacks e Webhooks.
+- [Introdução - Asaas Checkout](https://docs.asaas.com/docs/introdução-1.md): Saiba quando usar o Asaas Checkout, como criar um checkout pela API, quais parâmetros configurar, como tratar redirecionamentos, Webhooks e erros comuns.
+- [Como informar os dados do cliente](https://docs.asaas.com/docs/como-informar-os-dados-do-cliente.md)
+- [Checkout para Pix](https://docs.asaas.com/docs/checkout-para-pix.md): Exemplo de payload e fluxo de integração para criar um checkout avulso com pagamento via Pix, expiração e URLs de redirecionamento.
+- [Checkout para Cartão de Crédito](https://docs.asaas.com/docs/checkout-para-cartão-de-crédito.md)
+- [Checkout com Assinatura (recorrente)](https://docs.asaas.com/docs/checkout-com-assinatura-recorrente.md)
+- [Checkout com Split de Pagamento](https://docs.asaas.com/docs/checkout-com-split-de-pagamento.md)
+- [Link do checkout e redirecionamento do cliente](https://docs.asaas.com/docs/link-do-checkout-e-redirecionamento-do-cliente.md)
+- [Erros comuns e boas práticas](https://docs.asaas.com/docs/erros-comuns-e-boas-práticas.md)
+- [Introdução - Split de pagamento](https://docs.asaas.com/docs/split-de-pagamentos.md): Como dividir parte dos valores recebidos.
+- [Split em cobranças avulsas](https://docs.asaas.com/docs/split-em-cobrancas-avulsas.md)
+- [Split em parcelamentos](https://docs.asaas.com/docs/split-em-parcelamentos.md)
+- [Split em assinaturas](https://docs.asaas.com/docs/split-em-assinaturas.md)
+- [Split em cobranças antecipadas](https://docs.asaas.com/docs/split-em-cobrancas-antecipadas.md)
+- [Consulta de splits via interface](https://docs.asaas.com/docs/consulta-de-splits-via-interface.md)
+- [Usando o split sem API](https://docs.asaas.com/docs/usando-o-split-sem-api.md): Escolha uma integração sem código para configurar o split de pagamentos do Asaas por plugin ou conector.
+- [Split no WooCommerce](https://docs.asaas.com/docs/split-no-woocommerce.md): Como configurar a realização de splits no Plugin Asaas para WooCommerce
+- [Split na Pluga](https://docs.asaas.com/docs/split-no-pluga.md): Como utilizar o split de pagamentos de maneira simples através da Pluga
+- [Introdução - Antecipação](https://docs.asaas.com/docs/antecipacoes.md)
+- [Introdução - Notificações](https://docs.asaas.com/docs/notificacoes.md)
+- [Notificações padrões](https://docs.asaas.com/docs/notificacoes-padroes.md)
+- [Alterando notificações de um cliente](https://docs.asaas.com/docs/alterando-notificacoes-de-um-cliente.md)
+- [Introdução - Transferências](https://docs.asaas.com/docs/transferencias.md)
+- [Transferência para contas de outra instituição (Pix / TED)](https://docs.asaas.com/docs/transferencia-para-contas-de-outra-instituicao-pix-ted.md)
+- [Transferência para conta Asaas](https://docs.asaas.com/docs/transferencia-para-conta-asaas.md)
+- [Introdução - Notas Fiscais](https://docs.asaas.com/docs/notas-fiscais.md)
+- [Configurar informações fiscais](https://docs.asaas.com/docs/configurar-informacoes-fiscais.md)
+- [Emitindo notas fiscais de serviço](https://docs.asaas.com/docs/emitindo-notas-fiscais-de-servico.md)
+- [Configurações de retenção e situação tributária de PIS/COFINS](https://docs.asaas.com/docs/configurações-de-retenção-e-situação-tributária-de-piscofins.md)
+- [Webhooks](https://docs.asaas.com/docs/webhooks-2.md)
+- [Introdução - Webhooks](https://docs.asaas.com/docs/sobre-os-webhooks.md)
+- [Criar novo Webhook pela aplicação web](https://docs.asaas.com/docs/criar-novo-webhook-pela-aplicacao-web.md)
+- [Criar novo Webhook pela API](https://docs.asaas.com/docs/criar-novo-webhook-pela-api.md)
+- [Receba eventos do Asaas no seu endpoint de Webhook](https://docs.asaas.com/docs/receba-eventos-do-asaas-no-seu-endpoint-de-webhook.md): Configure uma URL de webhook para manter sua aplicação sempre atualizada com a integração da API
+- [Como implementar idempotência em Webhooks](https://docs.asaas.com/docs/como-implementar-idempotencia-em-webhooks.md)
+- [Polling vs. Webhooks](https://docs.asaas.com/docs/polling-vs-webhooks.md): Por que é melhor usar Webhooks?
+- [Eventos de Webhooks](https://docs.asaas.com/docs/eventos-de-webhooks.md)
+- [Eventos para cobranças](https://docs.asaas.com/docs/webhook-para-cobrancas.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para assinaturas](https://docs.asaas.com/docs/eventos-para-assinaturas.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para notas fiscais](https://docs.asaas.com/docs/webhook-para-notas-fiscais.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para transferências](https://docs.asaas.com/docs/webhook-para-transferencias.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para pague contas](https://docs.asaas.com/docs/webhook-para-pague-contas.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para antecipações](https://docs.asaas.com/docs/webhook-para-antecipacoes.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para recargas de celular](https://docs.asaas.com/docs/webhook-para-recargas-de-celular.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para verificar situação da conta](https://docs.asaas.com/docs/webhook-para-verificar-situacao-da-conta.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para Checkout](https://docs.asaas.com/docs/eventos-para-checkout.md): Escute os eventos do Asaas para ter sua integração em dia.
+- [Eventos para bloqueios de saldo](https://docs.asaas.com/docs/eventos-para-bloqueios-de-saldo.md): Receba notificações em tempo real sempre que um valor for bloqueado ou desbloqueado no saldo da sua conta
+- [Eventos para movimentações internas](https://docs.asaas.com/docs/eventos-para-movimentações-internas.md): Receba notificações sobre créditos e débitos internos que ocorrem em sua conta
+- [Eventos para chaves de API](https://docs.asaas.com/docs/eventos-para-chaves-de-api.md): Receba notificações para monitorar todas as ações e mudanças de estado que ocorrem em suas chaves de API, aumentando a segurança e a visibilidade operacional da sua conta
+- [Eventos para Pix Automático](https://docs.asaas.com/docs/eventos-para-pix-automático.md): Escute os eventos do Asaas para manter sua integração sempre em dia
+- [Tipos de envio](https://docs.asaas.com/docs/tipos-de-envio.md)
+- [Logs de Webhooks](https://docs.asaas.com/docs/logs-de-webhooks.md)
+- [Penalização de filas](https://docs.asaas.com/docs/penalização-de-filas.md)
+- [Fila pausada](https://docs.asaas.com/docs/fila-pausada.md): O que fazer nestes casos?
+- [Como reativar fila interrompida](https://docs.asaas.com/docs/como-reativar-fila-interrompida.md)
+- [Erro 400 (Bad Request)](https://docs.asaas.com/docs/erro-400-bad-request.md): O que fazer quando vejo este erro nos logs de Webhooks do Asaas?
+- [Erro 403 (Forbidden)](https://docs.asaas.com/docs/erro-403-forbidden.md): O que fazer quando vejo este erro nos logs de Webhooks do Asaas?
+- [Erro 404 (Not Found)](https://docs.asaas.com/docs/erro-404-not-found.md): O que fazer quando vejo este erro nos logs de Webhooks do Asaas?
+- [Erro 408 - Read Timed Out](https://docs.asaas.com/docs/erro-read-timed-out.md): O que fazer quando vejo este erro nos logs de Webhooks do Asaas?
+- [Erro 500 (Internal Server Error)](https://docs.asaas.com/docs/erro-500-internal-server-error.md): O que fazer quando vejo este erro nos logs de Webhooks do Asaas?
+- [Erro Connect Timed Out](https://docs.asaas.com/docs/erro-connect-timed-out.md): O que fazer quando vejo este erro nos logs de Webhooks do Asaas?
+- [Outros Erros](https://docs.asaas.com/docs/outros-erros.md)
+- [Bloqueio do Firewall na CloudFlare](https://docs.asaas.com/docs/bloqueio-do-firewall-na-cloudflare.md): O CloudFlare é uma das soluções de Firewall mais utilizadas mundialmente para sites.
+- [IPs oficiais do Asaas](https://docs.asaas.com/docs/ips-oficiais-do-asaas.md)
+- [FAQ de Webhooks](https://docs.asaas.com/docs/faq-de-webhooks.md)
+- [Criação de subcontas com o BaaS do Asaas](https://docs.asaas.com/docs/criação-de-subcontas-baas.md)
+- [Onboarding e envio de documentos via link](https://docs.asaas.com/docs/onboarding-e-envio-de-documentos-via-link.md): Utilizando um processo de onboarding mais fácil.
+- [Detalhamento do Fluxo de Aprovação de Subcontas](https://docs.asaas.com/docs/detalhamento-do-fluxo-de-aprovação-de-subcontas.md)
+- [Criação de subcontas](https://docs.asaas.com/docs/criacao-de-subcontas.md)
+- [Confirmação Anual de Dados Comerciais para Subcontas](https://docs.asaas.com/docs/confirmação-anual-de-dados-comerciais-para-subcontas.md)
+- [Alterar o nome de uma subconta PJ via API](https://docs.asaas.com/docs/alterar-o-nome-de-uma-subconta-pj-via-api.md)
+- [Gerenciamento das chaves de API de subcontas](https://docs.asaas.com/docs/gerenciamento-de-chaves-de-api-de-subcontas.md)
+- [Encerramento de subcontas não-BaaS](https://docs.asaas.com/docs/encerramento-de-subcontas-não-baas.md)
+- [FAQ Período de Avaliação](https://docs.asaas.com/docs/faq-periodo-de-avaliacao.md)
+- [Pague Contas](https://docs.asaas.com/docs/pague-contas.md)
+- [Introdução - Pague contas](https://docs.asaas.com/docs/introdução-2.md)
+- [Pagamento imediato x Pagamento agendado](https://docs.asaas.com/docs/pagamento-imediato-x-pagamento-agendado.md)
+- [Regras importantes](https://docs.asaas.com/docs/regras-importantes.md)
+- [Status possíveis](https://docs.asaas.com/docs/status-possíveis.md): Entenda os status possíveis de um pagamento, quando cada um ocorre e como tratar estados finais, intermediários e comportamentos de Sandbox.
+- [Erros e exceções comuns — Pague Contas](https://docs.asaas.com/docs/mensagens-de-erro-comuns.md)
+- [Testando no Sandbox](https://docs.asaas.com/docs/testando-no-sandbox.md)
+- [Boas práticas gerais](https://docs.asaas.com/docs/boas-práticas-gerais.md): Boas práticas para integrar o Pague Contas, incluindo fluxo recomendado, payload mínimo, regras de agendamento, idempotência e webhooks.
+- [Introdução - Conta Escrow](https://docs.asaas.com/docs/introducao-conta-escrow.md)
+- [Configurando a Conta Escrow para as subcontas](https://docs.asaas.com/docs/habilitando-a-conta-escrow-para-as-subcontas.md)
+- [Cobrança da taxa por subconta configurada](https://docs.asaas.com/docs/cobrança-da-taxa-por-subconta-configurada.md)
+- [Valores sob garantia da Conta Escrow](https://docs.asaas.com/docs/bloqueio-dos-valores.md): Bloqueio dos valores
+- [Liberação dos Valores em garantia](https://docs.asaas.com/docs/desbloqueio-dos-valores.md)
+- [Desabilitando a Conta Escrow](https://docs.asaas.com/docs/desabilitando-a-conta-escrow.md)
+- [Plugins/Módulos/Parceiros](https://docs.asaas.com/docs/pluginsmódulos.md): Escolha e configure plugins, módulos e parceiros disponíveis para integrar o Asaas a plataformas de e-commerce, automação e gestão.
+- [Shopify](https://docs.asaas.com/docs/shopify.md)
+- [Boleto - Shopify](https://docs.asaas.com/docs/boleto-shopify.md): Utilizando o Boleto Asaas com a Shopify
+- [Pix - Shopify](https://docs.asaas.com/docs/pix-shopify.md): Utilizando o Pix Asaas com a Shopify
+- [Cartão de Crédito - Shopify](https://docs.asaas.com/docs/cartao-de-credito-shopify.md)
+- [Configurações gerais](https://docs.asaas.com/docs/configurações-gerais.md): ⚙️ Integração Asaas + Shopify
+- [FAQ - Shopify](https://docs.asaas.com/docs/dúvidas-frequentes.md): Esta seção reúne as principais dúvidas sobre a integração do Asaas com a Shopify, com o objetivo de apoiar a configuração e utilização da solução.
+- [WooCommerce](https://docs.asaas.com/docs/woocommerce-1.md): Entenda quando usar o plugin Asaas para WooCommerce, quais fluxos ele atende e quais páginas consultar para instalar, configurar e solucionar problemas.
+- [Instalando o plugin](https://docs.asaas.com/docs/instalando-o-plugin-copy.md): Como usar o Asaas no WooCommerce.
+- [Configurações iniciais](https://docs.asaas.com/docs/configurações-iniciais-copy.md): Primeiros passos ao usar o Asaas no WooCommerce.
+- [Formas de pagamentos](https://docs.asaas.com/docs/forma-de-pagamento.md): Configure e valide Boleto Bancário, Pix e Cartão de Crédito no Plugin Asaas para WooCommerce.
+- [Formas de cobrança](https://docs.asaas.com/docs/formas-de-cobrança.md): Entenda quando usar cobrança avulsa, parcelada ou recorrente e quais regras aplicar em cada forma de pagamento.
+- [Assinaturas no WooCommerce](https://docs.asaas.com/docs/assinaturas-no-woocommerce.md)
+- [Webhooks do WooCommerce](https://docs.asaas.com/docs/webhooks.md)
+- [Erros comuns](https://docs.asaas.com/docs/erros-comuns.md): Principais problemas que você pode encontrar no plugin de WooCommerce e como resolvê-los.
+- [Split de pagamento no WooCommerce](https://docs.asaas.com/docs/split-de-pagamento-no-woocommerce.md)
+- [FAQ - WooCommerce](https://docs.asaas.com/docs/faq-woocommerce.md)
+- [Emissor NF-e para WooCommerce - BaseERP](https://docs.asaas.com/docs/emissor-nf-para-woocommerce.md)
+- [Instalação/Configuração](https://docs.asaas.com/docs/instalando-o-plugin-1.md)
+- [Cadastro/Vínculo de Produtos](https://docs.asaas.com/docs/cadastrovínculo-de-produtos.md)
+- [Nuvemshop](https://docs.asaas.com/docs/nuvemshop.md): O que é a Nuvemshop?
+- [Instalando o módulo](https://docs.asaas.com/docs/instalando-o-módulo.md): Como usar o Asaas na Nuvemshop
+- [Configurações iniciais](https://docs.asaas.com/docs/configurações-iniciais.md): Configurando o módulo
+- [FAQ - Nuvemshop](https://docs.asaas.com/docs/faq.md): Perguntas frequentes sobre o módulo Nuvemshop
+- [Magento](https://docs.asaas.com/docs/magento.md): O que é o Magento?
+- [Instalando o módulo](https://docs.asaas.com/docs/instalando-o-módulo-1.md): Como usar o Asaas no Magento
+- [Configurações iniciais](https://docs.asaas.com/docs/configurações-iniciais-1.md)
+- [FAQ - magento](https://docs.asaas.com/docs/faq-magento.md)
+- [Pluga](https://docs.asaas.com/docs/pluga.md): O que é a Pluga?
+- [Introdução - Pluga](https://docs.asaas.com/docs/introdução.md)
+- [Split Asaas no Pluga](https://docs.asaas.com/docs/split-asaas-no-pluga.md): Como Usar a Funcionalidade de Split de Pagamento do Asaas em uma Integração com a Pluga
+- [FAQ - Pluga](https://docs.asaas.com/docs/faq-pluga.md)
+- [Digital Manager Guru](https://docs.asaas.com/docs/digitalmanagerguru.md)
+- [Introdução - Guru](https://docs.asaas.com/docs/digital-manager-guru.md)
+- [Make/Integromat](https://docs.asaas.com/docs/make.md): O que é o Make?
+- [Vantagens/Funcionalidades](https://docs.asaas.com/docs/vantagens-e-funcionalidades.md)
+- [Templates](https://docs.asaas.com/docs/templates.md)
+- [Criar uma cobrança avulsa à partir de uma linha no Google Sheets](https://docs.asaas.com/docs/criar-uma-cobrança-avulsa-à-partir-de-uma-linha-no-google-sheets.md)
+- [Criar uma assinatura à partir de uma linha no Google Sheets](https://docs.asaas.com/docs/criar-uma-assinatura-à-partir-de-uma-linha-no-google-sheets.md)
+- [Criar um parcelamento a partir de uma linha no Google Sheets](https://docs.asaas.com/docs/criar-um-parcelamento-à-partir-de-uma-linha-no-google-sheets.md)
+- [FAQ - Make/Integromat](https://docs.asaas.com/docs/faq-makeintegromat.md)
+- [N8N](https://docs.asaas.com/docs/n8n.md): Entenda quando usar o nó oficial do Asaas no n8n, como configurar workflows financeiros, tratar erros e publicar automações com segurança.
+- [Instalação](https://docs.asaas.com/docs/instalação.md)
+- [Assinaturas](https://docs.asaas.com/docs/duvidas-frequentes-assinaturas.md): Dúvidas frequentes sobre assinaturas na API do Asaas
+- [Autenticação](https://docs.asaas.com/docs/autenticação.md): Configure headers de autenticação, gere chaves de API e resolva erros 401 na API do Asaas.
+- [Clientes](https://docs.asaas.com/docs/duvidas-frequentes-clientes.md): Dúvidas frequentes sobre clientes na API do Asaas
+- [Cobranças](https://docs.asaas.com/docs/duvidas-frequentes-cobrancas.md): Dúvidas frequentes sobre cobranças na API do Asaas
+- [Limites da API](https://docs.asaas.com/docs/duvidas-frequentes-limites-da-api.md): Dúvidas frequentes sobre limites da API do Asaas
+- [Notificações](https://docs.asaas.com/docs/duvidas-frequentes-notificacoes.md): Dúvidas frequentes sobre notificações na API do Asaas, incluindo desativação de notificações padrão, personalização, parâmetros e boas práticas.
+- [Parcelamentos](https://docs.asaas.com/docs/duvidas-frequentes-parcelamentos.md): Dúvidas frequentes sobre parcelamentos na API do Asaas
+- [Pix](https://docs.asaas.com/docs/duvidas-frequentes-pix.md): Dúvidas frequentes sobre Pix na API do Asaas
+- [Sandbox](https://docs.asaas.com/docs/duvidas-frequentes-sandbox.md): Dúvidas frequentes sobre o Sandbox do Asaas
+- [Segurança](https://docs.asaas.com/docs/duvidas-frequentes-seguranca.md): Dúvidas frequentes sobre segurança da API do Asaas
+- [Split](https://docs.asaas.com/docs/duvidas-frequentes-split.md): Dúvidas frequentes sobre requisitos, limites, exemplos, fluxos e boas práticas para configurar split na API do Asaas.
+- [Subcontas](https://docs.asaas.com/docs/duvidas-frequentes-subcontas.md): Entenda as diferenças entre subcontas BaaS e não-BaaS, quando usar cada modelo e como seguir o fluxo de integração via API.
+- [Transferências](https://docs.asaas.com/docs/duvidas-frequentes-transferencias.md): Dúvidas frequentes sobre transferências na API do Asaas
+- [Webhooks](https://docs.asaas.com/docs/duvidas-frequentes-webhooks.md): Dúvidas frequentes sobre webhooks na API do Asaas
+- [BaaS Asaas](https://docs.asaas.com/docs/duvidas-frequentes-baas.md): Dúvidas frequentes sobre limites, onboarding e acesso de subcontas BaaS na API do Asaas
+- [Tokenização](https://docs.asaas.com/docs/tokenização.md): Entenda por que a tokenização de cartão pode retornar erro de permissão e como solicitar a habilitação do recurso.
+- [SDK](https://docs.asaas.com/docs/sdks.md): Kit de desenvolvimento de software da API
+- [Java](https://docs.asaas.com/docs/java.md): Kit de desenvolvimento de software Java da API
+- [Welcome to Asaas](https://docs.asaas.com/docs/welcome-to-asaas.md)
+- [Support Channels](https://docs.asaas.com/docs/contact-us.md)
+- [Postman](https://docs.asaas.com/docs/postman-en.md): Use the Postman collection to test Asaas API endpoints with correct authentication, environment, and troubleshooting.
+- [Insomnia](https://docs.asaas.com/docs/insomnia-en.md): Import the Asaas OpenAPI specification into Insomnia to generate a Collection, configure requests, and resolve common import issues.
+- [How does Asaas treat revenue in the account?](https://docs.asaas.com/docs/common-questions.md): At Asaas, the main source of revenue is collections.
+- [Asaas BaaS](https://docs.asaas.com/docs/about-baas.md)
+- [Authentication](https://docs.asaas.com/docs/authentication-2.md): How does Asaas identify who you are?
+- [Additional Security Mechanisms](https://docs.asaas.com/docs/additional-security-mechanisms.md): Use the mechanisms below for added security in your account.
+- [Mechanism for validating withdrawals via webhooks](https://docs.asaas.com/docs/mechanism-for-validating-withdrawals-via-webhooks.md): A way to confirm transfers via a special Webhook.
+- [PCI-DSS](https://docs.asaas.com/docs/pci-dss.md): How to ensure your transactions are security compliant?
+- [IP Whitelisting](https://docs.asaas.com/docs/ip-whitelisting.md)
+- [Sandbox](https://docs.asaas.com/docs/sandbox-2.md): Introduction
+- [How to configure your Sandbox account](https://docs.asaas.com/docs/how-to-set-up-your-account-in-the-sandbox-1.md)
+- [Adding balance to a Sandbox account](https://docs.asaas.com/docs/adding-balance-to-a-sandbox-account.md)
+- [How to Test Features in Sandbox](https://docs.asaas.com/docs/how-to-test-features.md)
+- [Testing Credit Card Payment](https://docs.asaas.com/docs/testing-credit-card-payment.md)
+- [Testing Bill Payment](https://docs.asaas.com/docs/testing-bill-payment.md)
+- [Testing Transfers](https://docs.asaas.com/docs/testing-transfers.md)
+- [Testing Pix QR Code Payment](https://docs.asaas.com/docs/testing-pix-qr-code-payment.md)
+- [Trying to pay a Pix QR Code in Sandbox without a registered key = 404 error](https://docs.asaas.com/docs/trying-to-pay-a-pix-qr-code-in-sandbox-without-a-registered-key-404-error.md)
+- [How to Test Critical Actions](https://docs.asaas.com/docs/how-to-test-critical-actions.md)
+- [How to Generate New Charges from a Subscription](https://docs.asaas.com/docs/how-to-generate-new-charges-from-a-subscription.md)
+- [What can be tested?](https://docs.asaas.com/docs/what-can-be-tested.md)
+- [Approval of accounts](https://docs.asaas.com/docs/approval-of-accounts.md)
+- [FAQ - Sandbox](https://docs.asaas.com/docs/faq-sandbox-1.md)
+- [Introduction - Payments](https://docs.asaas.com/docs/payments-overview.md): Learn the step-by-step process to create charges in Asaas.
+- [Creating customers](https://docs.asaas.com/docs/creating-customers.md)
+- [Bank Slip Charges](https://docs.asaas.com/docs/payments-via-bank-slip.md)
+- [Credit Card Charges](https://docs.asaas.com/docs/payments-via-credit-card.md)
+- [Installment payments](https://docs.asaas.com/docs/installment-payments.md)
+- [Redirection after payment](https://docs.asaas.com/docs/redirection-after-payment.md)
+- [Chargeback](https://docs.asaas.com/docs/chargeback-en.md): Understand the status and reason fields returned in the chargeback object and how to interpret them in your integration.
+- [Refunds](https://docs.asaas.com/docs/refunds.md): How to interpret the `refunds` attribute returned in charges with refunds.
+- [Introduction](https://docs.asaas.com/docs/introduction-5.md)
+- [Immediate Payment X Scheduled Payment](https://docs.asaas.com/docs/immediate-payment-x-scheduled-payment.md)
+- [Rules](https://docs.asaas.com/docs/rules.md)
+- [Possible Statuses](https://docs.asaas.com/docs/possible-statuses.md): Understand the possible statuses of a payment, when each one occurs, and how to handle final, intermediate, and Sandbox behaviors.
+- [Common Error Messages](https://docs.asaas.com/docs/common-error-messages.md)
+- [Testing in the Sandbox](https://docs.asaas.com/docs/testing-in-the-sandbox.md)
+- [General Best Practices](https://docs.asaas.com/docs/general-best-practices.md): Best practices for integrating Bill Payment, including the recommended flow, minimal payload, scheduling rules, idempotency, and webhooks.
+- [Overview](https://docs.asaas.com/docs/pix-overview.md)
+- [Payments via Pix or dynamic QR Code](https://docs.asaas.com/docs/payments-via-pix-or-dynamic-qr-code.md)
+- [Creating a static QR Code](https://docs.asaas.com/docs/creating-a-static-qr-code.md)
+- [Recurring Pix](https://docs.asaas.com/docs/recurring-pix.md)
+- [Automatic Pix](https://docs.asaas.com/docs/automatic-pix.md)
+- [Difference Between Recurring Pix and Automatic Pix](https://docs.asaas.com/docs/difference-between-recurring-pix-and-automatic-pix.md): Although the names are similar, **Recurring Pix** and **Automatic Pix** have different purposes, flows, and responsibilities. Below, we present the main differences between the two modalities.
+- [Automatic Pix](https://docs.asaas.com/docs/automatic-pix-1.md)
+- [Implementation](https://docs.asaas.com/docs/implementation.md)
+- [Automatic Pix Webhook Flows](https://docs.asaas.com/docs/automatic-pix-webhook-flows.md)
+- [Refusal reasons](https://docs.asaas.com/docs/refusal-reasons.md)
+- [Retry process (Journey 3 API)](https://docs.asaas.com/docs/retry-process-journey-3-api.md)
+- [Automatic Pix FAQ](https://docs.asaas.com/docs/automatic-pix-faq.md): This page provides answers to common questions regarding the implementation and operation of Automatic Pix.
+- [Overview](https://docs.asaas.com/docs/subscription-overview.md)
+- [Creating a subscription](https://docs.asaas.com/docs/creating-a-subscription.md)
+- [Subscriptions via credit card](https://docs.asaas.com/docs/subscriptions-via-credit-card.md)
+- [Automatically issue invoices for subscriptions](https://docs.asaas.com/docs/automatically-issue-invoices-for-subscriptions.md)
+- [Subscription blocking flow due to split mismatch](https://docs.asaas.com/docs/subscription-blocking-flow-due-to-split-mismatch.md)
+- [Introduction - Payment link ](https://docs.asaas.com/docs/payment-links-overview.md)
+- [Creating a payment link](https://docs.asaas.com/docs/creating-a-payment-link.md)
+- [Asaas Checkout](https://docs.asaas.com/docs/asaas-checkout.md): Create and integrate an Asaas-hosted payment page with Pix, card, subscriptions, installments, callbacks, and Webhooks.
+- [Introduction - Asaas Checkout](https://docs.asaas.com/docs/introduction-1.md): Learn when to use Asaas Checkout, how to create a checkout via API, which parameters to configure, and how to handle redirects, Webhooks, and common errors.
+- [How to provide customer data](https://docs.asaas.com/docs/how-to-provide-customer-data.md)
+- [Checkout for Pix](https://docs.asaas.com/docs/checkout-for-pix.md): Example payload and integration flow for creating a standalone checkout with Pix payment, expiration, and redirect URLs.
+- [Checkout for Credit Card](https://docs.asaas.com/docs/checkout-for-credit-card.md)
+- [Checkout with Subscription (Recurring)](https://docs.asaas.com/docs/checkout-with-subscription-recurring.md)
+- [Checkout with Payment Split](https://docs.asaas.com/docs/checkout-with-payment-split.md)
+- [Checkout link and customer redirection](https://docs.asaas.com/docs/checkout-link-and-customer-redirection.md)
+- [Common errors and best practices](https://docs.asaas.com/docs/common-errors-and-best-practices.md)
+- [Overview](https://docs.asaas.com/docs/payment-split-overview.md)
+- [Split in single payments](https://docs.asaas.com/docs/split-in-single-payments.md)
+- [Split into installments](https://docs.asaas.com/docs/split-into-installments.md)
+- [Split on subscriptions](https://docs.asaas.com/docs/split-on-subscriptions.md)
+- [Split in anticipated payments](https://docs.asaas.com/docs/split-in-anticipated-payments.md)
+- [Split query via interface](https://docs.asaas.com/docs/split-query-via-interface.md)
+- [Using split without API](https://docs.asaas.com/docs/using-split-without-api.md): Choose a no-code integration to configure Asaas payment split using a plugin or connector.
+- [Split in WooCommerce](https://docs.asaas.com/docs/split-in-woocommerce.md)
+- [Split in Pluga](https://docs.asaas.com/docs/split-na-pluga.md)
+- [Introduction](https://docs.asaas.com/docs/introduction.md)
+- [Overview](https://docs.asaas.com/docs/notifications-overview.md)
+- [Default notifications](https://docs.asaas.com/docs/default-notifications.md)
+- [Changing notifications of a client](https://docs.asaas.com/docs/changing-notifications-of-a-client.md)
+- [Webhooks](https://docs.asaas.com/docs/webhooks-1.md)
+- [Introduction](https://docs.asaas.com/docs/about-webhooks.md)
+- [Create a new Webhook through the web application](https://docs.asaas.com/docs/create-new-webhook-via-web-application.md)
+- [Create a new Webhook through the API](https://docs.asaas.com/docs/create-new-webhook-via-api.md)
+- [Receive events from Asaas in your Webhook endpoint](https://docs.asaas.com/docs/receive-asaas-events-at-your-webhook-endpoint.md): Set up a webhook URL to keep your application always up-to-date with API integration
+- [How to implement idempotency in Webhooks](https://docs.asaas.com/docs/how-to-implement-idempotence-in-webhooks.md)
+- [Polling vs. Webhooks](https://docs.asaas.com/docs/polling-vs-webhooks-en.md): Why is it better to use Webhooks?
+- [Webhook Events](https://docs.asaas.com/docs/webhooks-events.md)
+- [Events for Payments](https://docs.asaas.com/docs/payment-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for subscriptions](https://docs.asaas.com/docs/subscription-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for invoices](https://docs.asaas.com/docs/invoices-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for transfers](https://docs.asaas.com/docs/transfer-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for Bill Payments](https://docs.asaas.com/docs/bill-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for Receivable Anticipations](https://docs.asaas.com/docs/receivable-anticipation-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for mobile top-ups](https://docs.asaas.com/docs/phone-recharge-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for account status verification](https://docs.asaas.com/docs/account-status-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for Checkout](https://docs.asaas.com/docs/checkout-events.md): Listen to Asaas events to keep your integration up to date.
+- [Events for balance blocks](https://docs.asaas.com/docs/balance-block-events.md): Receive real-time notifications whenever a value is blocked or unblocked in your account balance
+- [Events for internal transactionsv](https://docs.asaas.com/docs/internal-movement-events.md): Receive notifications about internal credits and debits that occur in your account and do not originate from traditional payments.
+- [Events for API keys](https://docs.asaas.com/docs/api-key-events.md): Receive notifications to monitor all actions and state changes that occur on your API keys, increasing the security and operational visibility of your account
+- [Events for Automatic Pix](https://docs.asaas.com/docs/events-for-automatic-pix.md): Listen to Asaas events to keep your integration up to date.
+- [Delivery Types](https://docs.asaas.com/docs/send-types.md)
+- [Webhooks logs](https://docs.asaas.com/docs/webhooks-logs.md)
+- [Queue Penalty](https://docs.asaas.com/docs/queue-penalty.md)
+- [Paused Queue](https://docs.asaas.com/docs/webhooks-queue-paused.md)
+- [How to Reactivate an Interrupted Queue](https://docs.asaas.com/docs/how-to-reactivate-an-interrupted-queue.md)
+- [Error 400 (Bad Request)](https://docs.asaas.com/docs/error-400-bad-request.md): What should I do when I see this error in Asaas Webhook logs?
+- [Error 403 (Forbidden)](https://docs.asaas.com/docs/error-403-forbidden.md): What should I do when I see this error in Asaas Webhook logs?
+- [Error 404 (Not Found)](https://docs.asaas.com/docs/error-404-not-found.md): What should I do when I see this error in Asaas Webhook logs?
+- [Error 408 - Read Timed Out](https://docs.asaas.com/docs/error-408-read-timed-out.md): What should I do when I see this error in Asaas Webhook logs?
+- [Error 500 (Internal Server Error)](https://docs.asaas.com/docs/error-500-internal-server-error.md): What should I do when I see this error in Asaas Webhook logs?
+- [Connect Timed Out Error](https://docs.asaas.com/docs/connect-timed-out-error.md): What should I do when I see this error in Asaas Webhook logs?
+- [Other Errors](https://docs.asaas.com/docs/other-errors.md)
+- [Cloudflare Firewall Blocking](https://docs.asaas.com/docs/cloudflare-firewall-blocking-1.md)
+- [Official Asaas IP Addresses](https://docs.asaas.com/docs/official-asaas-ips.md)
+- [Webhooks FAQ](https://docs.asaas.com/docs/webhooks-faq.md)
+- [Overview](https://docs.asaas.com/docs/transfers-overview.md)
+- [Transfer to accounts at another institution (Pix / TED)](https://docs.asaas.com/docs/transfer-to-accounts-at-another-institution-pix-ted.md)
+- [Transfer to Asaas account](https://docs.asaas.com/docs/transfer-to-asaas-account.md)
+- [Mechanism for validating transfers via webhooks](https://docs.asaas.com/docs/mechanism-for-validating-transfers-via-webhooks.md)
+- [Overview](https://docs.asaas.com/docs/invoices-overview.md)
+- [Configure tax information](https://docs.asaas.com/docs/configure-tax-information.md)
+- [Issuing service invoices](https://docs.asaas.com/docs/issuing-service-invoices.md)
+- [Retention and tax status configurations](https://docs.asaas.com/docs/piscofins-withholding-settings-and-tax-status.md)
+- [Creating subaccounts](https://docs.asaas.com/docs/creating-subaccounts.md)
+- [Creating Asaas BaaS sub-accounts](https://docs.asaas.com/docs/creating-baas-subaccounts.md)
+- [Onboarding and sending documents via link](https://docs.asaas.com/docs/onboarding-and-sending-documents-via-link.md)
+- [Detailed Subaccount Approval Flow](https://docs.asaas.com/docs/detailed-subaccount-approval-flow.md)
+- [Annual Business Data Confirmation for Subaccounts](https://docs.asaas.com/docs/annual-business-data-confirmation-for-subaccounts.md)
+- [Change the Name of a Business Subaccount via API](https://docs.asaas.com/docs/change-the-name-of-a-business-subaccount-via-api.md)
+- [Managing sub-account API keys](https://docs.asaas.com/docs/sub-account-api-key-management.md)
+- [Closing non-BaaS subaccounts](https://docs.asaas.com/docs/closing-non-baas-subaccounts.md)
+- [FAQ Evaluation Period](https://docs.asaas.com/docs/faq-evaluation-period.md)
+- [Introduction - Escrow Account](https://docs.asaas.com/docs/introduction-2.md)
+- [Enabling the Escrow Account for Subaccounts](https://docs.asaas.com/docs/enabling-the-escrow-account-for-subaccounts.md)
+- [Fee Charging per Configured Subaccount](https://docs.asaas.com/docs/fee-charging-per-configured-subaccount.md)
+- [Funds Guaranteed by the Escrow Account](https://docs.asaas.com/docs/funds-guaranteed-by-the-escrow-account.md)
+- [Release of Guaranteed Funds](https://docs.asaas.com/docs/release-of-guaranteed-funds.md)
+- [Disabling the Escrow Account](https://docs.asaas.com/docs/disabling-the-escrow-account.md)
+- [Plugins/Modules/Partners](https://docs.asaas.com/docs/pluginsmodules.md): Choose and configure available plugins, modules, and partners to integrate Asaas with e-commerce, automation, and management platforms.
+- [Shopify](https://docs.asaas.com/docs/shopify-1.md)
+- [Bank slip - Shopify](https://docs.asaas.com/docs/bank-payment-slip.md): Using Asaas Bank Slip with Shopify
+- [Pix - Shopify](https://docs.asaas.com/docs/pix-5.md): Using Asaas Pix with Shopify
+- [Credit Card - Shopify](https://docs.asaas.com/docs/credit-card-1.md)
+- [General Settings](https://docs.asaas.com/docs/general-settings.md): ⚙️ Asaas + Shopify Integration
+- [FAQ - Shopify](https://docs.asaas.com/docs/frequently-asked-questions-1.md): This section gathers the main questions about the Asaas and Shopify integration, aiming to support the configuration and proper use of the solution.
+- [Woocommerce](https://docs.asaas.com/docs/woocommerce.md): Understand when to use the Asaas plugin for WooCommerce, which flows it supports, and which pages to consult for installation, configuration, and troubleshooting.
+- [Installing the plugin](https://docs.asaas.com/docs/installing-the-plugin-woocommerce-asaas.md)
+- [Initial Settings](https://docs.asaas.com/docs/initial-settings.md)
+- [Payment methods](https://docs.asaas.com/docs/payment-methods.md): Configure and validate Bank Slip, Pix, and Credit Card payments in the Asaas plugin for WooCommerce.
+- [Billing types](https://docs.asaas.com/docs/common-questions-woocommerce-asaas.md): Understand when to use one-time, installment, or recurring charges and which rules to apply for each payment method.
+- [WooCommerce Subscriptions](https://docs.asaas.com/docs/woocommerce-subscriptions.md)
+- [WooCommerce Webhooks](https://docs.asaas.com/docs/woocommerce-webhooks.md)
+- [Common errors](https://docs.asaas.com/docs/common-errors.md): Common issues you might encounter with the WooCommerce plugin and how to resolve them.
+- [Payment splitting in WooCommerce](https://docs.asaas.com/docs/payment-splitting-in-woocommerce.md)
+- [FAQ - WooCommerce](https://docs.asaas.com/docs/faq-woocommerce-1.md)
+- [NF-e Issuer for WooCommerce - Base ERP](https://docs.asaas.com/docs/nf-e-issuer-for-woocommerce-base-erp.md)
+- [Installation/Configuration](https://docs.asaas.com/docs/installationconfiguration.md)
+- [Product registration/linking](https://docs.asaas.com/docs/product-registrationlinking.md)
+- [NuvemShop](https://docs.asaas.com/docs/nuvemshop-1.md): What is Nuvemshop?
+- [Installing the module](https://docs.asaas.com/docs/installing-the-module.md): How to use Asaas on Nuvemshop
+- [Initial settings](https://docs.asaas.com/docs/initial-settings-1.md): Configuring the module
+- [FAQ](https://docs.asaas.com/docs/faq-1.md): Frequently asked questions about the Nuvemshop module
+- [Magento](https://docs.asaas.com/docs/magento-1.md): What is Magento?
+- [Installing the module](https://docs.asaas.com/docs/installing-the-module-1.md): How to use Asaas in Magento
+- [Initial settings](https://docs.asaas.com/docs/initial-settings-2.md)
+- [FAQ - Magento](https://docs.asaas.com/docs/faq-magento-1.md)
+- [Pluga](https://docs.asaas.com/docs/pluga-1.md)
+- [Introduction](https://docs.asaas.com/docs/introduction-3.md)
+- [Asaas Split on Pluga](https://docs.asaas.com/docs/asaas-split-on-pluga.md)
+- [Digital Manager Guru](https://docs.asaas.com/docs/digital-manager-guru-1.md)
+- [Introduction](https://docs.asaas.com/docs/introduction-4.md)
+- [Make/Integromat](https://docs.asaas.com/docs/makeintegromat.md): What is Make?
+- [Advantages / Features](https://docs.asaas.com/docs/advantages-features.md)
+- [Templates](https://docs.asaas.com/docs/templates-1.md)
+- [Create a one-time charge from a Google Sheets row](https://docs.asaas.com/docs/create-a-one-time-charge-from-a-google-sheets-row.md)
+- [Create a subscription from a Google Sheets row](https://docs.asaas.com/docs/create-a-subscription-from-a-google-sheets-row.md)
+- [Create an installment payment from a Google Sheets row](https://docs.asaas.com/docs/create-an-installment-payment-from-a-google-sheets-row.md)
+- [N8N](https://docs.asaas.com/docs/n8n-1.md): Understand when to use the official Asaas node in n8n, how to configure financial workflows, handle errors, and safely publish automations.
+- [Installation](https://docs.asaas.com/docs/installation.md)
+- [Subscriptions](https://docs.asaas.com/docs/subscriptions.md)
+- [Authentication](https://docs.asaas.com/docs/authentication.md): Configure authentication headers, generate API keys, and resolve 401 errors in the Asaas API.
+- [Customers](https://docs.asaas.com/docs/customers.md)
+- [Payments](https://docs.asaas.com/docs/payments-1.md)
+- [API Limits](https://docs.asaas.com/docs/api-limits-1.md)
+- [Notifications](https://docs.asaas.com/docs/notifications-1.md): Frequently asked questions about notifications in the Asaas API, including disabling standard notifications, customization, parameters, and best practices.
+- [Installments](https://docs.asaas.com/docs/installments.md)
+- [Pix](https://docs.asaas.com/docs/pix-4.md): Frequently asked questions about Pix in the Asaas API
+- [Sandbox](https://docs.asaas.com/docs/sandbox-1.md)
+- [Security](https://docs.asaas.com/docs/security.md): Frequently Asked Questions about Asaas API Security
+- [Split](https://docs.asaas.com/docs/split.md): Frequently asked questions about requirements, limits, examples, and best practices for configuring payment split in the Asaas API.
+- [Subaccounts](https://docs.asaas.com/docs/subaccounts-1.md): Understand the differences between BaaS and non-BaaS subaccounts, when to use each model, and how to follow the API integration flow.
+- [Transfers](https://docs.asaas.com/docs/transfers-1.md)
+- [Webhooks](https://docs.asaas.com/docs/webhooks-3.md)
+- [Tokenization](https://docs.asaas.com/docs/tokenization.md): Understand why card tokenization may return a permission error and how to request the feature to be enabled.
+
+## API Reference
+- [Comece por aqui](https://docs.asaas.com/reference/comece-por-aqui.md)
+- [Como testar as chamadas aqui na documentação](https://docs.asaas.com/reference/como-testar-as-chamadas-aqui-na-documentação.md): A documentação interativa da Asaas permite testar chamadas da API diretamente por ela! Veja o passo a passo abaixo.
+- [Códigos HTTP das respostas](https://docs.asaas.com/reference/codigos-http-das-respostas.md)
+- [Listagem e paginação](https://docs.asaas.com/reference/listagem-e-paginacao.md)
+- [Limites da API](https://docs.asaas.com/reference/rate-e-quota-limit.md)
+- [Criar novo cliente](https://docs.asaas.com/reference/criar-novo-cliente.md)
+- [Listar clientes](https://docs.asaas.com/reference/listar-clientes.md)
+- [Recuperar um único cliente](https://docs.asaas.com/reference/recuperar-um-unico-cliente.md)
+- [Atualizar cliente existente](https://docs.asaas.com/reference/atualizar-cliente-existente.md)
+- [Remover cliente](https://docs.asaas.com/reference/remover-cliente.md)
+- [Restaurar cliente removido](https://docs.asaas.com/reference/restaurar-cliente-removido.md)
+- [Recuperar notificações de um cliente](https://docs.asaas.com/reference/recuperar-notificacoes-de-um-cliente.md)
+- [Criar nova cobrança](https://docs.asaas.com/reference/criar-nova-cobranca.md)
+- [Listar cobranças](https://docs.asaas.com/reference/listar-cobrancas.md)
+- [Criar cobrança com cartão de crédito](https://docs.asaas.com/reference/criar-cobranca-com-cartao-de-credito.md)
+- [Capturar cobrança com Pré-Autorização](https://docs.asaas.com/reference/capturar-cobranca-com-pre-autorizacao.md)
+- [Pagar uma cobrança com cartão de crédito](https://docs.asaas.com/reference/pagar-uma-cobranca-com-cartao-de-credito.md)
+- [Recuperar informações de pagamento de uma cobrança](https://docs.asaas.com/reference/recuperar-informacoes-de-pagamento-de-uma-cobranca.md)
+- [Informações sobre visualização da cobrança](https://docs.asaas.com/reference/informacoes-sobre-visualizacao-da-cobranca.md)
+- [Recuperar uma única cobrança](https://docs.asaas.com/reference/recuperar-uma-unica-cobranca.md)
+- [Atualizar cobrança existente](https://docs.asaas.com/reference/atualizar-cobranca-existente.md)
+- [Excluir cobrança](https://docs.asaas.com/reference/excluir-cobranca.md)
+- [Restaurar cobrança removida](https://docs.asaas.com/reference/restaurar-cobranca-removida.md)
+- [Recuperar status de uma cobrança](https://docs.asaas.com/reference/recuperar-status-de-uma-cobranca.md)
+- [Obter linha digitável do boleto](https://docs.asaas.com/reference/obter-linha-digitavel-do-boleto.md)
+- [Obter QR Code para pagamentos via Pix](https://docs.asaas.com/reference/obter-qr-code-para-pagamentos-via-pix.md)
+- [Confirmar recebimento em dinheiro](https://docs.asaas.com/reference/confirmar-recebimento-em-dinheiro.md)
+- [Desfazer confirmação de recebimento em dinheiro](https://docs.asaas.com/reference/desfazer-confirmacao-de-recebimento-em-dinheiro.md)
+- [Simulador de vendas](https://docs.asaas.com/reference/simulador-de-vendas.md)
+- [Recuperando limites de cobranças](https://docs.asaas.com/reference/recuperando-limites-de-cobrancas-1.md)
+- [Pagar uma cobrança com cartão](https://docs.asaas.com/reference/pagar-uma-cobranca-com-cartao.md)
+- [Criar nova cobrança com dados resumidos na resposta](https://docs.asaas.com/reference/criar-nova-cobranca-com-dados-resumidos-na-resposta.md)
+- [Listar cobranças com dados resumidos](https://docs.asaas.com/reference/listar-cobrancas-com-dados-resumidos.md)
+- [Criar cobrança com cartão de crédito com dados resumidos na resposta](https://docs.asaas.com/reference/criar-cobranca-com-cartao-de-credito-com-dados-resumidos-na-resposta.md)
+- [Capturar cobrança com Pré-Autorização com dados resumidos na resposta](https://docs.asaas.com/reference/capturar-cobranca-com-pre-autorizacao-com-dados-resumidos-na-resposta.md)
+- [Recuperar uma única cobrança com dados resumidos](https://docs.asaas.com/reference/recuperar-uma-unica-cobranca-com-dados-resumidos.md)
+- [Atualizar cobrança existente com dados resumidos na resposta](https://docs.asaas.com/reference/atualizar-cobranca-existente-com-dados-resumidos-na-resposta.md)
+- [Excluir cobrança com dados resumidos](https://docs.asaas.com/reference/excluir-cobranca-com-dados-resumidos.md)
+- [Restaurar cobrança removida com dados resumidos na resposta](https://docs.asaas.com/reference/restaurar-cobranca-removida-com-dados-resumidos-na-resposta.md)
+- [Confirmar recebimento em dinheiro com dados resumidos na resposta](https://docs.asaas.com/reference/confirmar-recebimento-em-dinheiro-com-dados-resumidos-na-resposta.md)
+- [Desfazer confirmação de recebimento em dinheiro com dados resumidos na resposta](https://docs.asaas.com/reference/desfazer-confirmacao-de-recebimento-em-dinheiro-com-dados-resumidos-na-resposta.md)
+- [Fazer upload de documentos da cobrança](https://docs.asaas.com/reference/fazer-upload-de-documentos-da-cobranca.md)
+- [Listar documentos de uma cobrança](https://docs.asaas.com/reference/listar-documentos-de-uma-cobranca.md)
+- [Atualizar definições de um documento da cobrança](https://docs.asaas.com/reference/atualizar-definicoes-de-um-documento-da-cobranca.md)
+- [Recuperar um único documento da cobrança](https://docs.asaas.com/reference/recuperar-um-unico-documento-da-cobranca.md)
+- [Excluir documento de uma cobrança](https://docs.asaas.com/reference/excluir-documento-de-uma-cobranca.md)
+- [Criar parcelamento](https://docs.asaas.com/reference/criar-parcelamento.md)
+- [Listar parcelamentos](https://docs.asaas.com/reference/listar-parcelamentos.md)
+- [Criar parcelamento com cartão de crédito](https://docs.asaas.com/reference/criar-parcelamento-com-cartão-de-crédito.md)
+- [Recuperar um único parcelamento](https://docs.asaas.com/reference/recuperar-um-unico-parcelamento.md)
+- [Remover parcelamento](https://docs.asaas.com/reference/remover-parcelamento-1.md)
+- [Listar cobranças de um parcelamento](https://docs.asaas.com/reference/listar-cobranças-de-um-parcelamento.md)
+- [Gerar carnê de parcelamento](https://docs.asaas.com/reference/gerar-carne-de-parcelamento.md)
+- [Atualizar splits do parcelamento](https://docs.asaas.com/reference/atualizar-splits-do-parcelamento.md)
+- [Cancelar cobranças de um parcelamento (pendentes e vencidas)](https://docs.asaas.com/reference/cancelar-cobrancas-de-um-parcelamento.md)
+- [Criar nova assinatura](https://docs.asaas.com/reference/criar-nova-assinatura.md)
+- [Listar assinaturas](https://docs.asaas.com/reference/listar-assinaturas.md)
+- [Criar assinatura com cartão de crédito](https://docs.asaas.com/reference/criar-assinatura-com-cartao-de-credito.md)
+- [Recuperar uma única assinatura](https://docs.asaas.com/reference/recuperar-uma-unica-assinatura.md)
+- [Atualizar assinatura existente](https://docs.asaas.com/reference/atualizar-assinatura-existente.md)
+- [Remover assinatura](https://docs.asaas.com/reference/remover-assinatura.md)
+- [Atualiza o cartão de crédito sem efetuar cobrança](https://docs.asaas.com/reference/atualizar-cartao-de-credito-assinatura.md): Este endpoint atualiza o cartão de crédito da assinatura sem realizar a cobrança imediata. Além disso, todas as cobranças pendentes vinculadas a assinatura também são atualizadas.
+- [Listar cobranças de uma assinatura](https://docs.asaas.com/reference/listar-cobrancas-de-uma-assinatura.md)
+- [Gerar carnê de assinatura](https://docs.asaas.com/reference/gerar-carne-de-assinatura.md)
+- [Criar configuração para emissão de Notas Fiscais](https://docs.asaas.com/reference/criar-configuracao-para-emissao-de-notas-fiscais.md)
+- [Recuperar configuração para emissão de notas fiscais](https://docs.asaas.com/reference/recuperar-configuracao-para-emissao-de-notas-fiscais.md)
+- [Remover configuração para emissão de Notas Fiscais](https://docs.asaas.com/reference/remover-configuracao-para-emissao-de-notas-fiscais.md)
+- [Atualizar configuração para emissão de Notas Fiscais](https://docs.asaas.com/reference/atualizar-configuracao-para-emissao-de-notas-fiscais.md)
+- [Listar notas fiscais das cobranças de uma assinatura](https://docs.asaas.com/reference/listar-notas-fiscais-das-cobrancas-de-uma-assinatura.md)
+- [Criar um link de pagamentos](https://docs.asaas.com/reference/criar-um-link-de-pagamentos.md)
+- [Listar links de pagamentos](https://docs.asaas.com/reference/listar-links-de-pagamentos.md)
+- [Atualizar um link de pagamentos](https://docs.asaas.com/reference/atualizar-um-link-de-pagamentos.md)
+- [Recuperar um único link de pagamentos](https://docs.asaas.com/reference/recuperar-um-unico-link-de-pagamentos.md)
+- [Remover um link de pagamentos](https://docs.asaas.com/reference/remover-um-link-de-pagamentos.md)
+- [Restaurar um link de pagamentos](https://docs.asaas.com/reference/restaurar-um-link-de-pagamentos.md)
+- [Adicionar uma imagem a um link de pagamentos](https://docs.asaas.com/reference/adicionar-uma-imagem-a-um-link-de-pagamentos.md)
+- [Listar imagens de um link de pagamentos](https://docs.asaas.com/reference/listar-imagens-de-um-link-de-pagamentos.md)
+- [Recuperar uma única imagem do link de pagamentos](https://docs.asaas.com/reference/recuperar-uma-unica-imagem-do-link-de-pagamentos.md)
+- [Remover uma imagem do link de pagamentos](https://docs.asaas.com/reference/remover-uma-imagem-do-link-de-pagamentos.md)
+- [Definir imagem principal do link de pagamentos](https://docs.asaas.com/reference/definir-imagem-principal-do-link-de-pagamentos.md)
+- [Criar novo checkout](https://docs.asaas.com/reference/criar-novo-checkout.md)
+- [Cancelar um checkout](https://docs.asaas.com/reference/cancelar-um-checkout.md)
+- [Tokenização de cartão de crédito](https://docs.asaas.com/reference/tokenizacao-de-cartao-de-credito.md)
+- [Salvar ou atualizar configuração da pré-autorização](https://docs.asaas.com/reference/salvar-ou-atualizar-configuracao-de-pre-autorizacao.md)
+- [Recuperar configuração da pré-autorização](https://docs.asaas.com/reference/recuperar-configuracao-de-pre-autorizacao.md)
+- [Recuperar uma única antecipação](https://docs.asaas.com/reference/recuperar-uma-unica-antecipacao.md)
+- [Solicitar antecipação](https://docs.asaas.com/reference/solicitar-antecipacao.md)
+- [Listar antecipações](https://docs.asaas.com/reference/listar-antecipacoes.md)
+- [Simular antecipação](https://docs.asaas.com/reference/simular-antecipação.md)
+- [Atualizar status da antecipação automática](https://docs.asaas.com/reference/atualizar-status-da-antecipacao-automatica.md)
+- [Recuperar status da antecipação automática](https://docs.asaas.com/reference/recuperar-status-da-antecipacao-automatica.md)
+- [Recuperar limites de antecipações](https://docs.asaas.com/reference/recuperar-limites-de-antecipacoes.md)
+- [Cancelar antecipação](https://docs.asaas.com/reference/cancelar-antecipacao.md)
+- [Listar estornos de uma cobrança](https://docs.asaas.com/reference/listar-estornos-de-uma-cobranca.md)
+- [Estornar boleto](https://docs.asaas.com/reference/estornar-boleto.md)
+- [Estornar parcelamento](https://docs.asaas.com/reference/estornar-parcelamento.md): É possível estornar um parcelamento via cartão de crédito recebido ou confirmado.  Como já ocorre no processo de estorno de uma cobrança avulsa por cartão de crédito, o saldo correspondente do parcelamento é debitado de sua conta no Asaas e a cobrança é cancelada no cartão do seu cliente. O cancelamento pode levar até 10 dias úteis para aparecer na fatura de seu cliente.
+- [Estornar cobrança com dados resumidos na resposta](https://docs.asaas.com/reference/estornar-cobranca-com-dados-resumidos-na-resposta.md)
+- [Estornar cobrança](https://docs.asaas.com/reference/estornar-cobranca.md)
+- [Criar disputa de chargeback](https://docs.asaas.com/reference/criar-disputa-de-chargeback.md)
+- [Listar chargebacks](https://docs.asaas.com/reference/listar-chargebacks.md): Este método retorna uma lista paginada com todos os chargebacks para o(s) filtro(s) informado(s).
+- [Recuperar um único chargeback](https://docs.asaas.com/reference/recuperar-um-unico-chargeback.md): Este endpoint recupera um chargeback específico a partir do ID de uma cobrança ou parcelamento.
+- [Recuperar um único split pago](https://docs.asaas.com/reference/recuperar-um-unico-split-pago.md)
+- [Listar splits pagos](https://docs.asaas.com/reference/listar-splits-pagos.md)
+- [Recuperar um único split recebido](https://docs.asaas.com/reference/recuperar-um-unico-split-recebido.md)
+- [Listar splits recebidos](https://docs.asaas.com/reference/listar-splits-recebidos.md)
+- [Criar configuração padrão da Conta Escrow para todas as subcontas](https://docs.asaas.com/reference/criar-configuracao-padrao-da-conta-escrow-para-todas-as-subcontas.md)
+- [Encerrar garantia da cobrança na Conta Escrow](https://docs.asaas.com/reference/encerrar-garantia-da-cobranca-na-conta-escrow.md)
+- [Salvar ou atualizar configuração da Conta Escrow para a subconta](https://docs.asaas.com/reference/salvar-ou-atualizar-configuracao-da-conta-escrow-para-a-subconta.md)
+- [Recuperar configuração da Conta Escrow para a subconta](https://docs.asaas.com/reference/recuperar-configuracao-da-conta-escrow-para-a-subconta.md)
+- [Recuperar configuração padrão da Conta Escrow](https://docs.asaas.com/reference/recuperar-configuracao-padrao-da-conta-escrow.md)
+- [Recuperar garantia da cobrança na Conta Escrow](https://docs.asaas.com/reference/recuperar-garantia-da-cobranca-na-conta-escrow.md)
+- [Atualizar notificação existente](https://docs.asaas.com/reference/atualizar-notificacao-existente.md)
+- [Atualizar notificações existentes em lote](https://docs.asaas.com/reference/atualizar-notificacoes-existentes-em-lote.md): É possível personalizar várias notificações, independente do canal de comunicação que utilizar (email, SMS e voz) e quem deve receber a notificação(você e/ou seu cliente) enviando qual o id do cliente e as notificações a serem atualizadas.
+- [Realizar consulta](https://docs.asaas.com/reference/realizar-consulta.md)
+- [Listar consultas](https://docs.asaas.com/reference/listar-consultas-1.md)
+- [Recuperar uma consulta](https://docs.asaas.com/reference/recuperar-uma-consulta-1.md)
+- [Criar uma negativação](https://docs.asaas.com/reference/criar-uma-negativacao.md)
+- [Listar negativações](https://docs.asaas.com/reference/listar-negativacoes.md)
+- [Simular uma negativação](https://docs.asaas.com/reference/simular-uma-negativacao.md)
+- [Recuperar uma única negativação](https://docs.asaas.com/reference/recuperar-uma-unica-negativacao.md)
+- [Listar histórico de eventos](https://docs.asaas.com/reference/listar-historico-de-eventos.md): Retorna uma lista paginada com os eventos que ocorreram desde do início da negativação da cobrança.
+- [Listar pagamentos recebidos](https://docs.asaas.com/reference/listar-pagamentos-recebidos.md): Retorna uma lista paginada com os pagamentos recebidos por meio da renegociação da dívida.
+- [Listar cobranças disponíveis para negativação](https://docs.asaas.com/reference/listar-cobrancas-disponiveis-para-negativacao.md): Retorna uma lista paginada de cobranças possíveis de negativação em conjunto com uma simulação de valores para cada tipo de negativação.
+- [Reenviar documentos](https://docs.asaas.com/reference/reenviar-documentos.md): Permite o reenvio dos documentos de uma negativação em caso de negação.   Utilize a propriedade `isNecessaryResendDocumentation` retornado no objeto de negativação para verificar se é preciso o reenvio da documentação.   Após o reenvio sua negativação retornará para o status de `AWAITING_APPROVAL`.
+- [Cancelar negativação](https://docs.asaas.com/reference/cancelar-negativacao.md): Permite o cancelamento de uma negativação. Utilize a propriedade `canBeCancelled` retornado no objeto de negativação para verificar se a negativação pode ser cancelada.  Caso a negativação já tenha sido iniciada, ao solicitar o cancelamento a negativação ficará com o status de `AWAITING_CANCELLATION` até que seja efetivamente cancelada (`CANCELLED`).
+- [Agendar nota fiscal](https://docs.asaas.com/reference/agendar-nota-fiscal.md)
+- [Listar notas fiscais](https://docs.asaas.com/reference/listar-notas-fiscais.md)
+- [Atualizar nota fiscal](https://docs.asaas.com/reference/atualizar-nota-fiscal.md)
+- [Recuperar uma única nota fiscal](https://docs.asaas.com/reference/recuperar-uma-nota-fiscal.md)
+- [Emitir uma nota fiscal](https://docs.asaas.com/reference/emitir-uma-nota-fiscal.md)
+- [Cancelar uma nota fiscal](https://docs.asaas.com/reference/cancelar-uma-nota-fiscal.md)
+- [Listar configurações municipais](https://docs.asaas.com/reference/listar-configuracoes-municipais.md)
+- [Criar e atualizar informações fiscais](https://docs.asaas.com/reference/criar-e-atualizar-informacoes-fiscais.md)
+- [Recuperar informações fiscais](https://docs.asaas.com/reference/recuperar-informacoes-fiscais.md)
+- [Listar serviços municipais](https://docs.asaas.com/reference/listar-servicos-municipais.md)
+- [Listar códigos NBS](https://docs.asaas.com/reference/listar-codigos-nbs.md): Listagem dos possíveis códigos NBS (Nomenclatura Brasileira de Serviços)
+- [Configurar portal emissor de notas fiscais](https://docs.asaas.com/reference/configurar-portal-emissor-de-notas-fiscais.md): Aqui é possível habilitar ou desabilitar o uso do portal nacional como emissor de notas fiscais.
+- [Listar códigos de serviços federais](https://docs.asaas.com/reference/listar-codigos-servicos-federais.md)
+- [Listar códigos de indicadores de operações](https://docs.asaas.com/reference/listar-codigos-de-operadores-de-indicacoes.md)
+- [Listar códigos de classificações tributárias](https://docs.asaas.com/reference/listar-codigos-de-classificacoes-tributarias.md)
+- [Listar códigos de situações tributárias](https://docs.asaas.com/reference/listar-codigos-de-situacoes-tributarias.md)
+- [Criar uma chave](https://docs.asaas.com/reference/criar-uma-chave.md)
+- [Listar chaves](https://docs.asaas.com/reference/listar-chaves.md)
+- [Recuperar uma única chave](https://docs.asaas.com/reference/recuperar-uma-unica-chave.md)
+- [Remover chave](https://docs.asaas.com/reference/remover-chave.md)
+- [Criar QR Code estático](https://docs.asaas.com/reference/criar-qrcode-estatico.md)
+- [Deletar QR Code estático](https://docs.asaas.com/reference/deletar-qrcode-estatico.md)
+- [Consulta de fichas disponíveis no balde](https://docs.asaas.com/reference/consulta-de-fichas-disponiveis-no-balde.md)
+- [Consultar Chave Pix](https://docs.asaas.com/reference/consultar-chave-pix.md)
+- [Pagar um QRCode](https://docs.asaas.com/reference/pagar-um-qrcode.md)
+- [Decodificar um QRCode para pagamento](https://docs.asaas.com/reference/decodificar-um-qrcode-para-pagamento.md)
+- [Recuperar uma única transação](https://docs.asaas.com/reference/recuperar-uma-unica-transacao.md)
+- [Listar transações](https://docs.asaas.com/reference/listar-transacoes.md)
+- [Cancelar uma transação agendada](https://docs.asaas.com/reference/cancelar-uma-transacao-agendada.md)
+- [Criar uma autorização](https://docs.asaas.com/reference/criar-uma-autorizacao-pix-automatico.md)
+- [Listar autorizações](https://docs.asaas.com/reference/listar-autorizacoes-pix-automatico.md)
+- [Recuperar uma única autorização](https://docs.asaas.com/reference/recuperar-uma-unica-autorizacao-pix-automatico.md)
+- [Cancelar uma autorização](https://docs.asaas.com/reference/cancelar-uma-autorizacao-pix-automatico.md)
+- [Recuperar uma única instrução de pagamento](https://docs.asaas.com/reference/recuperar-uma-unica-instrucao-de-pagamento-pix-automatico.md)
+- [Listar instruções de pagamento](https://docs.asaas.com/reference/listar-instrucoes-de-pagamento-pix-automatico.md)
+- [Criar retentativa de instrução de pagamento](https://docs.asaas.com/reference/criar-retentativa-de-instrucao-de-pagamento-pix-automatico.md)
+- [Listar recorrências](https://docs.asaas.com/reference/listar-recorrencias.md)
+- [Recuperar uma única recorrência](https://docs.asaas.com/reference/recuperar-uma-unica-recorrencia.md)
+- [Cancelar uma recorrência](https://docs.asaas.com/reference/cancelar-uma-recorrencia.md)
+- [Listar itens de uma recorrência](https://docs.asaas.com/reference/listar-itens-de-uma-recorrencia.md)
+- [Cancelar item de uma recorrência](https://docs.asaas.com/reference/cancelar-item-de-uma-recorrencia.md)
+- [Transferir para conta de outra Instituição ou chave Pix](https://docs.asaas.com/reference/transferir-para-conta-de-outra-instituicao-ou-chave-pix.md)
+- [Listar transferências](https://docs.asaas.com/reference/listar-transferencias.md): Este método retorna uma lista paginada com todas as transferências para o filtro informado.
+- [Transferir para conta Asaas](https://docs.asaas.com/reference/transferir-para-conta-asaas.md)
+- [Recuperar uma única transferência](https://docs.asaas.com/reference/recuperar-uma-unica-transferencia.md)
+- [Cancelar uma transferência](https://docs.asaas.com/reference/cancelar-uma-transferência.md)
+- [Criar um pagamento de conta](https://docs.asaas.com/reference/criar-um-pagamento-de-conta.md)
+- [Listar pagamento de contas](https://docs.asaas.com/reference/listar-pagamento-de-contas.md)
+- [Simular um pagamento de conta](https://docs.asaas.com/reference/simular-um-pagamento-de-conta.md)
+- [Recuperar um único pagamento de conta](https://docs.asaas.com/reference/recuperar-um-unico-pagamento-de-conta.md)
+- [Cancelar pagamento de contas](https://docs.asaas.com/reference/cancelar-pagamento-de-contas.md): Permite o cancelamento do pagamento de conta. Utilize a propriedade `canBeCancelled` do objeto `bill` para verificar se o pagamento de conta pode ser cancelado.  Ao ser cancelado o pagamento da conta não será realizado.
+- [Solicitar recarga](https://docs.asaas.com/reference/solicitar-recarga.md)
+- [Listar recargas de celular](https://docs.asaas.com/reference/listar-recargas-de-celular.md)
+- [Recuperar uma única recarga de celular](https://docs.asaas.com/reference/recuperar-uma-unica-recarga-de-celular.md)
+- [Cancelar uma recarga de celular](https://docs.asaas.com/reference/cancelar-uma-recarga-de-celular.md): Permite o cancelamento da recarga de celular. Utilize a propriedade `canBeCancelled` para verificar se a recarga pode ser cancelada. Ao ser cancelado a recarga não será realizada.
+- [Buscar qual provedor o número pertence e os valores disponíveis para recarga](https://docs.asaas.com/reference/buscar-qual-provedor-o-numero-pertence-e-os-valores-disponiveis-para-recarga.md)
+- [Recuperar extrato](https://docs.asaas.com/reference/recuperar-extrato.md)
+- [Recuperar saldo da conta](https://docs.asaas.com/reference/recuperar-saldo-da-conta.md)
+- [Estatísticas de cobranças](https://docs.asaas.com/reference/estatisticas-de-cobrancas.md): Retorna valores totais das cobranças da sua conta Asaas de acordo com os filtros informados.  ### Exemplos de filtros:   Valor total a receber: `GET https://api.asaas.com/v3/finance/payment/statistics?status=PENDING`    Valor total a receber com cobranças por boleto bancário: `GET https://api.asaas.com/v3/finance/payment/statistics?billingType=BOLETO&status=PENDING`   Valor total recebido por cobranças por cartão de crédito: `GET https://api.asaas.com/v3/finance/payment/statistics?billingType=CREDIT_CARD&status=RECEIVED`
+- [Recuperar valores de split](https://docs.asaas.com/reference/recuperar-valores-de-split.md)
+- [Recuperar dados comerciais](https://docs.asaas.com/reference/recuperar-dados-comerciais.md)
+- [Atualizar dados comerciais](https://docs.asaas.com/reference/atualizar-dados-comerciais.md)
+- [Salvar personalização da fatura](https://docs.asaas.com/reference/salvar-personalizacao-da-fatura.md)
+- [Recuperar configurações de personalização](https://docs.asaas.com/reference/recuperar-configuracoes-de-personalizacao.md)
+- [Recuperar número de conta no Asaas](https://docs.asaas.com/reference/recuperar-numero-de-conta-no-asaas.md)
+- [Recuperar taxas da conta](https://docs.asaas.com/reference/recuperar-taxas-da-conta.md)
+- [Consultar situação cadastral da conta](https://docs.asaas.com/reference/consultar-situacao-cadastral-da-conta.md)
+- [Recuperar WalletId](https://docs.asaas.com/reference/recuperar-walletid.md)
+- [Excluir subconta White Label](https://docs.asaas.com/reference/excluir-subconta-baas.md)
+- [Criar novo webhook](https://docs.asaas.com/reference/criar-novo-webhook.md)
+- [Listar webhooks](https://docs.asaas.com/reference/listar-webhooks.md): Endpoint para listar todos os Webhooks cadastrados na sua conta.
+- [Recuperar um único webhook](https://docs.asaas.com/reference/recuperar-um-unico-webhook.md): Este endpoint recupera um único webhook de acordo com o ID informado.
+- [Atualizar webhook existente](https://docs.asaas.com/reference/atualizar-webhook-existente.md): Utilize este endpoint para atualizar informações de um webhook já cadastrado.
+- [Remover um webhook](https://docs.asaas.com/reference/remover-webhook.md): Este endpoint remove um webhook.
+- [Remover penalização de webhook](https://docs.asaas.com/reference/remover-penalizacao-webhook.md): Utilize este endpoint para remover a penalização de todos os webhooks penalizados de uma configuração.
+- [Criar subconta](https://docs.asaas.com/reference/criar-subconta.md)
+- [Reenviar link de ativação para subconta não-BaaS](https://docs.asaas.com/reference/reenviar-link-de-ativacao-para-subconta-nao-baas.md): Reenvia o link de redefinição de senha da subconta não-BaaS. Este reenvio pode ser feito apenas uma vez e tem o intuito de recuperar o acesso pelo e-mail cadastrado no login da subconta.
+- [Listar subcontas](https://docs.asaas.com/reference/listar-subcontas.md)
+- [Recuperar uma única subconta](https://docs.asaas.com/reference/recuperar-uma-unica-subconta.md)
+- [Criar chave de API para uma subconta](https://docs.asaas.com/reference/criar-chave-de-api-para-uma-subconta.md)
+- [Listar chaves de API de uma subconta](https://docs.asaas.com/reference/listar-chaves-de-api-de-uma-subconta.md)
+- [Atualizar chave de API de uma subconta](https://docs.asaas.com/reference/atualizar-chave-de-api-de-uma-subconta.md)
+- [Excluir chave de API de uma subconta](https://docs.asaas.com/reference/excluir-chave-de-api-de-uma-subconta.md)
+- [Encerrar subconta não-BaaS](https://docs.asaas.com/reference/encerrar-subconta-nao-baas.md): Encerra uma subconta não-BaaS. Esta ação é irreversível e não é permitida para subcontas já encerradas.
+- [(Apenas Sandbox) Aprovar conta](https://docs.asaas.com/reference/aprovar-conta.md): Este endpoint aprova a sua conta no ambiente sandbox.
+- [(Apenas sandbox) Confirmar o pagamento](https://docs.asaas.com/reference/confirmar-pagamento.md): Esse endpoint confirma o pagamento de uma cobrança no ambiente sandbox.
+- [(Apenas sandbox) Forçar o vencimento de uma cobrança](https://docs.asaas.com/reference/forcar-vencimento.md): Esse endpoint força o vencimento de uma cobrança no ambiente sandbox.
+- [Recuperar efeitos de contrato que estão bloqueando a antecipação de uma cobrança](https://docs.asaas.com/reference/recuperar-efeito-de-contrato-bloqueando-antecipacao-da-cobranca.md)
+- [Retrieve contract effects blocking a payment's anticipation](https://docs.asaas.com/reference/retrieve-contract-effect-blocking-payment-anticipation.md)
+- [Getting started](https://docs.asaas.com/reference/about-this-doc.md)
+- [HTTP response codes](https://docs.asaas.com/reference/http-response-codes.md)
+- [Listing and Pagination](https://docs.asaas.com/reference/listing-and-pagination.md)
+- [API limits](https://docs.asaas.com/reference/api-limits.md)
+- [How to test API calls in our documentation](https://docs.asaas.com/reference/como-testar-as-chamadas-aqui-na-documentação-copy.md): Asaas's interactive documentation allows you to test API calls directly within it! Follow the step-by-step guide below.
+- [Create new customer](https://docs.asaas.com/reference/create-new-customer.md)
+- [List customers](https://docs.asaas.com/reference/list-customers.md)
+- [Retrieve a single customer](https://docs.asaas.com/reference/retrieve-a-single-customer.md)
+- [Update existing customer](https://docs.asaas.com/reference/update-existing-customer.md)
+- [Remove Customer](https://docs.asaas.com/reference/remove-customer.md)
+- [Restore removed customer](https://docs.asaas.com/reference/restore-removed-customer.md)
+- [Retrieve notifications from a customer](https://docs.asaas.com/reference/retrieve-notifications-from-a-customer.md)
+- [Create new payment](https://docs.asaas.com/reference/create-new-payment.md)
+- [List payments](https://docs.asaas.com/reference/list-payments.md)
+- [Create new payment with credit card](https://docs.asaas.com/reference/create-new-payment-with-credit-card.md)
+- [Capture payment with Pre-Authorization](https://docs.asaas.com/reference/capture-payment-with-pre-authorization.md)
+- [Pay a charge with a credit card](https://docs.asaas.com/reference/pay-a-charge-with-credit-card.md)
+- [Retrieve payment billing information](https://docs.asaas.com/reference/retrieve-payment-billing-information.md)
+- [Payment viewing information](https://docs.asaas.com/reference/payment-viewing-information.md)
+- [Retrieve a single payment](https://docs.asaas.com/reference/retrieve-a-single-payment.md)
+- [Update existing payment](https://docs.asaas.com/reference/update-existing-payment.md)
+- [Delete payment](https://docs.asaas.com/reference/delete-payment.md)
+- [Restore removed payment](https://docs.asaas.com/reference/restore-removed-payment.md)
+- [Retrieve status of a payment](https://docs.asaas.com/reference/retrieve-status-of-a-payment.md)
+- [Refund payment](https://docs.asaas.com/reference/refund-payment.md)
+- [Get digitable bill line](https://docs.asaas.com/reference/get-digitable-bill-line.md)
+- [Get QR Code for Pix payments](https://docs.asaas.com/reference/get-qr-code-for-pix-payments.md)
+- [Confirm cash receipt](https://docs.asaas.com/reference/confirm-cash-receipt.md)
+- [Undo cash receipt confirmation](https://docs.asaas.com/reference/undo-cash-receipt-confirmation.md)
+- [Sales simulator](https://docs.asaas.com/reference/sales-simulator.md)
+- [Recovering payment limits](https://docs.asaas.com/reference/recovering-payment-limits.md)
+- [Pay a charge with a card](https://docs.asaas.com/reference/pay-a-charge-with-card.md)
+- [Credit card tokenization](https://docs.asaas.com/reference/credit-card-tokenization.md)
+- [Save or update pre-authorization configuration](https://docs.asaas.com/reference/save-or-update-pre-authorization-configuration.md)
+- [Retrieve pre-authorization configuration](https://docs.asaas.com/reference/retrieve-pre-authorization-configuration.md)
+- [Create Installment](https://docs.asaas.com/reference/create-installment.md)
+- [List installments](https://docs.asaas.com/reference/list-installments.md)
+- [Create Installment with credit card](https://docs.asaas.com/reference/create-installment-with-credit-card.md)
+- [Retrieve a single installment](https://docs.asaas.com/reference/retrieve-a-single-installment.md)
+- [Remove installment](https://docs.asaas.com/reference/remove-installment.md)
+- [List payments of a installment](https://docs.asaas.com/reference/list-payments-of-a-installment.md)
+- [Generate installment booklet](https://docs.asaas.com/reference/generate-installment-booklet.md)
+- [Refund installment](https://docs.asaas.com/reference/refund-installment.md): It is possible to refund an installment received or confirmed via credit card.  Just like the process of refunding a standalone credit card billing, the corresponding balance of the installment is debited from your account on Asaas, and the billing is canceled on your customer's card. The cancellation may take up to 10 business days to appear on your customer's statement.
+- [Update installment splits](https://docs.asaas.com/reference/update-installment-splits.md)
+- [Cancel charges of an installment (pending and overdue)](https://docs.asaas.com/reference/cancel-charges-of-an-installment.md)
+- [Retrieve a single anticipation](https://docs.asaas.com/reference/retrieve-a-single-anticipation.md)
+- [Request anticipation](https://docs.asaas.com/reference/request-anticipation.md)
+- [List anticipations](https://docs.asaas.com/reference/list-anticipations.md)
+- [Simulate anticipation](https://docs.asaas.com/reference/simulate-anticipation.md)
+- [Update status of automatic anticipation](https://docs.asaas.com/reference/update-status-of-automatic-anticipation.md)
+- [Retrieve status of automatic anticipation](https://docs.asaas.com/reference/retrieve-status-of-automatic-anticipation.md)
+- [Retrieve anticipation limits](https://docs.asaas.com/reference/retrieve-anticipation-limits.md)
+- [Cancel anticipation](https://docs.asaas.com/reference/cancel-anticipation.md)
+- [Create new payment with summary data in response](https://docs.asaas.com/reference/create-new-payment-with-summary-data-in-response.md)
+- [List payments with summary data](https://docs.asaas.com/reference/list-payments-with-summary-data.md)
+- [Create new payment with credit card with summary data in response](https://docs.asaas.com/reference/create-new-payment-with-credit-card-with-summary-data-in-response.md)
+- [Capture payment with Pre-Authorization with summary data in response](https://docs.asaas.com/reference/capture-payment-with-pre-authorization-with-summary-data-in-response.md)
+- [Retrieve a single payment with summary data](https://docs.asaas.com/reference/retrieve-a-single-payment-with-summary-data.md)
+- [Update existing payment with summary data in response](https://docs.asaas.com/reference/update-existing-payment-with-summary-data-in-response.md)
+- [Delete payment with summary data](https://docs.asaas.com/reference/delete-payment-with-summary-data.md)
+- [Restore removed payment with summary data in response](https://docs.asaas.com/reference/restore-removed-payment-with-summary-data-in-response.md)
+- [Refund payment with summary data in response](https://docs.asaas.com/reference/refund-payment-with-summary-data-in-response.md)
+- [Confirm cash receipt with summary data in response](https://docs.asaas.com/reference/confirm-cash-receipt-with-summary-data-in-response.md)
+- [Undo cash receipt confirmation with summary data in response](https://docs.asaas.com/reference/undo-cash-receipt-confirmation-with-summary-data-in-response.md)
+- [Upload payment documents](https://docs.asaas.com/reference/upload-payment-documents.md)
+- [List documents of a payment](https://docs.asaas.com/reference/list-documents-of-a-payment.md)
+- [Update settings of a document of a payment](https://docs.asaas.com/reference/update-settings-of-a-document-of-a-payment.md)
+- [Retrieve a single document of a payment](https://docs.asaas.com/reference/retrieve-a-single-document-of-a-payment.md)
+- [Delete document from a payment](https://docs.asaas.com/reference/delete-document-from-a-payment.md)
+- [Create new subscription](https://docs.asaas.com/reference/create-new-subscription.md)
+- [List subscriptions](https://docs.asaas.com/reference/list-subscriptions.md)
+- [Create subscription with credit card](https://docs.asaas.com/reference/create-subscription-with-credit-card.md)
+- [Retrieve a single subscription](https://docs.asaas.com/reference/retrieve-a-single-subscription.md)
+- [Update existing subscription](https://docs.asaas.com/reference/update-existing-subscription.md)
+- [Remove subscription](https://docs.asaas.com/reference/remove-subscription.md)
+- [Update credit card without charging the subscription](https://docs.asaas.com/reference/update-subscription-credit-card.md): This endpoint updates the subscription's credit card without triggering an immediate charge. Additionally, all pending charges linked to the subscription are also updated.
+- [List payments of a subscription](https://docs.asaas.com/reference/list-payments-of-a-subscription.md)
+- [Generate subscription booklet](https://docs.asaas.com/reference/generate-subscription-booklet.md)
+- [Create configuration for issuing invoices](https://docs.asaas.com/reference/create-configuration-for-issuance-of-invoices.md)
+- [Retrieve configuration for issuing invoices](https://docs.asaas.com/reference/retrieve-configuration-for-issuance-of-invoices.md)
+- [Remove configuration for issuing invoices](https://docs.asaas.com/reference/remove-configuration-for-issuance-of-invoices.md)
+- [Update configuration for issuing invoices](https://docs.asaas.com/reference/update-configuration-for-issuance-of-invoices.md)
+- [List invoices for subscription charges](https://docs.asaas.com/reference/list-invoices-for-subscription-charges.md)
+- [Update existing notification](https://docs.asaas.com/reference/update-existing-notification.md)
+- [Update existing notifications in batch](https://docs.asaas.com/reference/update-existing-notifications-in-batch.md): It is possible to customize various notifications, regardless of the communication channel used (email, SMS, and voice) and who should receive the notification (you and/or your customer) by sending the customer's ID and the notifications to be updated.
+- [Create a payments link](https://docs.asaas.com/reference/create-a-payments-link.md)
+- [List payments links](https://docs.asaas.com/reference/list-payments-links.md)
+- [Update a payments link](https://docs.asaas.com/reference/update-a-payments-link.md)
+- [Retrieve a single payments link](https://docs.asaas.com/reference/retrieve-a-single-payments-link.md)
+- [Remove a payments link](https://docs.asaas.com/reference/remove-a-payments-link.md)
+- [Restore a payments link](https://docs.asaas.com/reference/restore-a-payments-link.md)
+- [Add an image to a payments link](https://docs.asaas.com/reference/add-an-image-to-a-payments-link.md)
+- [List images from a payments link](https://docs.asaas.com/reference/list-images-from-a-payments-link.md)
+- [Retrieve a single payments link image](https://docs.asaas.com/reference/retrieve-a-single-payments-link-image.md)
+- [Remove an image from payments link](https://docs.asaas.com/reference/remove-an-image-from-payments-link.md)
+- [Set payments link main image](https://docs.asaas.com/reference/set-payments-link-main-image.md)
+- [Create new checkout](https://docs.asaas.com/reference/create-new-checkout.md)
+- [Cancel a checkout](https://docs.asaas.com/reference/cancel-a-checkout.md)
+- [Retrieve refunds of a single payment](https://docs.asaas.com/reference/retrieve-refunds-of-a-single-payment.md)
+- [Refund Bank Slip](https://docs.asaas.com/reference/refund-bank-slip.md)
+- [Create a chargeback dispute](https://docs.asaas.com/reference/create-a-chargeback-dispute.md)
+- [List chargebacks](https://docs.asaas.com/reference/list-chargebacks.md): This method returns a paginated list of all chargebacks for the specified filter.
+- [Retrieve a single chargeback](https://docs.asaas.com/reference/retrieve-a-single-chargeback.md): This endpoint retrieves a specific chargeback based on the payment or installment ID.
+- [Retrieve a single paid split](https://docs.asaas.com/reference/retrieve-a-single-paid-split.md)
+- [List paid splits](https://docs.asaas.com/reference/list-paid-splits-1.md)
+- [Retrieve a single received split](https://docs.asaas.com/reference/retrieve-a-single-received-split.md)
+- [List received splits](https://docs.asaas.com/reference/list-received-splits-1.md)
+- [Save or update Escrow Account configuration for subaccount](https://docs.asaas.com/reference/save-or-update-escrow-account-configuration-for-subaccount.md)
+- [Create default Escrow Account configuration to all subaccounts](https://docs.asaas.com/reference/create-default-escrow-account-configuration-to-all-subaccounts.md)
+- [Finish payment escrow in the Escrow Account](https://docs.asaas.com/reference/finish-payment-escrow-in-the-escrow-account.md)
+- [Reterive Escrow Account configuration for subaccount](https://docs.asaas.com/reference/reterive-escrow-account-configuration-for-subaccount.md)
+- [Retrieve default Escrow Account configuration](https://docs.asaas.com/reference/retrieve-default-escrow-account-configuration.md)
+- [Retrieve payment escrow in the Escrow Account](https://docs.asaas.com/reference/retrieve-payment-escrow-in-the-escrow-account.md)
+- [Transfer to another Institution’s account or Pix key](https://docs.asaas.com/reference/transfer-to-another-institution-account-or-pix-key.md)
+- [List transfers](https://docs.asaas.com/reference/list-transfers.md): This method returns a paginated list of all transfers for the specified filter.
+- [Transfer to Asaas account](https://docs.asaas.com/reference/transfer-to-asaas-account-1.md)
+- [Retrieve a single transfer](https://docs.asaas.com/reference/retrieve-a-single-transfer.md)
+- [Cancel a transfer](https://docs.asaas.com/reference/cancel-a-transfer.md)
+- [Make consultation](https://docs.asaas.com/reference/make-consultation.md)
+- [List credit bureau reports](https://docs.asaas.com/reference/list-credit-bureau-reports.md)
+- [Retrieve a credit bureau report](https://docs.asaas.com/reference/retrieve-a-credit-bureau-report.md)
+- [Create a payment dunning](https://docs.asaas.com/reference/create-a-payment-dunning.md)
+- [List payment dunnings](https://docs.asaas.com/reference/list-payment-dunnings.md)
+- [Simulate a payment dunning](https://docs.asaas.com/reference/simulate-a-payment-dunning.md)
+- [Recover a single payment dunning](https://docs.asaas.com/reference/recover-a-single-payment-dunning.md)
+- [Event history lists](https://docs.asaas.com/reference/event-history-lists.md): Returns a paginated list of events that have occurred since the charge was denied.
+- [List payments received](https://docs.asaas.com/reference/list-payments-received.md): Returns a paginated list of payments received through debt renegotiation.
+- [List payments available for payment dunning](https://docs.asaas.com/reference/list-payments-available-for-payment-dunning.md): Returns a paginated list of possible negative charges together with a simulation of values for each type of negative.
+- [Resend documents](https://docs.asaas.com/reference/resend-documents.md): Use the `isNecessaryResendDocumentation` property returned in the delinquency object to check if documentation resend is required.   After resending, your delinquency will return to the `AWAITING_APPROVAL` status.
+- [Cancel payment dunning](https://docs.asaas.com/reference/cancel-payment-dunning.md): Allows the cancellation of a delinquency. Use the `canBeCancelled` property returned in the delinquency object to check if the delinquency can be canceled.  If the delinquency has already been initiated, requesting cancellation will change its status to `AWAITING_CANCELLATION` until it is effectively canceled (`CANCELLED`).
+- [Create a bill payment](https://docs.asaas.com/reference/create-a-bill-payment.md)
+- [List bill payments](https://docs.asaas.com/reference/list-bill-payments.md)
+- [Simulate a bill payment](https://docs.asaas.com/reference/simulate-a-bill-payment.md)
+- [Retrieve a single bill payment](https://docs.asaas.com/reference/retrieve-a-single-bill-payment.md)
+- [Cancel bill payments](https://docs.asaas.com/reference/cancel-bill-payment.md): Allows canceling the bill payment. Use the  `canBeCancelled` property of the `bill`  to verify if the bill payment can be canceled.  When canceled, the bill payment will not be executed.
+- [Retrieve account balance](https://docs.asaas.com/reference/retrieve-account-balance.md)
+- [Collections statistics](https://docs.asaas.com/reference/billing-statistics.md): Return total values of charges from your Asaas account according to the provided filters.   ### Examples of filters:   Total amount to receive: `GET https://api.asaas.com/v3/finance/payment/statistics?status=PENDING`    Total amount to receive with charges by bank slip: `GET https://api.asaas.com/v3/finance/payment/statistics?billingType=BOLETO&status=PENDING`   Total amount received for charges by credit card: `GET https://api.asaas.com/v3/finance/payment/statistics?billingType=CREDIT_CARD&status=RECEIVED`
+- [Retrieve split values](https://docs.asaas.com/reference/retrieve-split-values.md)
+- [List municipal configurations](https://docs.asaas.com/reference/list-municipal-configurations.md)
+- [Create and update tax information](https://docs.asaas.com/reference/create-and-update-tax-information.md)
+- [Retrieve tax information](https://docs.asaas.com/reference/retrieve-tax-information.md)
+- [List municipal services](https://docs.asaas.com/reference/list-municipal-services.md)
+- [List NBS codes](https://docs.asaas.com/reference/list-nbs-codes.md): List of possible NBS Codes (Brazilian Nomenclature of Services)
+- [Configure invoice issuing portal](https://docs.asaas.com/reference/configure-invoice-issuing-portal.md): Here you can enable or disable the use of the national portal as an invoice issuer.
+- [List federal service codes](https://docs.asaas.com/reference/list-federal-service-codes.md)
+- [List operation indicator codes](https://docs.asaas.com/reference/list-operation-indicator-codes.md)
+- [List tax classification codes](https://docs.asaas.com/reference/list-tax-classification-codes.md)
+- [List tax situation codes](https://docs.asaas.com/reference/list-tax-situation-codes.md)
+- [Schedule invoice](https://docs.asaas.com/reference/schedule-invoice.md)
+- [List invoices](https://docs.asaas.com/reference/list-invoices.md)
+- [Update invoice](https://docs.asaas.com/reference/update-invoice.md)
+- [Retrieve a single invoice](https://docs.asaas.com/reference/retrieve-a-single-invoice.md)
+- [Issue an invoice](https://docs.asaas.com/reference/issue-an-invoice.md)
+- [Cancel an invoice](https://docs.asaas.com/reference/cancel-an-invoice.md)
+- [Create a key](https://docs.asaas.com/reference/create-a-key.md)
+- [List keys](https://docs.asaas.com/reference/list-keys.md)
+- [Retrieve a single key](https://docs.asaas.com/reference/retrieve-a-single-key.md)
+- [Remove key](https://docs.asaas.com/reference/remove-key-1.md)
+- [Create static QRCode](https://docs.asaas.com/reference/create-static-qrcode.md)
+- [Remove a static QR Code](https://docs.asaas.com/reference/delete-static-qrcode.md)
+- [Available Token Bucket Check](https://docs.asaas.com/reference/available-token-bucket-check.md)
+- [Check Pix Key](https://docs.asaas.com/reference/check-pix-key.md)
+- [Create payment instruction retry](https://docs.asaas.com/reference/create-automatic-pix-payment-instruction-retry.md)
+- [Create an authorization](https://docs.asaas.com/reference/create-an-automatic-pix-authorization.md)
+- [List authorizations](https://docs.asaas.com/reference/list-automatic-pix-authorizations.md)
+- [Retrieve a single authorization](https://docs.asaas.com/reference/retrieve-a-single-automatic-pix-authorization.md)
+- [Cancel an authorization](https://docs.asaas.com/reference/cancel-an-automatic-pix-authorization.md)
+- [Retrieve a single payment instruction](https://docs.asaas.com/reference/retrieve-a-single-automatic-pix-payment-instruction.md)
+- [List payment instructions](https://docs.asaas.com/reference/list-automatic-pix-payment-instructions.md)
+- [Create subaccount](https://docs.asaas.com/reference/create-subaccount.md)
+- [List subaccounts](https://docs.asaas.com/reference/list-subaccounts.md)
+- [Retrieve a single subaccount](https://docs.asaas.com/reference/retrieve-a-single-subaccount.md)
+- [Create API key for a subaccount](https://docs.asaas.com/reference/create-api-key-for-subaccount.md)
+- [List API keys for a subaccount](https://docs.asaas.com/reference/list-api-keys-for-subaccount.md)
+- [Update API key for a subaccount](https://docs.asaas.com/reference/update-api-key-for-a-subaccount.md)
+- [Delete API key for a subaccount](https://docs.asaas.com/reference/delete-api-key-for-a-subaccount.md)
+- [Close non-BaaS subaccount](https://docs.asaas.com/reference/close-non-baas-subaccount.md): Closes a non-BaaS subaccount. This action is irreversible and is not allowed for subaccounts that have already been closed.
+- [Pay a QRCode](https://docs.asaas.com/reference/pay-a-qrcode.md)
+- [Decode a QRCode for payment](https://docs.asaas.com/reference/decode-a-qrcode-for-payment.md)
+- [Retrieve a single transaction](https://docs.asaas.com/reference/retrieve-a-single-transaction.md)
+- [List transactions](https://docs.asaas.com/reference/list-transactions.md)
+- [Cancel a scheduled transaction](https://docs.asaas.com/reference/cancel-a-scheduled-transaction.md)
+- [List recurrences](https://docs.asaas.com/reference/list-recurrences.md)
+- [Retrieve a single recurrence](https://docs.asaas.com/reference/retrieve-a-single-recurrence.md)
+- [Cancel a recurrence](https://docs.asaas.com/reference/cancel-a-recurrence.md)
+- [List recurrence items](https://docs.asaas.com/reference/list-recurrence-items.md)
+- [Cancel a recurrence item](https://docs.asaas.com/reference/cancel-a-recurrence-item.md)
+- [Create new Webhook](https://docs.asaas.com/reference/create-new-webhook.md)
+- [List Webhooks](https://docs.asaas.com/reference/list-webhooks.md): Endpoint to list all Webhooks registered in your account.
+- [Retrieve a single Webhook](https://docs.asaas.com/reference/retrieve-a-single-webhook.md): This endpoint retrieves a single webhook according to the provided ID.
+- [Update Existing Webhook](https://docs.asaas.com/reference/update-existing-webhook.md): Use this endpoint to update information about an already registered webhook.
+- [Remove Webhook](https://docs.asaas.com/reference/remove-webhook.md): This endpoint removes a webhook.
+- [Remove webhook backoff](https://docs.asaas.com/reference/remove-webhook-backoff.md): Use this endpoint to remove the penalty from an already registered webhook.
+- [Request recharge](https://docs.asaas.com/reference/request-recharge.md)
+- [List cell phone top-ups](https://docs.asaas.com/reference/list-mobile-recharges.md)
+- [Recover a single cell phone recharge](https://docs.asaas.com/reference/recover-a-single-cellphone-recharge.md)
+- [Cancel a cell phone recharge](https://docs.asaas.com/reference/cancel-a-cellphone-recharge.md): Allows canceling the cell phone top-up. Use the canBeCancelled property to verify if the top-up can be canceled. When canceled, the top-up will not be executed.
+- [Search for cell phone provider](https://docs.asaas.com/reference/search-for-cell-phone-provider.md)
+- [Retrieve extract](https://docs.asaas.com/reference/retrieve-extract.md)
+- [Retrieve business data](https://docs.asaas.com/reference/retrieve-business-data.md)
+- [Update business data](https://docs.asaas.com/reference/update-business-data.md)
+- [Save payment checkout customization](https://docs.asaas.com/reference/save-payment-checkout-personalization.md)
+- [Resend activation link for non-BaaS subaccount](https://docs.asaas.com/reference/resend-activation-link-for-non-baas-subaccount.md): Resends the password reset link for the non-BaaS subaccount. Limited to a single resend, this action allows access recovery through the subaccount's registered email.
+- [Retrieve personalization settings](https://docs.asaas.com/reference/retrieve-personalization-settings.md)
+- [Retrieve Asaas account number](https://docs.asaas.com/reference/retrieve-asaas-account-number.md)
+- [Retrieve account fees](https://docs.asaas.com/reference/retrieve-account-fees.md)
+- [Check account registration status](https://docs.asaas.com/reference/check-account-registration-status.md)
+- [Retrieve WalletId](https://docs.asaas.com/reference/retrieve-walletid.md)
+- [Delete White Label subaccount](https://docs.asaas.com/reference/delete-baas-subaccount.md)
+- [Check pending documents](https://docs.asaas.com/reference/check-pending-documents.md)
+- [Send documents](https://docs.asaas.com/reference/send-documents.md)
+- [View document sent](https://docs.asaas.com/reference/view-document-sent.md)
+- [Update sent document](https://docs.asaas.com/reference/update-sent-document.md)
+- [Remove sent document](https://docs.asaas.com/reference/remove-sent-document.md)
+- [(Sandbox only) Approve account](https://docs.asaas.com/reference/approve-account.md): This endpoint approves your account in the sandbox environment.
+- [(Sandbox only) Confirm payment](https://docs.asaas.com/reference/confirm-payment.md): This endpoint confirms the payment of a charge in the sandbox environment.
+- [(Sandbox only) Force charge overdue](https://docs.asaas.com/reference/force-expire.md): This endpoint forces a charge to become overdue in the sandbox environment.
+
+## Recipes
+- [Acompanhar a aprovação e atualizar dados comerciais da subconta](https://docs.asaas.com/recipes/acompanhar-a-aprovação-e-atualizar-dados-comerciais-da-subconta.md)
+- [Adequar a emissão de Nota Fiscal à Reforma Tributária (IBS/CBS)](https://docs.asaas.com/recipes/adequar-a-emissão-de-nota-fiscal-à-reforma-tributária-ibscbs.md)
+- [Agendar uma Nota Fiscal vinculada a uma cobrança](https://docs.asaas.com/recipes/agendar-uma-nota-fiscal-vinculada-a-uma-cobrança.md)
+- [Aprovação de conta em Sandbox](https://docs.asaas.com/recipes/aprovação-de-conta-em-sandbox.md)
+- [Ativar notificações por WhatsApp](https://docs.asaas.com/recipes/ativar-notificações-por-whatsapp.md)
+- [Automatizar saques via IPs autorizados (evento crítico)](https://docs.asaas.com/recipes/automatizar-saques-via-ips-autorizados-evento-crítico.md)
+- [Configurar informações fiscais para emissão de Nota Fiscal](https://docs.asaas.com/recipes/configurar-informações-fiscais-para-emissão-de-nota-fiscal.md)
+- [Configurar retenção e situação tributária de PIS/COFINS](https://docs.asaas.com/recipes/configurar-retenção-e-situação-tributária-de-piscofins.md)
+- [Configure uma assinatura com valores variáveis](https://docs.asaas.com/recipes/configure-uma-assinatura-com-valores-variáveis.md)
+- [Consultar documentos pendentes e concluir o onboarding da subconta](https://docs.asaas.com/recipes/consultar-documentos-pendentes-e-concluir-o-onboarding-da-subconta.md)
+- [Consultar valores sob garantia da Conta Escrow](https://docs.asaas.com/recipes/consultar-valores-sob-garantia-da-conta-escrow.md)
+- [Criar uma subconta e armazenar a API Key com segurança](https://docs.asaas.com/recipes/criar-uma-subconta-e-armazenar-a-api-key-com-segurança.md)
+- [Adicione saldo na sua conta em Sandbox](https://docs.asaas.com/recipes/crie-saldo-na-sua-conta-em-sandbox.md)
+- [Desabilitar a Conta Escrow para uma subconta](https://docs.asaas.com/recipes/desabilitar-a-conta-escrow-para-uma-subconta.md)
+- [Desabilitar notificações ao criar cliente](https://docs.asaas.com/recipes/desabilitar-notificações-ao-criar-cliente.md)
+- [Enviar notificações apenas para o pagador (cliente final)](https://docs.asaas.com/recipes/enviar-notificações-apenas-para-o-pagador-cliente-final.md)
+- [Estorno de cobranças em Sandbox](https://docs.asaas.com/recipes/estorno-de-cobranças-em-sandbox.md)
+- [Fluxo completo para emissão de Nota Fiscal via API](https://docs.asaas.com/recipes/fluxo-completo-para-emissão-de-nota-fiscal-via-api.md)
+- [Gerar novas cobranças de uma assinatura em Sandbox](https://docs.asaas.com/recipes/gerar-novas-cobranças-de-uma-assinatura-em-sandbox.md)
+- [Gerenciar chaves de API de subcontas pela conta raiz](https://docs.asaas.com/recipes/gerenciar-chaves-de-api-de-subcontas-pela-conta-raiz.md)
+- [Habilitar Conta Escrow para uma subconta](https://docs.asaas.com/recipes/habilitar-conta-escrow-para-uma-subconta.md)
+- [Inative uma assinatura por inadimplência](https://docs.asaas.com/recipes/inative-uma-assinatura-por-inadimplência.md)
+- [Liberar manualmente valores em garantia da Conta Escrow](https://docs.asaas.com/recipes/liberar-manualmente-valores-em-garantia-da-conta-escrow.md)
+- [Listar configurações municipais para emissão de Nota Fiscal](https://docs.asaas.com/recipes/listar-configurações-municipais-para-emissão-de-nota-fiscal.md)
+- [Listar serviços municipais antes de emitir uma Nota Fiscal](https://docs.asaas.com/recipes/listar-serviços-municipais-antes-de-emitir-uma-nota-fiscal.md)
+- [Padronizar notificações para novos clientes](https://docs.asaas.com/recipes/padronizar-notificações-para-novos-clientes.md)
+- [Pix Automático](https://docs.asaas.com/recipes/pix-automático.md)
+- [Restringir o acesso à API usando Whitelist de IPs](https://docs.asaas.com/recipes/proteger-transferências-e-saques-com-mecanismos-adicionais-de-segurança.md)
+- [Recupere o link da fatura de uma assinatura](https://docs.asaas.com/recipes/recupere-o-link-da-fatura-de-uma-assinatura.md)
+- [Simular e solicitar antecipação de recebíveis](https://docs.asaas.com/recipes/simular-e-solicitar-antecipação-de-recebíveis.md)
+- [Testar pagamento com cartão de crédito no Sandbox](https://docs.asaas.com/recipes/testar-pagamento-com-cartão-de-crédito-no-sandbox.md)
+- [Testar pagamento via QR Code Pix no Sandbox](https://docs.asaas.com/recipes/testar-pagamento-via-qr-code-pix-no-sandbox.md)
+- [Testar transferências em Sandbox (Pix e TED)](https://docs.asaas.com/recipes/testar-transferências-em-sandbox-pix-e-ted.md)
+- [Troque o cartão em uma assinatura ativa](https://docs.asaas.com/recipes/troque-o-cartão-em-uma-assinatura-ativa.md)
+- [Validar transferências e saques via Webhook de autorização](https://docs.asaas.com/recipes/validar-transferências-e-saques-via-webhook-de-autorização.md)
+
+## Pages
+- [Breaking changes](https://docs.asaas.com/breaking-changes.md)
+- [Sugestões](https://docs.asaas.com/sugestoes.md)
+
+## Changelog
+- [Pix Automático — processo de retentativas](https://docs.asaas.com/changelog/pix-automático-processo-de-retentativas.md)
+- [Novas regras de PIS/COFINS na emissão de NFS-e via API](https://docs.asaas.com/changelog/novas-regras-de-piscofins-na-emissão-de-nfs-e-via-api.md)
+- [Reenvio de link de ativação para subcontas não-BaaS](https://docs.asaas.com/changelog/reenvio-de-link-de-ativação-para-subcontas-não-baas.md)
+- [Pix Automático — cobranças recorrentes automatizadas](https://docs.asaas.com/changelog/pix-automático-cobranças-recorrentes-automatizadas.md)
+- [Novos atributos na recuperação e listagem de splits pagos e recebidos](https://docs.asaas.com/changelog/novos-atributos-na-recuperação-e-listagem-de-splits-pagos-e-recebidos.md)
+- [Validação de complexidade em tokens de Webhook](https://docs.asaas.com/changelog/validação-de-complexidade-em-tokens-de-webhook.md)
+- [Novo atributo expectedPaymentDate na decodificação de QR Codes](https://docs.asaas.com/changelog/novo-atributo-expectedpaymentdate-na-decodificação-de-qr-codes.md)
+- [Obrigatoriedade e auto-geração de tokens para Webhooks](https://docs.asaas.com/changelog/obrigatoriedade-e-auto-geração-de-tokens-para-webhooks.md)
+- [Evento de webhook para cancelamento de boletos vencidos](https://docs.asaas.com/changelog/webhook-para-cancelamento-de-boletos-vencidos.md)
+- [Configuração de prazo estendido para pré-autorização](https://docs.asaas.com/changelog/configuração-de-prazo-estendido-para-pré-autorização.md)
