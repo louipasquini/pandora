@@ -5,6 +5,7 @@ import { AuthContext, type AuthApi, type LogoutReason } from './auth-context';
 import {
   apiFetch,
   resetAuthGate,
+  setForbiddenHandler,
   setTokenGetter,
   setUnauthorizedHandler,
 } from './api-client';
@@ -17,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return t && !expirado(t) ? t : null;
   });
   const [logoutReason, setLogoutReason] = useState<LogoutReason>(null);
+  const [semPermissaoEm, setSemPermissaoEm] = useState<number | null>(null);
 
   const tokenRef = useRef(token);
   tokenRef.current = token;
@@ -28,6 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       setToken(null);
       setLogoutReason('expirada');
+    });
+    setForbiddenHandler(() => {
+      // 403 ≠ 401: mantém a sessão, só sinaliza o aviso.
+      setSemPermissaoEm(Date.now());
     });
   }, []);
 
@@ -59,10 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: token ? 'logado' : 'deslogado',
       persistente: storageDisponivel(),
       logoutReason,
+      semPermissaoEm,
       login,
       logout,
     }),
-    [token, logoutReason, login, logout],
+    [token, logoutReason, semPermissaoEm, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

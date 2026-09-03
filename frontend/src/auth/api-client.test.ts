@@ -3,6 +3,7 @@ import { ApiError } from './ApiError';
 import {
   apiFetch,
   resetAuthGate,
+  setForbiddenHandler,
   setTokenGetter,
   setUnauthorizedHandler,
 } from './api-client';
@@ -23,6 +24,7 @@ describe('api-client', () => {
     resetAuthGate();
     setTokenGetter(() => null);
     setUnauthorizedHandler(() => {});
+    setForbiddenHandler(() => {});
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -65,5 +67,17 @@ describe('api-client', () => {
       ApiError,
     );
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('403 → dispara onForbidden e lança ApiError(403); NÃO desloga (spec 004)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resposta(403, { message: 'permissão insuficiente' })));
+    const forbidden = vi.fn();
+    const unauthorized = vi.fn();
+    setForbiddenHandler(forbidden);
+    setUnauthorizedHandler(unauthorized);
+
+    await expect(apiFetch('/admin/rbac/perfis')).rejects.toMatchObject({ status: 403 });
+    expect(forbidden).toHaveBeenCalledTimes(1);
+    expect(unauthorized).not.toHaveBeenCalled();
   });
 });

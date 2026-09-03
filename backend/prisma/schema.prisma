@@ -15,3 +15,77 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ============================================================================
+// RBAC (spec 004) — primeira migração de negócio do projeto.
+// `perfil` e `usuario` nascem com PK UUID v7 gerada na aplicação (EntidadeId.novo()).
+// Permissão NÃO é tabela: o catálogo é código (src/auth/rbac/catalogo.ts);
+// `perfil_permissao.permissao` guarda o id `recurso:acao` validado contra o catálogo.
+// `rbac_audit` é append-only (a aplicação nunca faz UPDATE/DELETE nela).
+// ============================================================================
+
+model Usuario {
+  id               String   @id @db.Uuid
+  nome             String
+  email            String
+  emailNormalizado String   @unique @map("email_normalizado")
+  criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm     DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  perfis UsuarioPerfil[]
+
+  @@map("usuario")
+}
+
+model Perfil {
+  id              String   @id @db.Uuid
+  nome            String
+  nomeNormalizado String   @unique @map("nome_normalizado")
+  deSistema       Boolean  @default(false) @map("de_sistema")
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  permissoes PerfilPermissao[]
+  usuarios   UsuarioPerfil[]
+
+  @@map("perfil")
+}
+
+model PerfilPermissao {
+  perfilId  String @map("perfil_id") @db.Uuid
+  permissao String
+
+  perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  @@id([perfilId, permissao])
+  @@map("perfil_permissao")
+}
+
+model UsuarioPerfil {
+  usuarioId String   @map("usuario_id") @db.Uuid
+  perfilId  String   @map("perfil_id") @db.Uuid
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  perfil  Perfil  @relation(fields: [perfilId], references: [id], onDelete: Restrict)
+
+  @@id([usuarioId, perfilId])
+  @@map("usuario_perfil")
+}
+
+model RbacAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("rbac_audit")
+}
