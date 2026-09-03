@@ -47,6 +47,10 @@ const TODAS_PERMISSOES = [
   'evento:ver',
   'evento:reprocessar',
   'evento:ingerir',
+  'crm_admin:ver',
+  'crm_admin:gerir_equipes',
+  'crm_admin:gerir_expediente',
+  'crm_admin:gerir_integracoes',
 ];
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = typeof input === 'string' ? input : input.toString();
@@ -65,6 +69,25 @@ globalThis.fetch = (async (input: RequestInfo | URL) => {
   }
   // spec 006: painel de eventos vazio por padrão
   if (/\/ingestao\/eventos(\?|$)/.test(url)) {
+    return new Response(
+      JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  // spec 007: Administração do CRM — coleções vazias / expediente fechado por padrão
+  if (/\/crm\/admin\/expediente(\?|$)/.test(url)) {
+    return new Response(
+      JSON.stringify({ emExpediente: false, instante: new Date().toISOString(), equipeId: null }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (/\/crm\/admin\/(janelas-atendimento|feriados)(\?|$)/.test(url)) {
+    return new Response(JSON.stringify({ itens: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (/\/crm\/admin\/(equipes|integracoes)(\?|$)/.test(url)) {
     return new Response(
       JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },

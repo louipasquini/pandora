@@ -78,4 +78,9 @@ export {
 } from './auditoria/registro-auditoria';
 
 // --- config (002) ---
-export { type AppConfig, type LeitorConfig, accountConfig } from './config';
+export {
+  type AppConfig,
+  type LeitorConfig,
+  accountConfig,
+  cifraIntegracaoKey,
+} from './config';

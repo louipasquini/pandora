@@ -11,6 +11,7 @@ import { ContasListPage } from '../contas/ContasListPage';
 import { ContaDetailPage } from '../contas/ContaDetailPage';
 import { EventosListPage } from '../eventos/EventosListPage';
 import { EventoDetailPage } from '../eventos/EventoDetailPage';
+import { CrmAdminPage } from '../crm-admin/CrmAdminPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -81,6 +82,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="perfil:administrar">
                 <AdminPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/admin',
+            element: (
+              <RequirePermissao perm="crm_admin:ver">
+                <CrmAdminPage />
               </RequirePermissao>
             ),
           },

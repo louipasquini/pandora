@@ -32,7 +32,8 @@ model Usuario {
   criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  perfis UsuarioPerfil[]
+  perfis            UsuarioPerfil[]
+  equipesComoMembro EquipeMembro[]
 
   @@map("usuario")
 }
@@ -434,4 +435,146 @@ model IngestaoAudit {
 
   @@index([entidade, entidadeId])
   @@map("ingestao_audit")
+}
+
+// ============================================================================
+// crm — Administração do CRM (spec 007) — 5ª migração de negócio.
+// Times/squads (`equipe` + `equipe_membro`, FK -> `usuario` da 004; ≤1 vínculo
+// ativo por par via índice único PARCIAL `WHERE saiu_em IS NULL`, aplicado no
+// migration.sql), expediente (`janela_atendimento` + `feriado`; hora como Int
+// minutos locais America/Sao_Paulo; sem cruzar meia-noite — CL-02), registro de
+// integrações (`integracao`; segredo cifrado em repouso OU só-hash p/ API key
+// interna; NUNCA volta em leitura — só `segredo_ultimos4` p/ a máscara) e a
+// trilha `crm_admin_audit` (forma canônica do core, append-only, só delta real,
+// nunca contém segredo). Ver docs/007-crm-administracao.md.
+// ============================================================================
+
+enum EquipeTipo {
+  COMERCIAL
+  ATENDIMENTO
+  CS
+}
+
+enum PapelEquipe {
+  LIDER
+  MEMBRO
+}
+
+enum IntegracaoTipo {
+  API_KEY
+  WEBHOOK
+  CONEXAO_INTERNA
+}
+
+enum IntegracaoAlvo {
+  FINANCEIRO
+  MARKETING
+  CENTRAL
+  EXTERNO
+}
+
+model Equipe {
+  id           String     @id @db.Uuid
+  nome         String
+  descricao    String?
+  tipo         EquipeTipo
+  ativo        Boolean    @default(true)
+  criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  membros  EquipeMembro[]
+  janelas  JanelaAtendimento[]
+  feriados Feriado[]
+
+  @@index([ativo])
+  @@map("equipe")
+}
+
+model EquipeMembro {
+  id           String      @id @db.Uuid
+  equipeId     String      @map("equipe_id") @db.Uuid
+  usuarioId    String      @map("usuario_id") @db.Uuid
+  papel        PapelEquipe
+  entrouEm     DateTime    @map("entrou_em") @db.Timestamptz(6)
+  saiuEm       DateTime?   @map("saiu_em") @db.Timestamptz(6)
+  criadoEm     DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime    @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  equipe  Equipe  @relation(fields: [equipeId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  // O índice único PARCIAL `(equipe_id, usuario_id) WHERE saiu_em IS NULL`
+  // (≤1 vínculo ativo por par; histórico de reentrada permitido) é criado no
+  // migration.sql — o Prisma não expressa índice parcial no schema.
+  @@index([usuarioId])
+  @@index([equipeId, saiuEm])
+  @@map("equipe_membro")
+}
+
+model JanelaAtendimento {
+  id           String   @id @db.Uuid
+  equipeId     String?  @map("equipe_id") @db.Uuid
+  diaSemana    Int      @map("dia_semana")
+  horaInicio   Int      @map("hora_inicio")
+  horaFim      Int      @map("hora_fim")
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  equipe Equipe? @relation(fields: [equipeId], references: [id], onDelete: Restrict)
+
+  @@index([equipeId, diaSemana, ativo])
+  @@map("janela_atendimento")
+}
+
+model Feriado {
+  id              String   @id @db.Uuid
+  equipeId        String?  @map("equipe_id") @db.Uuid
+  data            DateTime @db.Date
+  descricao       String
+  recorrenteAnual Boolean  @default(false) @map("recorrente_anual")
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  equipe Equipe? @relation(fields: [equipeId], references: [id], onDelete: Restrict)
+
+  @@index([equipeId])
+  @@map("feriado")
+}
+
+model Integracao {
+  id             String         @id @db.Uuid
+  nome           String
+  tipo           IntegracaoTipo
+  alvo           IntegracaoAlvo
+  config         Json           @default("{}")
+  segredoCifrado String?        @map("segredo_cifrado")
+  segredoHash    String?        @map("segredo_hash")
+  segredoUltimos4 String?       @map("segredo_ultimos4")
+  ativo          Boolean        @default(true)
+  ultimoUsoEm    DateTime?      @map("ultimo_uso_em") @db.Timestamptz(6)
+  criadoEm       DateTime       @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@index([tipo])
+  @@index([alvo])
+  @@index([ativo])
+  @@map("integracao")
+}
+
+model CrmAdminAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("crm_admin_audit")
 }
