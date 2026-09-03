@@ -29,3 +29,13 @@ export { accountConfig };
 
 /** Assinatura tipada de leitura de config (config já validada no boot). */
 export type LeitorConfig = ConfigService<AppConfig, true>['get'];
+
+/**
+ * Chave de cifra do segredo de `integracao` (spec 007) já decodificada para
+ * `Buffer` de 32 bytes. O `env.schema` garante o formato no boot; aqui só
+ * decodifica base64 → bytes para o `node:crypto` (AES-256-GCM).
+ */
+export function cifraIntegracaoKey(cfg: ConfigService<AppConfig, true>): Buffer {
+  const b64 = cfg.get('CRM_INTEGRACAO_CIFRA_KEY', { infer: true }) as string;
+  return Buffer.from(b64, 'base64');
+}
