@@ -179,10 +179,46 @@ Precedem tudo. Nenhuma feature de produto começa antes desta fase fechar.
 100% in-house. Escopo completo (Parte 8). Cada spec consome o contrato de eventos da 006;
 o Financeiro preenche esses eventos de verdade na fase 2.
 
-- [ ] **007 — crm-administracao**
-  Gestão de times/squads do comercial, gestão de integrações (API keys, webhooks, conexões
-  com Financeiro/Marketing/Central), configuração de horários de atendimento e feriados.
-  Estende o RBAC da 004. Frontend: telas de Administração.
+- [x] **007 — crm-administracao** — ✅ implementada e validada (2026-09-03)
+  3º _bounded context_ de domínio (`crm` deixa de ser vazio; `CONTEXT_MODULES` segue 11).
+  Módulo de Administração do CRM (visão Parte 8.11) **sem reimplementar a 004** (perfis/
+  permissões/usuários seguem lá — só estende o catálogo com o recurso `crm_admin`). **Domínio
+  puro** (`backend/src/crm/domain/`): **`estaEmExpediente(instante, {janelas, feriados,
+  equipe?}) → boolean`** — pura, determinística, **livre de locale** (converte p/
+  America/Sao_Paulo via `Intl` nativo, **0 dep**, matriz `TZ` na CI); início inclusivo/fim
+  exclusivo; feriado subtrai **mesmo dentro** da janela; recorrente casa `(mês,dia)` exato
+  (29/02 não desloca — CL-04); **união** global ∪ equipe ativa (CL-01, nunca _override_); sem
+  janela aplicável → `false`. `cifra.ts` (AES-256-GCM `node:crypto`), `api-key.ts` (`crm_`+40
+  hex **só-hash**, revelada 1×), `mascarar-segredo.ts`. **5ª migração Prisma**
+  (`20260903184256_crm_admin` + `..184300_crm_admin_membro_unico`): `equipe` (sem `DELETE`,
+  só `ativo`), `equipe_membro` (FK `usuario` da 004; **índice único parcial**
+  `(equipe_id,usuario_id) WHERE saiu_em IS NULL` = ≤1 vínculo ativo por par; remoção =
+  `saiu_em`; usuário em N equipes), `janela_atendimento` (`equipe_id?` null=global,
+  `dia_semana` 0–6, `hora_*` `Int` minutos locais; `hora_fim>hora_inicio` — CL-02, senão 422
+  `janela_invalida`; `DELETE` físico), `feriado` (`data @db.Date`, `recorrente_anual`;
+  `DELETE` físico), `integracao` (`tipo API_KEY|WEBHOOK|CONEXAO_INTERNA`, `alvo FINANCEIRO|
+  MARKETING|CENTRAL|EXTERNO`, `config` jsonb **sem segredo**, `ativo`, `ultimo_uso_em?`
+  reservado 011/019–022; segredo **cifrado em repouso** OU `segredo_hash`+`segredo_ultimos4`;
+  **sem `DELETE`**), `crm_admin_audit` (forma canônica do core, `AJUSTE_MANUAL`,
+  **append-only**, só delta real; segredo como marcador `{segredo:'definido'|'rotacionado'}`).
+  **Contrato de segurança** (teste e2e faz `grep` do valor = 0): leitura projeta só
+  `segredoDefinido`+`segredoMascarado`; API key revelada 1× na criação/rotação; `rotacionar`
+  de `CONEXAO_INTERNA` sem segredo → 409; `config` com chave `token`/`secret`/`apiKey`/
+  `password` → 422. Chave **`CRM_INTEGRACAO_CIFRA_KEY`** (base64 32 bytes) **obrigatória em
+  todo `NODE_ENV`** (boot aborta sem ela); `core` re-exporta `cifraIntegracaoKey(cfg)`.
+  **RBAC 004 estendido**: `crm_admin:{ver,gerir_equipes,gerir_expediente,gerir_integracoes}`
+  (`administrador` + credencial de serviço de graça, **0 migração de dados/seed**).
+  **~22 endpoints** `/crm/admin/**` (leitura → `crm_admin:ver`, escrita → `gerir_*`) +
+  `GET /crm/admin/expediente?instante=&equipeId=` (reusa a função pura; lixo → 400) +
+  `GET /crm/admin/auditoria` (local; consolidado = 053). **Frontend** `frontend/src/crm-admin/`:
+  item **CRM · Administração** atrás de `crm_admin:ver`, rota sob `RequirePermissao`, abas
+  Equipes / Expediente / Integrações (escrita só com `gerir_*`; máscara de segredo; _reveal_
+  1× não-persistente; indicador "no expediente agora?"). **0 dep nova**, 1 migração (2
+  arquivos), +1 chave `.env`. 296 unit backend + 50 frontend + 133 e2e verdes. Clarificações
+  CL-01 (união global+equipe), CL-02 (rejeitar janela que cruza meia-noite), CL-03 (escala
+  por atendente fora de escopo), CL-04 (feriado 29/02 não desloca) — dono do produto,
+  2026-09-03. Detalhe: [`specs/007-crm-administracao/`](specs/007-crm-administracao/) e
+  [`docs/007-crm-administracao.md`](docs/007-crm-administracao.md).
 
 - [ ] **008 — crm-lead**
   Entidade `lead` compartilhada (acesso via RBAC), campos personalizados das alunas,

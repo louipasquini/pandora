@@ -31,6 +31,12 @@ export default function setupDb(): void {
   // Worker de ingestão (spec 006): nunca roda o laço de fundo nos e2e — os testes
   // disparam passadas explícitas por `POST /ingestao/eventos/processar`.
   process.env.INGESTAO_WORKER_ENABLED = 'false';
+  // Administração do CRM (spec 007): fixture da chave de cifra de segredo de
+  // integração (base64 de 32 bytes) — obrigatória no boot; usa a do .env se houver.
+  if (!process.env.CRM_INTEGRACAO_CIFRA_KEY) {
+    process.env.CRM_INTEGRACAO_CIFRA_KEY =
+      '5+QVNu/w2yAj7wkHW4Kq+6bG9v3RE3+rurMCorQFnR0=';
+  }
   const base = process.env.TEST_DATABASE_URL;
   if (!base) {
     throw new Error(
