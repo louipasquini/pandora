@@ -42,6 +42,9 @@ jobs:
       # Worker de ingestão (spec 006): sem laço de fundo na CI — a suíte e2e
       # dispara passadas explícitas.
       INGESTAO_WORKER_ENABLED: "false"
+      # Administração do CRM (spec 007): chave de cifra do segredo de integração
+      # (base64 de 32 bytes). Fixture de CI — obrigatória em todo NODE_ENV.
+      CRM_INTEGRACAO_CIFRA_KEY: 5+QVNu/w2yAj7wkHW4Kq+6bG9v3RE3+rurMCorQFnR0=
 
     steps:
       - uses: actions/checkout@v4

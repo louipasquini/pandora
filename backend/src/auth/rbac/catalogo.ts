@@ -70,6 +70,27 @@ export const PERMISSOES = Object.freeze([
     recurso: 'evento',
     rotulo: 'Registrar eventos crus na ingestão',
   },
+  // --- Administração do CRM (spec 007) ---
+  {
+    id: 'crm_admin:ver',
+    recurso: 'crm_admin',
+    rotulo: 'Ver a administração do CRM (equipes, expediente, integrações)',
+  },
+  {
+    id: 'crm_admin:gerir_equipes',
+    recurso: 'crm_admin',
+    rotulo: 'Criar e editar equipes e gerir membros',
+  },
+  {
+    id: 'crm_admin:gerir_expediente',
+    recurso: 'crm_admin',
+    rotulo: 'Configurar horários de atendimento e feriados',
+  },
+  {
+    id: 'crm_admin:gerir_integracoes',
+    recurso: 'crm_admin',
+    rotulo: 'Cadastrar e rotacionar integrações',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

@@ -16,6 +16,11 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Pessoas', to: '/pessoas', requerPermissao: 'pessoa:ver' },
   { label: 'Contas', to: '/contas', requerPermissao: 'conta:ver' },
   { label: 'Eventos', to: '/eventos', requerPermissao: 'evento:ver' },
+  {
+    label: 'CRM · Administração',
+    to: '/crm/admin',
+    requerPermissao: 'crm_admin:ver',
+  },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },
