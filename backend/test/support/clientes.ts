@@ -10,6 +10,14 @@ export function clientesHelpers(app: INestApplication) {
   const http = () => request(app.getHttpServer());
   const ADMIN = authHeader(); // sub = SERVICE_CLIENT_ID → administrador
 
+  // ids de RBAC criados por esta suíte — para o afterEach limpar SÓ os próprios
+  // (a suíte e2e da 004 roda em paralelo no mesmo schema; um `deleteMany({})`
+  // global aqui apagaria as linhas dela no meio dos testes).
+  const rbacCriados: { usuarios: string[]; perfis: string[] } = {
+    usuarios: [],
+    perfis: [],
+  };
+
   async function criarPessoa(body: Record<string, unknown>): Promise<string> {
     const res = await http().post('/pessoas').set(ADMIN).send(body);
     if (res.status !== 201) {
@@ -40,6 +48,7 @@ export function clientesHelpers(app: INestApplication) {
       throw new Error(`criar usuario falhou ${u.status}: ${JSON.stringify(u.body)}`);
     }
     const usuarioId = u.body.id as string;
+    rbacCriados.usuarios.push(usuarioId);
     if (perms.length > 0) {
       const p = await http()
         .post('/admin/rbac/perfis')
@@ -48,6 +57,7 @@ export function clientesHelpers(app: INestApplication) {
       if (p.status !== 201) {
         throw new Error(`criar perfil falhou ${p.status}: ${JSON.stringify(p.body)}`);
       }
+      rbacCriados.perfis.push(p.body.id as string);
       const put = await http()
         .put(`/admin/rbac/usuarios/${usuarioId}/perfis`)
         .set(ADMIN)
@@ -59,7 +69,15 @@ export function clientesHelpers(app: INestApplication) {
     return issueUserToken(usuarioId);
   }
 
-  return { http, ADMIN, criarPessoa, criarConta, tokenComPermissoes };
+  return {
+    http,
+    ADMIN,
+    criarPessoa,
+    criarConta,
+    tokenComPermissoes,
+    /** ids RBAC criados por esta suíte (drenar no afterEach — ver comentário acima). */
+    rbacCriados,
+  };
 }
 
 // CPFs/CNPJ válidos para fixtures de dedup

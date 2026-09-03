@@ -5,7 +5,6 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { PERFIL_ADMIN_ID } from '../src/auth/auth.constants';
 import { ResolverOuCriarService } from '../src/clientes/application/resolver-ou-criar.service';
 import { authHeader } from './support/auth';
 import {
@@ -41,6 +40,7 @@ describe('clientes — pessoa e conta (e2e)', () => {
   });
 
   afterEach(async () => {
+    // tabelas do contexto `clientes` — só esta suíte as toca, `deleteMany({})` é seguro.
     await prisma.clientesAudit.deleteMany({});
     await prisma.notaReconciliacao.deleteMany({});
     await prisma.mergePessoa.deleteMany({});
@@ -54,13 +54,21 @@ describe('clientes — pessoa e conta (e2e)', () => {
     await prisma.pessoa.deleteMany({});
     await prisma.conta.updateMany({ data: { mergedPara: null } });
     await prisma.conta.deleteMany({});
-    await prisma.rbacAudit.deleteMany({});
-    await prisma.usuarioPerfil.deleteMany({});
-    await prisma.usuario.deleteMany({});
-    await prisma.perfilPermissao.deleteMany({
-      where: { perfilId: { not: PERFIL_ADMIN_ID } },
-    });
-    await prisma.perfil.deleteMany({ where: { deSistema: false } });
+    // RBAC é COMPARTILHADO com `rbac.e2e-spec.ts` (rodam em paralelo no mesmo
+    // schema) — apagar SÓ os ids que esta suíte criou, nunca `deleteMany({})`.
+    const { usuarios, perfis } = h.rbacCriados;
+    if (usuarios.length || perfis.length) {
+      const ids = [...usuarios, ...perfis];
+      await prisma.rbacAudit.deleteMany({ where: { entidadeId: { in: ids } } });
+      await prisma.usuarioPerfil.deleteMany({
+        where: { OR: [{ usuarioId: { in: usuarios } }, { perfilId: { in: perfis } }] },
+      });
+      await prisma.usuario.deleteMany({ where: { id: { in: usuarios } } });
+      await prisma.perfilPermissao.deleteMany({ where: { perfilId: { in: perfis } } });
+      await prisma.perfil.deleteMany({ where: { id: { in: perfis } } });
+      usuarios.length = 0;
+      perfis.length = 0;
+    }
   });
 
   const http = () => request(app.getHttpServer());
