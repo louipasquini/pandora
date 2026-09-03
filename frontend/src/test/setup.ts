@@ -25,3 +25,29 @@ class RequestSemSignal extends RequestOriginal {
   }
 }
 globalThis.Request = RequestSemSignal as typeof Request;
+
+/**
+ * `fetch` padrão para os testes de componente (spec 004). Sem mock explícito,
+ * qualquer chamada a `/auth/permissoes-efetivas` (o `AppShell` a faz para filtrar
+ * a navegação) responde com o catálogo inteiro — o comportamento do sujeito
+ * "administrador". Testes que precisam de outra resposta usam `vi.stubGlobal('fetch', ...)`.
+ */
+const TODAS_PERMISSOES = [
+  'perfil:administrar',
+  'lead:criar',
+  'lead:editar',
+  'lead:ver_todos',
+  'lead:ver_proprios',
+];
+globalThis.fetch = (async (input: RequestInfo | URL) => {
+  const url = typeof input === 'string' ? input : input.toString();
+  if (url.includes('/auth/permissoes-efetivas')) {
+    return new Response(JSON.stringify({ permissoes: TODAS_PERMISSOES }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return new Response(JSON.stringify({ message: `fetch não mockado: ${url}` }), {
+    status: 599,
+  });
+}) as typeof fetch;
