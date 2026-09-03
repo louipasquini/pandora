@@ -3,6 +3,7 @@ import { ConfigModule } from './config/config.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { CoreModule } from './core/core.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
 import { IngestaoModule } from './ingestao/ingestao.module';
 import { FinanceiroModule } from './financeiro/financeiro.module';
 import { CatalogoModule } from './catalogo/catalogo.module';
@@ -24,6 +25,7 @@ import { AdminModule } from './admin/admin.module';
     ConfigModule,
     PrismaModule,
     HealthModule,
+    AuthModule,
     // Bounded contexts
     CoreModule,
     IngestaoModule,
