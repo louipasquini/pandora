@@ -30,6 +30,25 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
+  it('inclui os recursos pessoa e conta (spec 005)', () => {
+    for (const id of [
+      'pessoa:ver',
+      'pessoa:editar',
+      'pessoa:merge',
+      'conta:ver',
+      'conta:editar',
+      'conta:merge',
+    ]) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+    // recurso == prefixo do id para os novos
+    for (const p of PERMISSOES.filter(
+      (x) => x.recurso === 'pessoa' || x.recurso === 'conta',
+    )) {
+      expect(p.id.startsWith(`${p.recurso}:`)).toBe(true);
+    }
+  });
+
   it('ehPermissaoConhecida distingue catálogo de lixo', () => {
     expect(ehPermissaoConhecida('lead:criar')).toBe(true);
     expect(ehPermissaoConhecida('lead:inventada')).toBe(false);
@@ -57,12 +76,27 @@ describe('catálogo de permissões (spec 004)', () => {
 
   it('agruparPorRecurso preserva a ordem de 1ª aparição', () => {
     const grupos = agruparPorRecurso();
-    expect(grupos.map((g) => g.recurso)).toEqual(['perfil', 'lead']);
+    expect(grupos.map((g) => g.recurso)).toEqual([
+      'perfil',
+      'lead',
+      'pessoa',
+      'conta',
+    ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',
       'lead:editar',
       'lead:ver_todos',
       'lead:ver_proprios',
+    ]);
+    expect(grupos[2].permissoes.map((p) => p.id)).toEqual([
+      'pessoa:ver',
+      'pessoa:editar',
+      'pessoa:merge',
+    ]);
+    expect(grupos[3].permissoes.map((p) => p.id)).toEqual([
+      'conta:ver',
+      'conta:editar',
+      'conta:merge',
     ]);
   });
 });

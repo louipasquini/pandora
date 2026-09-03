@@ -99,10 +99,11 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     config/      env.schema.ts (zod) — config tipada e validada no boot
     prisma/      PrismaService / PrismaModule
     health/      GET /health (composição + banco)
-    ingestao/ financeiro/ catalogo/ contratos/ clientes/ crm/ marketing/ central/
+    clientes/    pessoa + conta: identidade, dedup, merge (spec 005 — domain/ application/ infra/)
+    ingestao/ financeiro/ catalogo/ contratos/ crm/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
-  prisma/        schema.prisma (RBAC: usuario/perfil/... — spec 004) + migrações + seed.ts
+  prisma/        schema.prisma (RBAC spec 004 + pessoa/conta spec 005) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -112,6 +113,7 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     app/         router + query client
     auth/        AuthProvider, apiFetch (401 + 403), RequirePermissao, usePermissoesEfetivas
     admin/       Administração — abas Perfis e Usuários (spec 004)
+    pessoas/ contas/  lista, detalhe, criação e merge (spec 005)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -141,7 +143,8 @@ npm run db:up
 #    sem Docker: aponte DATABASE_URL/TEST_DATABASE_URL para seu Postgres e crie os
 #    bancos `pandora` e `pandora_test`
 
-# 4. Aplicar as migrações e semear o RBAC (spec 004 — 1ª migração de negócio)
+# 4. Aplicar as migrações e semear o RBAC (spec 004 — 1ª migração de negócio;
+#    spec 005 acrescenta pessoa/conta na 2ª+3ª migração, sem seed de negócio)
 npm run prisma:migrate:deploy --workspace backend
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run prisma:migrate:dev --workspace backend` já roda o seed no fim
@@ -238,7 +241,21 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   `rbac_audit` (append-only, só _delta_ real; painel = 053). Painel: menu **Administração**
   (abas Perfis/Usuários) atrás de `perfil:administrar`; `apiFetch` trata 403 num ponto
   único. 0 dep nova. Ver [`docs/004-rbac.md`](docs/004-rbac.md).
-- ⏭️ Próxima: **005 — pessoa-identidade-dedup**.
+- ✅ **005 — pessoa-identidade-dedup**: 1º _bounded context_ de domínio com entidade de
+  negócio (`clientes`; `CONTEXT_MODULES` segue 11). Domínio puro: `resolverIdentidade`
+  (dedup por prioridade **documento → cnpj → email → telefone**; ambiguidade **descarta o
+  critério**, nunca funde), `normalizar` (e-mail/telefone/documento), DV de CPF/CNPJ à mão.
+  `resolverOuCriar` — serviço transacional idempotente, **porta** que a spec 018 consome
+  (rotaciona contato não curado; curado em conflito → secundário + `nota_reconciliacao`).
+  CRUD manual de `pessoa` (campo tocado vira `curado`; unicidade → 409 sem fundir; **sem
+  `DELETE`** — exclusão = pseudonimização spec 047), `conta` (HOUSEHOLD|EMPRESA; **não**
+  toca `contrato` — regra #3). `merge`/`desfazer` **reversível em qualquer ordem** (snapshot
+  Json + proveniência por linha). 2ª+3ª migração Prisma (`pessoa` + tabelas filhas +
+  `merge_*`/`nota_reconciliacao`/`clientes_audit` append-only; id de origem só em
+  `pessoa_origem_ref`). Catálogo RBAC ganha `pessoa:{ver,editar,merge}` +
+  `conta:{ver,editar,merge}`. Painel: itens **Pessoas**/**Contas**. 0 dep nova.
+  Ver [`docs/005-pessoa-identidade-dedup.md`](docs/005-pessoa-identidade-dedup.md).
+- ⏭️ Próxima: **006 — evento-origem-worker**.
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
