@@ -58,6 +58,20 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
+  it('inclui o recurso crm_admin (spec 007)', () => {
+    for (const id of [
+      'crm_admin:ver',
+      'crm_admin:gerir_equipes',
+      'crm_admin:gerir_expediente',
+      'crm_admin:gerir_integracoes',
+    ]) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+    for (const p of PERMISSOES.filter((x) => x.recurso === 'crm_admin')) {
+      expect(p.id.startsWith('crm_admin:')).toBe(true);
+    }
+  });
+
   it('ehPermissaoConhecida distingue catálogo de lixo', () => {
     expect(ehPermissaoConhecida('lead:criar')).toBe(true);
     expect(ehPermissaoConhecida('lead:inventada')).toBe(false);
@@ -91,6 +105,13 @@ describe('catálogo de permissões (spec 004)', () => {
       'pessoa',
       'conta',
       'evento',
+      'crm_admin',
+    ]);
+    expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
+      'crm_admin:ver',
+      'crm_admin:gerir_equipes',
+      'crm_admin:gerir_expediente',
+      'crm_admin:gerir_integracoes',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',
