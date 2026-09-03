@@ -35,13 +35,23 @@ Precedem tudo. Nenhuma feature de produto começa antes desta fase fechar.
   [`specs/001-bootstrap-projeto/`](specs/001-bootstrap-projeto/) e
   [`docs/001-bootstrap-projeto.md`](docs/001-bootstrap-projeto.md).
 
-- [ ] **002 — core-value-objects**
-  `Dinheiro{valor_int, moeda}` (×10000, sem float, moeda obrigatória, soma só entre mesma
-  moeda); tempo (`timestamptz` UTC, parser de borda tolerante: ISO / epoch s / epoch ms /
-  naive / lixo → `null` com log); IDs UUID v7 / ULID; enums `StatusTransacaoCanonico` e
-  `StatusContratoCanonico` + funções puras `libera_acesso()` e `conta_como_receita()`;
-  base de auditoria (`criado_em`/`atualizado_em`, tabela `_audit`); config/segredos.
-  Sem frontend.
+- [x] **002 — core-value-objects** — ✅ implementada e validada (2026-09-03)
+  Primitivas canônicas do `core` (sem banco, sem endpoint, sem frontend). `Dinheiro`
+  (`bigint` valor interno, escala ×10000, sem float, `moeda` obrigatória, soma/ordem só
+  entre a mesma moeda) + `Moeda` = **código ISO 4217 validado** (conjunto aberto porém
+  validado) + `ratear`/`ratearPorPesos` (maior-resto, soma exata); `multiplicarPorEscalar`
+  só aceita fator inteiro. Tempo: `parseInstante` de borda (ISO c/ e s/ fuso → UTC + motivo,
+  epoch s/ms por limiar `1e11`, `Date`; lixo → `null` + motivo; **livre de locale**, matriz
+  de `TZ` na CI) + `agoraUtc()`. Status: enums `StatusTransacaoCanonico` (8) e
+  `StatusContratoCanonico` (`ATIVO`/`EXPIRADO`/`CANCELADO`/`DESCONHECIDO`) + funções puras
+  `liberaAcesso` (`EM_ATRASO`→`true`, core permissivo) / `contaComoReceita` /
+  `contratoLiberaAcesso`, e rede de segurança `paraStatusTransacaoCanonico` → `DESCONHECIDO`
+  + revisar. Auditoria: contrato `EntidadeAuditavel` + forma canônica `RegistroAuditoria`
+  (`origem` enum fechado `CURADORIA`/`AJUSTE_MANUAL`/`MIGRACAO`) + `montarRegistroAuditoria`
+  — sem tabela. Config: `core` re-exporta o contrato tipado; regra ESLint barra
+  `process.env` fora de `config/`/`core/`/`main.ts`. 113 testes unitários verdes. Detalhe:
+  [`specs/002-core-value-objects/`](specs/002-core-value-objects/) e
+  [`docs/002-core-value-objects.md`](docs/002-core-value-objects.md).
 
 - [ ] **003 — auth-servico-jwt**
   `POST /auth/token` (`SERVICE_CLIENT_ID`/`SERVICE_CLIENT_SECRET` → JWT), guard de auth,
