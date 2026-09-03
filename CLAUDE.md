@@ -248,6 +248,51 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   (`conta` completa), CL-02 (CRUD manual completo + `resolverOuCriar`), CL-03 (merge sempre
   reversível), CL-04 (`CONTEXT_MODULES` = 11) — dono do produto, 2026-09-03.
   Ver [`docs/005-pessoa-identidade-dedup.md`](docs/005-pessoa-identidade-dedup.md).
+- **ingestao (spec 006):** 2º _bounded context_ de domínio com entidade de negócio
+  (`CONTEXT_MODULES` segue 11). Materializa o Princípio IV. Divisão `domain/` · `application/`
+  · `infra/`. **Domínio puro** (`backend/src/ingestao/domain/`, sem banco):
+  `evento-canonico.ts` (schema `zod` do contrato **`EventoCanonico`** que os adapters 019–022
+  vão produzir — núcleo obrigatório mínimo + opcionais transportados; `Dinheiro`/`Moeda` do
+  core), `hash-evento.ts` (`sha256(canonicalizar(payloadBruto))` — determinístico, livre de
+  locale), `classificar.ts` (`classificar(canonico, tipoOrigem)` puro; enum **congelado**
+  `Classificacao` = `VENDA_PROPRIA|VENDA_AFILIADA|COBRANCA_TERCEIRIZADA|REEMBOLSO|RECORRENCIA|
+  OUTRO|DESCONHECIDO`; regras locais — estorno→`REEMBOLSO`, `ehAfiliada`→`VENDA_AFILIADA`,
+  assinatura→`RECORRENCIA`; o que depende de casar Asaas↔Guru → `DESCONHECIDO`+`revisar` p/
+  024/026; **nunca** um palpite — regra #15), `etapas.ts` (registro **ordenado com
+  dependências declaradas**: `REGISTRAR(0)→CLASSIFICAR(1)→RESOLVER_PESSOA(2)→
+  UPSERT_TRANSACAO(3)`; `RESOLVER_VINCULO(4)`/`RESOLVER_OFERTA(5)`/`PROJETAR_CONTRATO(6)`
+  dependem de 3), `plano-passada.ts` (puro: por etapa `EXECUTAR|BLOQUEADA|JA_OK|ESGOTADA` +
+  `status` do evento derivado). **Etapas 2–6 = _no-op_ `pulada` `{implementadaNa: 18/23/24/25}`**
+  — specs futuras trocam o executor via `WorkerService.definirExecutor(...)` sem tocar o
+  worker. **Porta exportada** `RegistrarEventoService.registrarEvento(entrada) → {eventoId,
+  criado}` (etapa 0: `hash` + upsert idempotente pela chave; reentrega → `criado:false` +
+  `reentregas++`) — é o que os adapters 019–022 vão injetar. **`WorkerService.processarPassada()`**:
+  seleciona elegíveis (`pendente` ou `erro`<`MAX`), mutex por evento, roda cada etapa em
+  **transação própria**, grava `evento_etapa` + deriva `status`; idempotente; retry até
+  `INGESTAO_WORKER_MAX_TENTATIVAS` (default 3) → depois `erro` **terminal** até reprocesso
+  (CL-05); dependência não-`ok` → dependente `bloqueada` (CL-04). **`WorkerScheduler`** =
+  `setInterval` in-house (0 dep — `@nestjs/schedule` rejeitado), env
+  `INGESTAO_WORKER_{ENABLED,INTERVALO_MS,MAX_TENTATIVAS,LOTE}`, **desligado em teste**.
+  Reprocessamento manual → **1** `ingestao_audit` (forma canônica do core, `AJUSTE_MANUAL`,
+  append-only; o worker não audita — seu log é `evento_etapa`). **4ª migração Prisma**
+  (`20260903171321_ingestao`): `evento_origem` (PK UUID v7; `plataforma_origem` enum 7,
+  `id_origem` **coluna comum, nunca PK**, `payload_bruto`/`evento_canonico?` Json, `hash`,
+  `reentregas`, `status ∈ {pendente,ok,erro,revisar}` **derivado**, `classificacao?`,
+  `erro_detalhe?`; `@@unique(plataforma_origem,id_origem,hash)` = dedup, regra #1),
+  `evento_etapa` (`@@unique(evento_origem_id,etapa)`; `status ∈ {pendente,processando,ok,erro,
+  bloqueada,pulada}`, `resultado` Json, `tentativas`), `ingestao_audit`. **5 endpoints**
+  (`/ingestao/eventos`): `POST` (`evento:ingerir`), `POST /processar` + `POST /{id}/reprocessar`
+  (`evento:reprocessar`), `GET` + `GET /{id}` (`evento:ver`); **sem `/webhooks/*`** (019–022).
+  **RBAC 004 estendido**: catálogo ganha `evento:{ver,reprocessar,ingerir}` (`administrador`
+  + credencial de serviço concedem de graça). Frontend `frontend/src/eventos/`: item
+  **Eventos** atrás de `evento:ver`, rota sob `RequirePermissao`, lista com filtros
+  (conta/status/tipo, default `revisar`+`erro`) + detalhe com `payload_bruto` formatado e
+  linha do tempo das 7 etapas + **Reprocessar** (`evento:reprocessar`); `apiFetch` já trata
+  401/403. **0 dep nova**, 1 migração, 5 endpoints. Clarificações CL-01 (worker in-process +
+  gatilho `POST /processar`), CL-02 (porta in-process + endpoint HTTP), CL-03 (taxonomia
+  canônica com regras locais), CL-04 (dependência declarada → `bloqueada`), CL-05 (retry até
+  `MAX`, depois terminal) — dono do produto, 2026-09-03. Ver
+  [`docs/006-evento-origem-worker.md`](docs/006-evento-origem-worker.md).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
   TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço
   (tela `/login` + `AuthProvider`/`useAuth` + `apiFetch` central que injeta `Authorization`
@@ -291,36 +336,52 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/005-pessoa-identidade-dedup/plan.md`](specs/005-pessoa-identidade-dedup/plan.md)
-(Fase 0 · spec 005 — pessoa e conta: identidade canônica, dedup e merge. **1ª entidade de
-negócio de um contexto de domínio** (`clientes` deixa de ser módulo vazio; `CONTEXT_MODULES`
-segue 11). **Domínio puro** (`src/clientes/domain/`, sem banco): `normalizar` (e-mail
-`lowercase`+`trim` **sem** heurística de provedor; telefone E.164, BR na borda; documento só
-dígitos), `documento` (DV de CPF/CNPJ à mão — 0 dep nova), `resolverIdentidade(dados,
-candidatos) → {pessoaId, criterio, confianca, candidatos[]}` (ordem fixa **documento → cnpj
-→ email → telefone**; match único resolve; **ambíguo descarta o critério**; nada →
-`null`+candidatos; determinística, sem I/O), `merge-plano` (plano de merge + de reversão +
-detecção de divergência). **`resolverOuCriar`** (serviço transacional, idempotente) — anexa
-`pessoa_origem_ref`, rotaciona contato **não curado** (curado em conflito → secundário +
-`nota_reconciliacao`), cria `pessoa` se não resolveu (`criar:false` p/ afiliada → `null`);
-é a **porta** que a spec 018 vai consumir (sem endpoint agora). **2ª migração Prisma**:
-`pessoa` (PK UUID v7; `mergedPara`, `contaId`, `pseudonimizadaEm` nullable reservado 047),
-`conta` (HOUSEHOLD|EMPRESA; **não** toca `contrato` — regra #3), `pessoa_{email,telefone,
-documento,endereco}` (primário único + secundários datados + flag `curado` + `origemMergeId`),
-`pessoa_origem_ref` (`@@unique(plataformaOrigem,tipoRef,valorRef)` — id de origem nunca PK),
-`merge_pessoa`/`merge_conta` (snapshot Json + proveniência por linha; **reversível em
-qualquer ordem** — CL-03), `nota_reconciliacao`, `clientes_audit` (forma canônica do core,
-append-only, simétrica ao `rbac_audit`). **CRUD manual completo** (CL-02): `GET /pessoas`
-(`pessoa:ver`, busca nome/e-mail/telefone/doc), `GET /pessoas/{id}`, `POST`/`PATCH`
-(`pessoa:editar`; campo tocado vira `curado`), `POST /pessoas/{id}/merge` + `.../desfazer`
-(`pessoa:merge`); **sem `DELETE`** (exclusão = pseudonimização, spec 047). `conta`: `GET`
-(`conta:ver`), `POST`/`PATCH`/associar/desassociar (`conta:editar`), `merge`/`desfazer`
-(`conta:merge`). **RBAC 004 estendido**: catálogo ganha `pessoa:{ver,editar,merge}` +
-`conta:{ver,editar,merge}` (só cresce o array; `administrador` e credencial de serviço
-concedem de graça). Frontend: itens **Pessoas**/**Contas** atrás de `*:ver`; rotas sob
-`RequirePermissao`; `apiFetch` já trata 401/403 (nada novo). **0 dep nova**, 1 migração,
-~16 endpoints. Clarificações CL-01 (`conta` modelada por completo), CL-02 (CRUD manual
-completo + `resolverOuCriar`), CL-03 (merge sempre reversível, qualquer ordem), CL-04
-(`CONTEXT_MODULES` = 11) — resolvidas com o dono do produto em 2026-09-03.
+Plano ativo: [`specs/006-evento-origem-worker/plan.md`](specs/006-evento-origem-worker/plan.md)
+(Fase 0 · spec 006 — evento_origem e worker de ingestão: event log canônico e pipeline em
+etapas. Preenche o _bounded context_ **`ingestao`** (vazio desde a 001; `CONTEXT_MODULES`
+segue **11**). **Domínio puro** (`src/ingestao/domain/`, sem banco): `evento-canonico.ts`
+(schema `zod` do contrato **`EventoCanonico`** que os adapters 019–022 vão produzir —
+núcleo obrigatório mínimo, resto opcional até a 018 apertar; `Dinheiro`/`Moeda` do core,
+`parseInstante`), `hash-evento.ts` (`sha256(canonicalize(payloadBruto))` — puro, livre de
+locale), `classificar.ts` (`classificar(canonico, tipoOrigem) → {classificacao, revisar,
+motivo?}`; enum **congelado** `Classificacao` = `VENDA_PROPRIA|VENDA_AFILIADA|
+COBRANCA_TERCEIRIZADA|REEMBOLSO|RECORRENCIA|OUTRO|DESCONHECIDO`; regras locais —
+estorno→REEMBOLSO, assinatura→RECORRENCIA, `ehAfiliada`→VENDA_AFILIADA, `referenciaExterna`
+→COBRANCA_TERCEIRIZADA; o que depende de casar Asaas↔Guru → `DESCONHECIDO`+`revisar` p/ a
+024/026; **nunca** um palpite — regra #15), `etapas.ts` (registro **ordenado com
+dependências declaradas**: `REGISTRAR(0)→CLASSIFICAR(1)→RESOLVER_PESSOA(2)→
+UPSERT_TRANSACAO(3)`; `RESOLVER_VINCULO(4)`/`RESOLVER_OFERTA(5)`/`PROJETAR_CONTRATO(6)`
+dependem de 3, não entre si), `plano-passada.ts` (puro: por etapa `EXECUTAR|BLOQUEADA|
+JA_OK|ESGOTADA` + `status` do evento derivado). **Etapas 2–6 são _no-op_ `pulada`
+`{implementadaNa: 18/23/24/25}`** — as specs futuras trocam o item do `ETAPAS` sem tocar o
+worker. **4ª migração Prisma** (`<ts>_ingestao`): `evento_origem` (PK UUID v7;
+`plataforma_origem` enum 7, `id_origem` **coluna comum, nunca PK**, `payload_bruto`/
+`evento_canonico?` Json, `hash`, `recebido_em`/`ultimo_recebido_em`, `reentregas`, `status
+∈ {pendente,ok,erro,revisar}` **derivado** das etapas, `classificacao?`, `erro_detalhe?`;
+`@@unique(plataforma_origem,id_origem,hash)` = dedup), `evento_etapa` (`@@unique(evento_
+origem_id,etapa)`; `status ∈ {pendente,processando,ok,erro,bloqueada,pulada}`, `resultado`
+Json, `tentativas`, `executado_em`), `ingestao_audit` (forma canônica do core,
+`AJUSTE_MANUAL`, append-only — só reprocessamento manual). **Worker** (`worker.service.ts`
++ `worker.scheduler.ts`): `setInterval` **in-house** (0 dep — `@nestjs/schedule`
+rejeitado), env `INGESTAO_WORKER_{ENABLED,INTERVALO_MS,MAX_TENTATIVAS,LOTE}`, **desligado
+em teste**; `processarPassada()` seleciona elegíveis com `FOR UPDATE SKIP LOCKED`, roda
+cada etapa em **transação própria**, grava `evento_etapa` + deriva `status`; **idempotente**
+(etapa `ok`/`pulada` não reexecuta); etapa em `erro` re-tentada até
+`INGESTAO_WORKER_MAX_TENTATIVAS` (default 3) → depois `erro` **terminal** até reprocesso
+(CL-05); dependência não-`ok` → dependente `bloqueada` (CL-04). **Porta exportada**
+`RegistrarEventoService.registrarEvento(entrada) → {eventoId, criado}` (etapa 0: hash +
+upsert idempotente pela chave; reentrega → `criado:false` + `reentregas++`) — é o que os
+adapters 019–022 vão injetar. **5 endpoints** (`ingestao/eventos`): `POST` (`evento:ingerir`),
+`POST /processar` + `POST /{id}/reprocessar` (`evento:reprocessar`), `GET` + `GET /{id}`
+(`evento:ver`); **sem `/webhooks/*`** (019–022). **RBAC 004 estendido**: catálogo ganha
+`evento:{ver,reprocessar,ingerir}` (`administrador` + credencial de serviço concedem de
+graça). Frontend: item **Eventos** atrás de `evento:ver`, rota sob `RequirePermissao`,
+lista com filtros (conta/status/tipo/data, default `revisar`+`erro`) + detalhe com
+`payload_bruto` formatado e linha do tempo das 7 etapas + **Reprocessar**
+(`evento:reprocessar`); `apiFetch` já trata 401/403. **0 dep nova**, 1 migração, 5
+endpoints. Clarificações CL-01 (worker in-process + gatilho `POST /processar`), CL-02
+(porta in-process + endpoint HTTP), CL-03 (taxonomia canônica com regras locais), CL-04
+(dependência declarada → `bloqueada`), CL-05 (retry até `MAX`, depois terminal) —
+resolvidas com o dono do produto em 2026-09-03.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
 <!-- SPECKIT END -->
