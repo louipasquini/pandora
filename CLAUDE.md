@@ -216,6 +216,38 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   Toda escrita audita em `rbac_audit` via `montarRegistroAuditoria` do core (só _delta_
   real; append-only; 1ª tabela `_audit` do projeto, painel = spec 053). 0 dep nova.
   Ver [`docs/004-rbac.md`](docs/004-rbac.md).
+- **clientes (spec 005):** 1º _bounded context_ de domínio com entidade de negócio
+  (`CONTEXT_MODULES` segue 11). Divisão `domain/` (puro) · `application/` (serviços/
+  transações) · `infra/` (Prisma). **Domínio puro** (`backend/src/clientes/domain/`, sem
+  banco): `documento` (DV de CPF/CNPJ à mão, 0 dep), `normalizar` (e-mail `lowercase`+`trim`
+  **sem** heurística de provedor; telefone E.164, `+55` na borda; documento só dígitos),
+  `resolverIdentidade(dados, candidatos)` (pura, determinística; ordem fixa **documento →
+  cnpj → email → telefone**; match único resolve; **ambíguo descarta o critério**; nada →
+  `null`+candidatos; segue `mergedPara`), `merge-plano` (plano de merge + de reversão;
+  `curado` pré-merge volta, `curado` pós-merge prevalece → `Divergencia`). **Aplicação**:
+  `ResolverOuCriarService.resolverOuCriar` (transacional, idempotente — anexa
+  `pessoa_origem_ref`, rotaciona contato não curado, curado em conflito → secundário +
+  `nota_reconciliacao`; cria `pessoa` se não resolveu; `criar:false` p/ afiliada → `null`);
+  é a **porta** exportada que a spec 018 consome (sem endpoint agora). `PessoaService`
+  (CRUD manual; campo tocado vira `curado`; unicidade → 409 `{pessoaId}` sem fundir;
+  remover última âncora → 400; **sem `DELETE`** — exclusão = pseudonimização spec 047),
+  `ContaService` (CRUD + associar/desassociar; pessoa 0..1 conta), `MergeService`
+  (`merge`/`desfazer` de pessoa e conta; `snapshot` Json + `origemMergeId` por linha;
+  **reversível em qualquer ordem** — CL-03; divergência → valor atual prevalece +
+  `nota_reconciliacao`), `ClientesAuditService` (forma canônica do core, `clientes_audit`
+  append-only, só delta), `NotaReconciliacaoService`. **Prisma** (2ª+3ª migração de
+  negócio, `20260903141931_clientes` + `..142000_clientes_primario_unico`): `pessoa`
+  (`pseudonimizada_em?` reservado 047; `merged_para?`; `conta_id?`), `conta`
+  (HOUSEHOLD|EMPRESA; **não** toca `contrato` — regra #3), `pessoa_{email,telefone,
+  documento,endereco}` (`curado` + `origem_merge_id`; índice único parcial `WHERE primario`),
+  `pessoa_origem_ref` (`@@unique(plataforma_origem,tipo_ref,valor_ref)` — id de origem
+  nunca PK), `merge_pessoa`/`merge_conta`/`nota_reconciliacao`/`clientes_audit`
+  (append-only). **RBAC 004 estendido**: catálogo ganha `pessoa:{ver,editar,merge}` +
+  `conta:{ver,editar,merge}` (`administrador` + credencial de serviço concedem de graça,
+  sem migração de dados). ~16 endpoints, **0 dep nova**, 2 migrações. Clarificações CL-01
+  (`conta` completa), CL-02 (CRUD manual completo + `resolverOuCriar`), CL-03 (merge sempre
+  reversível), CL-04 (`CONTEXT_MODULES` = 11) — dono do produto, 2026-09-03.
+  Ver [`docs/005-pessoa-identidade-dedup.md`](docs/005-pessoa-identidade-dedup.md).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
   TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço
   (tela `/login` + `AuthProvider`/`useAuth` + `apiFetch` central que injeta `Authorization`
@@ -223,8 +255,11 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   **Administração** (abas Perfis/Usuários) atrás de `perfil:administrar`; `RequirePermissao`
   + `usePermissoesEfetivas` (consome `/auth/permissoes-efetivas`, zero permissão
   _hardcoded_); `apiFetch` trata **403** num ponto único (banner, **não** desloga).
-  `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
-  `frontend/src/theme/tokens.css`.
+  Spec 005: itens **Pessoas** (`pessoa:ver`) e **Contas** (`conta:ver`) —
+  `frontend/src/{pessoas,contas}/` (lista+busca+paginação, detalhe com primário/secundário/
+  `curado`, refs de origem, linha do tempo de merges + Desfazer; formulários e Unificar só
+  com `*:editar`/`*:merge`). `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`). Tokens
+  da marca num ponto único: `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
   nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`.
 - **Testes:** unitários sem banco; e2e do backend contra Postgres real, schema isolado por
@@ -256,29 +291,36 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/004-rbac/plan.md`](specs/004-rbac/plan.md)
-(Fase 0 · spec 004 — RBAC: perfis de acesso e permissões granulares, a matriz **única** que
-CRM/Marketing/Central consomem. Estende o `auth` da 003 (segue infra transversal;
-`CONTEXT_MODULES` = 11). **Catálogo de permissões no código** (`src/auth/rbac/catalogo.ts`,
-`recurso:acao`, congelado, `assertCatalogoCoerente()` aborta no boot) — nesta spec:
-`perfil:administrar` + `lead:{criar,editar,ver_todos,ver_proprios}`. **Persistência Prisma**
-(1ª migração de negócio do projeto): `usuario`, `perfil`, `perfil_permissao`,
-`usuario_perfil`, `rbac_audit` (PK UUID v7 na app; `@db.Timestamptz`); `prisma/seed.ts`
-idempotente cria o perfil de sistema `administrador` (dev/e2e/CI). **Guard**: `@RequerPermissao(...)`
-(E) + `@AutenticadoBasta()` + `PermissionGuard` como **2º `APP_GUARD`** (depois do
-`JwtAuthGuard`); rota autenticada **sem marcador → 403** (CL-03, fechado por omissão);
-403 ≠ 401, corpo genérico. **Resolução por requisição** (CL-02, sem _staleness_; JWT segue
-fino): credencial de serviço → `administrador` = catálogo inteiro (special-case, não depende
-do seed); `sub` de `Usuario` → união das permissões dos perfis. **Endpoints** (`/admin/rbac/*`,
-todos sob `perfil:administrar`): `GET /permissoes`, `GET/POST/PATCH/DELETE /perfis`,
-`GET/POST /usuarios`, `GET/PUT /usuarios/{id}/perfis` + `GET /auth/permissoes-efetivas`
-(`@AutenticadoBasta`); toda escrita audita em `rbac_audit` via `montarRegistroAuditoria` do
-core, só _delta_ real. **Auditoria** `_audit` persistida é 1ª do projeto (painel = 053).
-Frontend: item **Administração** (abas Perfis | Usuários) atrás de `perfil:administrar`;
-`RequirePermissao` + `usePermissoesEfetivas` (consome `/auth/permissoes-efetivas`, zero
-permissão _hardcoded_); `apiFetch` central ganha tratamento de **403** (banner, **não**
-desloga). **0 dep nova**, 1 migração, 10 endpoints (5 de escrita). Clarificações CL-01
-(Postgres+Prisma), CL-02 (resolução por requisição), CL-03 (negar por padrão) + criação de
-`usuario` (`POST`+`GET`) + abas do painel — resolvidas com o dono do produto em 2026-09-03.
+Plano ativo: [`specs/005-pessoa-identidade-dedup/plan.md`](specs/005-pessoa-identidade-dedup/plan.md)
+(Fase 0 · spec 005 — pessoa e conta: identidade canônica, dedup e merge. **1ª entidade de
+negócio de um contexto de domínio** (`clientes` deixa de ser módulo vazio; `CONTEXT_MODULES`
+segue 11). **Domínio puro** (`src/clientes/domain/`, sem banco): `normalizar` (e-mail
+`lowercase`+`trim` **sem** heurística de provedor; telefone E.164, BR na borda; documento só
+dígitos), `documento` (DV de CPF/CNPJ à mão — 0 dep nova), `resolverIdentidade(dados,
+candidatos) → {pessoaId, criterio, confianca, candidatos[]}` (ordem fixa **documento → cnpj
+→ email → telefone**; match único resolve; **ambíguo descarta o critério**; nada →
+`null`+candidatos; determinística, sem I/O), `merge-plano` (plano de merge + de reversão +
+detecção de divergência). **`resolverOuCriar`** (serviço transacional, idempotente) — anexa
+`pessoa_origem_ref`, rotaciona contato **não curado** (curado em conflito → secundário +
+`nota_reconciliacao`), cria `pessoa` se não resolveu (`criar:false` p/ afiliada → `null`);
+é a **porta** que a spec 018 vai consumir (sem endpoint agora). **2ª migração Prisma**:
+`pessoa` (PK UUID v7; `mergedPara`, `contaId`, `pseudonimizadaEm` nullable reservado 047),
+`conta` (HOUSEHOLD|EMPRESA; **não** toca `contrato` — regra #3), `pessoa_{email,telefone,
+documento,endereco}` (primário único + secundários datados + flag `curado` + `origemMergeId`),
+`pessoa_origem_ref` (`@@unique(plataformaOrigem,tipoRef,valorRef)` — id de origem nunca PK),
+`merge_pessoa`/`merge_conta` (snapshot Json + proveniência por linha; **reversível em
+qualquer ordem** — CL-03), `nota_reconciliacao`, `clientes_audit` (forma canônica do core,
+append-only, simétrica ao `rbac_audit`). **CRUD manual completo** (CL-02): `GET /pessoas`
+(`pessoa:ver`, busca nome/e-mail/telefone/doc), `GET /pessoas/{id}`, `POST`/`PATCH`
+(`pessoa:editar`; campo tocado vira `curado`), `POST /pessoas/{id}/merge` + `.../desfazer`
+(`pessoa:merge`); **sem `DELETE`** (exclusão = pseudonimização, spec 047). `conta`: `GET`
+(`conta:ver`), `POST`/`PATCH`/associar/desassociar (`conta:editar`), `merge`/`desfazer`
+(`conta:merge`). **RBAC 004 estendido**: catálogo ganha `pessoa:{ver,editar,merge}` +
+`conta:{ver,editar,merge}` (só cresce o array; `administrador` e credencial de serviço
+concedem de graça). Frontend: itens **Pessoas**/**Contas** atrás de `*:ver`; rotas sob
+`RequirePermissao`; `apiFetch` já trata 401/403 (nada novo). **0 dep nova**, 1 migração,
+~16 endpoints. Clarificações CL-01 (`conta` modelada por completo), CL-02 (CRUD manual
+completo + `resolverOuCriar`), CL-03 (merge sempre reversível, qualquer ordem), CL-04
+(`CONTEXT_MODULES` = 11) — resolvidas com o dono do produto em 2026-09-03.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
 <!-- SPECKIT END -->
