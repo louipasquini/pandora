@@ -105,13 +105,39 @@ Precedem tudo. Nenhuma feature de produto começa antes desta fase fechar.
   2026-09-03. 201 testes unitários backend + 31 frontend + 59 e2e verdes. Detalhe:
   [`specs/004-rbac/`](specs/004-rbac/) e [`docs/004-rbac.md`](docs/004-rbac.md).
 
-- [ ] **005 — pessoa-identidade-dedup**
-  Entidade `pessoa` (ex-`Cliente`): identidade, contatos, endereço, histórico de e-mails/
-  telefones secundários (mais recente = primário). Engine
-  `resolver_identidade(dados) → {pessoa_id, confianca, criterio, candidatos[]}` — dedup por
-  prioridade documento → CNPJ → e-mail normalizado → telefone; ambiguidade **descarta o
-  critério**, não escolhe candidato. `merge_pessoa` auditável e reversível.
-  `GET /pessoas`, `GET /pessoas/{id}`. Frontend: lista/detalhe de pessoas.
+- [x] **005 — pessoa-identidade-dedup** — ✅ implementada e validada (2026-09-03)
+  1ª entidade de negócio de um contexto de domínio (`clientes` deixa de ser módulo vazio;
+  `CONTEXT_MODULES` segue 11). **Domínio puro** (`backend/src/clientes/domain/`, sem banco):
+  `documento` (DV de CPF/CNPJ à mão, 0 dep), `normalizar` (e-mail `lowercase`+`trim` **sem**
+  heurística de provedor; telefone E.164, `+55` na borda; documento só dígitos),
+  `resolverIdentidade(dados, candidatos) → {pessoaId, criterio, confianca, candidatos[]}`
+  (pura/determinística; ordem fixa **documento → cnpj → email → telefone**; match único
+  resolve; **ambíguo descarta o critério**; nada → `null`+candidatos; segue `mergedPara`),
+  `merge-plano` (plano de merge + de reversão; `curado` pré-merge volta, `curado` pós-merge
+  prevalece → `Divergencia`). **`resolverOuCriar`** (serviço transacional, idempotente;
+  anexa `pessoa_origem_ref`, rotaciona contato não curado, curado em conflito → secundário +
+  `nota_reconciliacao`; cria `pessoa` se não resolveu; `criar:false` p/ afiliada → `null`)
+  — **porta** exportada que a 018 vai consumir (sem endpoint agora). **CRUD manual completo**
+  (CL-02): `GET /pessoas` (busca nome/e-mail/telefone/doc), `GET /pessoas/{id}`,
+  `POST`/`PATCH` (`pessoa:editar`; campo tocado vira `curado`; 409 `{pessoaId}` sem fundir;
+  remover última âncora → 400), `POST /pessoas/{id}/merge` + `.../desfazer` (`pessoa:merge`,
+  **reversível em qualquer ordem** — CL-03: `snapshot` Json + `origemMergeId` por linha);
+  **sem `DELETE`** (exclusão = pseudonimização, spec 047). `conta` (CL-01, modelada por
+  completo): `GET` (`conta:ver`), `POST`/`PATCH`/associar/desassociar (`conta:editar`),
+  `merge`/`desfazer` (`conta:merge`) — HOUSEHOLD|EMPRESA, **não** toca `contrato` (regra #3).
+  **2ª+3ª migração Prisma** (`20260903141931_clientes` + `..142000_clientes_primario_unico`):
+  `pessoa` (`pseudonimizada_em?` reservado 047; `merged_para?`; `conta_id?`), `conta`,
+  `pessoa_{email,telefone,documento,endereco}` (`curado` + `origem_merge_id`; índice único
+  parcial `WHERE primario`), `pessoa_origem_ref` (`@@unique` — id de origem nunca PK),
+  `merge_pessoa`/`merge_conta`/`nota_reconciliacao`/`clientes_audit` (append-only, forma
+  canônica do core). **RBAC 004 estendido**: catálogo ganha `pessoa:{ver,editar,merge}` +
+  `conta:{ver,editar,merge}` (`administrador` + credencial de serviço concedem de graça,
+  sem migração de dados). Frontend: itens **Pessoas**/**Contas** atrás de `*:ver`, rotas sob
+  `RequirePermissao`, telas de lista/detalhe/criação + Unificar; `apiFetch` já trata 401/403.
+  **0 dep nova**, 2 migrações, ~16 endpoints. 240 unit backend + 40 frontend + 86 e2e verdes.
+  Clarificações CL-01/CL-02/CL-03/CL-04 resolvidas com o dono do produto em 2026-09-03.
+  Detalhe: [`specs/005-pessoa-identidade-dedup/`](specs/005-pessoa-identidade-dedup/) e
+  [`docs/005-pessoa-identidade-dedup.md`](docs/005-pessoa-identidade-dedup.md).
 
 - [ ] **006 — evento-origem-worker**
   `evento_origem` imutável (`plataforma_origem`, `id_origem`, `tipo_origem`,

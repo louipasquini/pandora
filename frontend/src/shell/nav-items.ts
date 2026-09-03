@@ -13,6 +13,8 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Visão geral', to: '/' },
+  { label: 'Pessoas', to: '/pessoas', requerPermissao: 'pessoa:ver' },
+  { label: 'Contas', to: '/contas', requerPermissao: 'conta:ver' },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },
