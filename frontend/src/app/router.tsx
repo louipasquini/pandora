@@ -9,6 +9,8 @@ import { PessoasListPage } from '../pessoas/PessoasListPage';
 import { PessoaDetailPage } from '../pessoas/PessoaDetailPage';
 import { ContasListPage } from '../contas/ContasListPage';
 import { ContaDetailPage } from '../contas/ContaDetailPage';
+import { EventosListPage } from '../eventos/EventosListPage';
+import { EventoDetailPage } from '../eventos/EventoDetailPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -55,6 +57,22 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="conta:ver">
                 <ContaDetailPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'eventos',
+            element: (
+              <RequirePermissao perm="evento:ver">
+                <EventosListPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'eventos/:id',
+            element: (
+              <RequirePermissao perm="evento:ver">
+                <EventoDetailPage />
               </RequirePermissao>
             ),
           },

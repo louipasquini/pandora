@@ -28,6 +28,9 @@ function loadRootEnv(): void {
  */
 export default function setupDb(): void {
   loadRootEnv();
+  // Worker de ingestão (spec 006): nunca roda o laço de fundo nos e2e — os testes
+  // disparam passadas explícitas por `POST /ingestao/eventos/processar`.
+  process.env.INGESTAO_WORKER_ENABLED = 'false';
   const base = process.env.TEST_DATABASE_URL;
   if (!base) {
     throw new Error(
