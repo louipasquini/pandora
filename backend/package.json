@@ -16,7 +16,7 @@
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --config jest.config.ts",
-    "test:e2e": "jest --config test/jest-e2e.config.ts --runInBand=false",
+    "test:e2e": "jest --config test/jest-e2e.config.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
