@@ -88,7 +88,14 @@ docker-compose.yml      Postgres 16 de desenvolvimento (host :55432)
 
 backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
   src/
-    core/        ids (EntidadeId/UUID v7), PlataformaOrigem  · dinheiro/tempo/status → spec 002
+    core/        primitivas canônicas (barrel: core.module.ts)
+      ids/         EntidadeId (UUID v7), uuidv7()
+      dinheiro/    Dinheiro (bigint ×10000), Moeda (ISO 4217), ratear/ratearPorPesos
+      tempo/       parseInstante (borda tolerante, livre de locale), agoraUtc
+      status/      StatusTransacaoCanonico/StatusContratoCanonico + liberaAcesso/contaComoReceita
+      auditoria/   EntidadeAuditavel, RegistroAuditoria + montarRegistroAuditoria
+      config/      contrato tipado de config (re-export de config/env.schema)
+      plataforma-origem.enum.ts   as 7 contas
     config/      env.schema.ts (zod) — config tipada e validada no boot
     prisma/      PrismaService / PrismaModule
     health/      GET /health (composição + banco)
@@ -189,7 +196,15 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   contra Postgres real com isolamento por schema, CI no GitHub Actions, frontend Vite +
   React 19 + Tailwind v4 com o shell da marca). Ver [`ROADMAP.md`](ROADMAP.md) e
   [`docs/001-bootstrap-projeto.md`](docs/001-bootstrap-projeto.md).
-- ⏭️ Próxima: **002 — core-value-objects** (`Dinheiro`, tempo, status canônico).
+- ✅ **002 — core-value-objects**: primitivas canônicas do `core` (sem banco/endpoint/
+  frontend) — `Dinheiro` (`bigint` ×10000) + `Moeda` (ISO 4217 validado) + `ratear`;
+  `parseInstante` de borda tolerante e livre de locale + `agoraUtc`; enums de status
+  canônico + funções puras `liberaAcesso`/`contaComoReceita`/`contratoLiberaAcesso` + rede
+  de segurança `paraStatusTransacaoCanonico`; contrato `EntidadeAuditavel` +
+  `RegistroAuditoria`; config tipada consolidada no `core` + regra ESLint `no-process-env`.
+  113 testes unitários; matriz de `TZ` na CI. Ver
+  [`docs/002-core-value-objects.md`](docs/002-core-value-objects.md).
+- ⏭️ Próxima: **003 — auth-servico-jwt** (`POST /auth/token` → JWT, guard, tela de Login).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

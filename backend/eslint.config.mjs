@@ -63,6 +63,22 @@ export default tseslint.config(
     },
   },
   {
+    // Fronteira de configuração (Padrão Transversal "config/segredos", spec 002).
+    // `process.env` só é lido pelo contrato tipado do `core` e pelo bootstrap.
+    files: ['src/**/*.ts'],
+    ignores: ['src/config/**', 'src/core/**', 'src/main.ts', '**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[object.name='process'][property.name='env']",
+          message:
+            'Leia config pelo contrato tipado do `core` (AppConfig / ConfigService), não `process.env`.',
+        },
+      ],
+    },
+  },
+  {
     files: ['test/**/*.ts', '**/*.spec.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
