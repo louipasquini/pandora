@@ -7,6 +7,8 @@ export interface NavItem {
   to: string;
   /** Ainda não implementado (spec futura). */
   soon?: boolean;
+  /** Só aparece se as permissões efetivas do sujeito incluírem esta (spec 004). */
+  requerPermissao?: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -15,4 +17,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },
   { label: 'Central de Clientes', to: '/central', soon: true },
+  { label: 'Administração', to: '/admin', requerPermissao: 'perfil:administrar' },
 ];

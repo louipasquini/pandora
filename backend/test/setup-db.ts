@@ -47,6 +47,13 @@ export default function setupDb(): void {
     shell: process.platform === 'win32',
   });
 
+  // Seed idempotente (spec 004) — cria o perfil de sistema `administrador`.
+  execFileSync('npx', ['prisma', 'db', 'seed'], {
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+
   process.env.DATABASE_URL = databaseUrl;
   process.env.PANDORA_TEST_SCHEMA = schema;
   process.env.PANDORA_TEST_BASE_URL = base;

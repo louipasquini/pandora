@@ -20,6 +20,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "prisma db seed",
     "prisma:reset": "prisma migrate reset --force"
   },
   "dependencies": {
@@ -60,5 +61,8 @@
   },
   "engines": {
     "node": ">=24 <25"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }
