@@ -113,10 +113,10 @@ describe('RBAC (e2e, Postgres real)', () => {
     it('GET /admin/rbac/permissoes com admin → catálogo agrupado', async () => {
       const res = await http().get('/admin/rbac/permissoes').set(ADMIN);
       expect(res.status).toBe(200);
-      expect(res.body.recursos.map((r: { recurso: string }) => r.recurso)).toEqual([
-        'perfil',
-        'lead',
-      ]);
+      // ordem estável: perfil e lead vêm primeiro (spec 004); specs seguintes
+      // acrescentam recursos no fim (spec 005: pessoa, conta).
+      const recursos = res.body.recursos.map((r: { recurso: string }) => r.recurso);
+      expect(recursos.slice(0, 2)).toEqual(['perfil', 'lead']);
     });
 
     it('GET /admin/rbac/permissoes com Usuario sem perfil → 403', async () => {

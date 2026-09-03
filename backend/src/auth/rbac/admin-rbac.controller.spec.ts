@@ -31,7 +31,12 @@ describe('AdminRbacController (spec 004, unit)', () => {
   it('GET /permissoes devolve o catálogo agrupado, ordem estável', () => {
     const { ctrl } = make({});
     const out = ctrl.permissoes();
-    expect(out.recursos.map((r) => r.recurso)).toEqual(['perfil', 'lead']);
+    // ordem estável: perfil e lead vêm primeiro (spec 004); specs seguintes
+    // acrescentam recursos no fim (spec 005: pessoa, conta).
+    expect(out.recursos.slice(0, 2).map((r) => r.recurso)).toEqual([
+      'perfil',
+      'lead',
+    ]);
     expect(out.recursos[1].permissoes[0].id).toBe('lead:criar');
   });
 

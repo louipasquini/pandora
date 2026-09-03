@@ -27,6 +27,33 @@ export const PERMISSOES = Object.freeze([
     recurso: 'lead',
     rotulo: 'Ver apenas os próprios leads',
   },
+  // --- pessoa / conta (spec 005) ---
+  {
+    id: 'pessoa:ver',
+    recurso: 'pessoa',
+    rotulo: 'Ver pessoas (identidade, contatos, contas)',
+  },
+  { id: 'pessoa:editar', recurso: 'pessoa', rotulo: 'Criar e editar pessoas' },
+  {
+    id: 'pessoa:merge',
+    recurso: 'pessoa',
+    rotulo: 'Unificar pessoas e desfazer unificação',
+  },
+  {
+    id: 'conta:ver',
+    recurso: 'conta',
+    rotulo: 'Ver contas (household / empresa)',
+  },
+  {
+    id: 'conta:editar',
+    recurso: 'conta',
+    rotulo: 'Criar, editar contas e gerir membros',
+  },
+  {
+    id: 'conta:merge',
+    recurso: 'conta',
+    rotulo: 'Unificar contas e desfazer unificação',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

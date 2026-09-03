@@ -89,3 +89,241 @@ model RbacAudit {
   @@index([entidade, entidadeId])
   @@map("rbac_audit")
 }
+
+// ============================================================================
+// clientes (spec 005) — 2ª migração de negócio. `pessoa` (ex-`Cliente`), `conta`
+// (household/empresa), contatos com primário+secundários, refs de origem
+// (id de origem NUNCA como PK — só em `pessoa_origem_ref`), merge reversível
+// (snapshot + proveniência por linha), `nota_reconciliacao` e `clientes_audit`
+// (forma canônica do core, append-only, simétrico ao `rbac_audit`).
+// `conta` NÃO referencia `contrato` (regra de negócio inviolável #3).
+// ============================================================================
+
+enum PlataformaOrigem {
+  TMB
+  ASAAS_PRD
+  ASAAS_SVC
+  GURU_PRD
+  GURU_SVC
+  HOTMART_PRD
+  HOTMART_SVC
+}
+
+enum PessoaTipo {
+  FISICA
+  JURIDICA
+  DESCONHECIDO
+}
+
+enum ContaTipo {
+  HOUSEHOLD
+  EMPRESA
+}
+
+enum DocumentoTipo {
+  CPF
+  CNPJ
+}
+
+enum MergeEstado {
+  ATIVO
+  DESFEITO
+}
+
+model Pessoa {
+  id               String     @id @db.Uuid
+  tipo             PessoaTipo @default(DESCONHECIDO)
+  nome             String
+  contaId          String?    @map("conta_id") @db.Uuid
+  pseudonimizadaEm DateTime?  @map("pseudonimizada_em") @db.Timestamptz(6)
+  mergedPara       String?    @map("merged_para") @db.Uuid
+  criadoEm         DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm     DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  conta        Conta?            @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  sobrevivente Pessoa?           @relation("PessoaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
+  absorvidas   Pessoa[]          @relation("PessoaMerge")
+  emails       PessoaEmail[]
+  telefones    PessoaTelefone[]
+  documentos   PessoaDocumento[]
+  enderecos    PessoaEndereco[]
+  origemRefs   PessoaOrigemRef[]
+
+  @@index([contaId])
+  @@index([mergedPara])
+  @@map("pessoa")
+}
+
+model Conta {
+  id           String    @id @db.Uuid
+  tipo         ContaTipo
+  nome         String
+  mergedPara   String?   @map("merged_para") @db.Uuid
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  sobrevivente Conta?   @relation("ContaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
+  absorvidas   Conta[]  @relation("ContaMerge")
+  pessoas      Pessoa[]
+
+  @@index([mergedPara])
+  @@map("conta")
+}
+
+model PessoaEmail {
+  id            String    @id @db.Uuid
+  pessoaId      String    @map("pessoa_id") @db.Uuid
+  valor         String
+  primario      Boolean   @default(false)
+  curado        Boolean   @default(false)
+  rebaixadoEm   DateTime? @map("rebaixado_em") @db.Timestamptz(6)
+  origemMergeId String?   @map("origem_merge_id") @db.Uuid
+  criadoEm      DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa Pessoa @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+
+  @@unique([pessoaId, valor])
+  @@index([valor])
+  @@map("pessoa_email")
+}
+
+model PessoaTelefone {
+  id            String    @id @db.Uuid
+  pessoaId      String    @map("pessoa_id") @db.Uuid
+  valor         String
+  primario      Boolean   @default(false)
+  curado        Boolean   @default(false)
+  rebaixadoEm   DateTime? @map("rebaixado_em") @db.Timestamptz(6)
+  origemMergeId String?   @map("origem_merge_id") @db.Uuid
+  criadoEm      DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa Pessoa @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+
+  @@unique([pessoaId, valor])
+  @@index([valor])
+  @@map("pessoa_telefone")
+}
+
+model PessoaDocumento {
+  id            String        @id @db.Uuid
+  pessoaId      String        @map("pessoa_id") @db.Uuid
+  tipo          DocumentoTipo
+  valor         String
+  curado        Boolean       @default(false)
+  origemMergeId String?       @map("origem_merge_id") @db.Uuid
+  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime      @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa Pessoa @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+
+  @@unique([tipo, valor])
+  @@index([pessoaId])
+  @@map("pessoa_documento")
+}
+
+model PessoaEndereco {
+  id            String   @id @db.Uuid
+  pessoaId      String   @map("pessoa_id") @db.Uuid
+  logradouro    String
+  numero        String?
+  complemento   String?
+  bairro        String?
+  cidade        String?
+  uf            String?
+  cep           String?
+  pais          String   @default("BR")
+  curado        Boolean  @default(false)
+  origemMergeId String?  @map("origem_merge_id") @db.Uuid
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa Pessoa @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+
+  @@index([pessoaId])
+  @@map("pessoa_endereco")
+}
+
+model PessoaOrigemRef {
+  id               String           @id @db.Uuid
+  pessoaId         String           @map("pessoa_id") @db.Uuid
+  plataformaOrigem PlataformaOrigem @map("plataforma_origem")
+  tipoRef          String           @map("tipo_ref")
+  valorRef         String           @map("valor_ref")
+  origemMergeId    String?          @map("origem_merge_id") @db.Uuid
+  criadoEm         DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  pessoa Pessoa @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+
+  @@unique([plataformaOrigem, tipoRef, valorRef])
+  @@index([pessoaId])
+  @@index([plataformaOrigem])
+  @@map("pessoa_origem_ref")
+}
+
+model MergePessoa {
+  id             String      @id @db.Uuid
+  sobreviventeId String      @map("sobrevivente_id") @db.Uuid
+  absorvidaId    String      @map("absorvida_id") @db.Uuid
+  autor          String
+  quando         DateTime    @db.Timestamptz(6)
+  snapshot       Json
+  estado         MergeEstado @default(ATIVO)
+  desfeitoPor    String?     @map("desfeito_por")
+  desfeitoEm     DateTime?   @map("desfeito_em") @db.Timestamptz(6)
+  criadoEm       DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([sobreviventeId])
+  @@index([absorvidaId])
+  @@map("merge_pessoa")
+}
+
+model MergeConta {
+  id             String      @id @db.Uuid
+  sobreviventeId String      @map("sobrevivente_id") @db.Uuid
+  absorvidaId    String      @map("absorvida_id") @db.Uuid
+  autor          String
+  quando         DateTime    @db.Timestamptz(6)
+  snapshot       Json
+  estado         MergeEstado @default(ATIVO)
+  desfeitoPor    String?     @map("desfeito_por")
+  desfeitoEm     DateTime?   @map("desfeito_em") @db.Timestamptz(6)
+  criadoEm       DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([sobreviventeId])
+  @@index([absorvidaId])
+  @@map("merge_conta")
+}
+
+model NotaReconciliacao {
+  id            String   @id @db.Uuid
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  origem        String
+  campo         String
+  valorCurado   Json?    @map("valor_curado")
+  valorDerivado Json?    @map("valor_derivado")
+  motivo        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("nota_reconciliacao")
+}
+
+model ClientesAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("clientes_audit")
+}
