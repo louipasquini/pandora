@@ -74,6 +74,54 @@ describe('envSchema', () => {
     }
   });
 
+  // --- spec 003: credenciais de serviço obrigatórias em TODO ambiente ---
+
+  it.each(['SERVICE_JWT_SECRET', 'SERVICE_CLIENT_ID', 'SERVICE_CLIENT_SECRET'])(
+    'falha citando %s quando ausente',
+    (chave) => {
+      const { [chave]: _omit, ...rest } = exampleEnv;
+      const result = envSchema.safeParse(rest);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((i) => i.path.includes(chave))).toBe(true);
+      }
+    },
+  );
+
+  it('SERVICE_JWT_TTL ausente → default 12h (43200 s)', () => {
+    const { SERVICE_JWT_TTL: _omit, ...rest } = exampleEnv;
+    const parsed = envSchema.parse(rest);
+    expect(parsed.SERVICE_JWT_TTL).toBe(43_200);
+  });
+
+  it('SERVICE_JWT_TTL compacto é convertido para segundos', () => {
+    expect(envSchema.parse({ ...exampleEnv, SERVICE_JWT_TTL: '90m' }).SERVICE_JWT_TTL).toBe(5_400);
+  });
+
+  it.each(['48h', '2d', '90000s'])('falha citando SERVICE_JWT_TTL acima do teto de 24h (%s)', (v) => {
+    const result = envSchema.safeParse({ ...exampleEnv, SERVICE_JWT_TTL: v });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('SERVICE_JWT_TTL'))).toBe(true);
+    }
+  });
+
+  it('falha citando SERVICE_JWT_TTL quando o formato é inválido', () => {
+    const result = envSchema.safeParse({ ...exampleEnv, SERVICE_JWT_TTL: '12 horas' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('SERVICE_JWT_TTL'))).toBe(true);
+    }
+  });
+
+  it('CORS_ORIGIN e RATE_LIMIT_* têm default quando ausentes', () => {
+    const { CORS_ORIGIN: _c, RATE_LIMIT_WINDOW_MS: _w, RATE_LIMIT_MAX: _m, ...rest } = exampleEnv;
+    const parsed = envSchema.parse(rest);
+    expect(parsed.CORS_ORIGIN).toBe('http://localhost:5174');
+    expect(parsed.RATE_LIMIT_WINDOW_MS).toBe(60_000);
+    expect(parsed.RATE_LIMIT_MAX).toBe(10);
+  });
+
   it('accountConfig agrupa as 3 chaves de uma conta e retorna undefined quando vazia', () => {
     const parsed = envSchema.parse(exampleEnv);
     const tmb = accountConfig(parsed, PlataformaOrigem.TMB);

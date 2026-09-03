@@ -47,6 +47,7 @@ export { ratear, ratearPorPesos } from './dinheiro/ratear';
 // --- tempo (002) ---
 export { parseInstante, type ResultadoInstante } from './tempo/parse-instante';
 export { agoraUtc } from './tempo/agora';
+export { duracaoParaSegundos } from './tempo/duracao';
 
 // --- status (002) ---
 export {

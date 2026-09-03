@@ -53,9 +53,32 @@ Precedem tudo. Nenhuma feature de produto começa antes desta fase fechar.
   [`specs/002-core-value-objects/`](specs/002-core-value-objects/) e
   [`docs/002-core-value-objects.md`](docs/002-core-value-objects.md).
 
-- [ ] **003 — auth-servico-jwt**
-  `POST /auth/token` (`SERVICE_CLIENT_ID`/`SERVICE_CLIENT_SECRET` → JWT), guard de auth,
-  validação de token de webhook. Frontend: tela de Login, interceptor de token.
+- [x] **003 — auth-servico-jwt** — ✅ implementada e validada (2026-09-03)
+  Módulo de **infra transversal** `backend/src/auth/` (não é um 12º bounded context;
+  `CONTEXT_MODULES` segue com 11). `POST /auth/token` troca `SERVICE_CLIENT_ID`/
+  `SERVICE_CLIENT_SECRET` (comparação em tempo constante) por um **JWT HS256** assinado com
+  `SERVICE_JWT_SECRET` — _stateless_, sem persistência, sem refresh; TTL `SERVICE_JWT_TTL`
+  (default `12h`, **teto rígido 24 h**, convertido para segundos no `env.schema`); 400
+  (malformado) / 401 genérico (credencial) / 429 (_rate limit_ leve in-house por IP).
+  `JwtAuthGuard` como `APP_GUARD` — **API fechada por padrão**; allowlist explícita:
+  `@Public()` em `/health` e `/auth/token` + prefixo `/webhooks/` (`PUBLIC_PATH_PREFIXES`);
+  `NotFoundAuthFilter` faz caminho inexistente sem token válido → 401 (não 404). Header
+  `Bearer` _case-insensitive_, header repetido → 401, _clock skew_ 60 s, `alg` travado em
+  HS256. `WebhookAuthenticator` (exportado do `AuthModule`) — verifica
+  `<PLATAFORMA>_WEBHOOK_TOKEN` por conta em tempo constante, **separado** do JWT; conta sem
+  token → recusado; sem rota `/webhooks/*` ainda. `SERVICE_JWT_SECRET`/`SERVICE_CLIENT_ID`/
+  `SERVICE_CLIENT_SECRET` **promovidas a obrigatórias** no `env.schema` em todo `NODE_ENV`
+  (CI + harness e2e passam fixtures); `+ CORS_ORIGIN`, `RATE_LIMIT_*`, `VITE_API_BASE_URL`.
+  Frontend: tela `/login` (fora do `AppShell`), `AuthProvider` + `useAuth`
+  (`src/auth/auth-context.ts`), token em `localStorage` (`pandora.token`, _fallback_ em
+  memória), `decode-jwt` (logout proativo por `exp`), `apiFetch` central (injeta
+  `Authorization`; 401 ≠ `/auth/token` → limpa token + reconduz ao Login **uma vez**),
+  `RequireAuth`, botão "Sair". `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`). +1 dep
+  backend (`@nestjs/jwt`), 0 dep frontend, 0 migração, 1 endpoint. Decisões CL-01 (TTL 12 h)
+  e CL-02 (`localStorage`) resolvidas com o dono do produto em 2026-09-03. 167 testes
+  unitários backend + 22 frontend + 29 e2e verdes. Detalhe:
+  [`specs/003-auth-servico-jwt/`](specs/003-auth-servico-jwt/) e
+  [`docs/003-auth-servico-jwt.md`](docs/003-auth-servico-jwt.md).
 
 - [ ] **004 — rbac**
   Perfis de acesso e permissões granulares (usado por CRM, Marketing e Central). Guard por
