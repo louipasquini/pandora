@@ -49,6 +49,15 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
+  it('inclui o recurso evento (spec 006)', () => {
+    for (const id of ['evento:ver', 'evento:reprocessar', 'evento:ingerir']) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+    for (const p of PERMISSOES.filter((x) => x.recurso === 'evento')) {
+      expect(p.id.startsWith('evento:')).toBe(true);
+    }
+  });
+
   it('ehPermissaoConhecida distingue catálogo de lixo', () => {
     expect(ehPermissaoConhecida('lead:criar')).toBe(true);
     expect(ehPermissaoConhecida('lead:inventada')).toBe(false);
@@ -81,6 +90,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'lead',
       'pessoa',
       'conta',
+      'evento',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',

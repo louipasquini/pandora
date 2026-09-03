@@ -54,6 +54,22 @@ export const PERMISSOES = Object.freeze([
     recurso: 'conta',
     rotulo: 'Unificar contas e desfazer unificação',
   },
+  // --- evento_origem / worker de ingestão (spec 006) ---
+  {
+    id: 'evento:ver',
+    recurso: 'evento',
+    rotulo: 'Ver eventos de ingestão e o histórico de etapas',
+  },
+  {
+    id: 'evento:reprocessar',
+    recurso: 'evento',
+    rotulo: 'Reprocessar eventos e rodar o worker de ingestão',
+  },
+  {
+    id: 'evento:ingerir',
+    recurso: 'evento',
+    rotulo: 'Registrar eventos crus na ingestão',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

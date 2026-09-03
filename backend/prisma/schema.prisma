@@ -327,3 +327,111 @@ model ClientesAudit {
   @@index([entidade, entidadeId])
   @@map("clientes_audit")
 }
+
+// ============================================================================
+// ingestao (spec 006) — 4ª migração de negócio. Event log imutável
+// `evento_origem` (dedup por (plataforma_origem, id_origem, hash)), registro por
+// etapa `evento_etapa` (pipeline canônico da visão 5.3; etapas 2–6 são no-op
+// nesta spec) e `ingestao_audit` (forma canônica do core, append-only — grava só
+// o reprocessamento manual). Ver docs/006-evento-origem-worker.md.
+// `evento_origem` é imutável: a aplicação nunca faz UPDATE de payload_bruto/
+// hash/plataforma_origem/id_origem/recebido_em.
+// ============================================================================
+
+enum EventoOrigemStatus {
+  pendente
+  ok
+  erro
+  revisar
+}
+
+enum EventoEtapaStatus {
+  pendente
+  processando
+  ok
+  erro
+  bloqueada
+  pulada
+}
+
+enum EtapaIngestao {
+  REGISTRAR
+  CLASSIFICAR
+  RESOLVER_PESSOA
+  UPSERT_TRANSACAO
+  RESOLVER_VINCULO
+  RESOLVER_OFERTA
+  PROJETAR_CONTRATO
+}
+
+enum Classificacao {
+  VENDA_PROPRIA
+  VENDA_AFILIADA
+  COBRANCA_TERCEIRIZADA
+  REEMBOLSO
+  RECORRENCIA
+  OUTRO
+  DESCONHECIDO
+}
+
+model EventoOrigem {
+  id               String             @id @db.Uuid
+  plataformaOrigem PlataformaOrigem   @map("plataforma_origem")
+  idOrigem         String             @map("id_origem")
+  tipoOrigem       String             @map("tipo_origem")
+  payloadBruto     Json               @map("payload_bruto")
+  eventoCanonico   Json?              @map("evento_canonico")
+  hash             String
+  recebidoEm       DateTime           @map("recebido_em") @db.Timestamptz(6)
+  ultimoRecebidoEm DateTime           @map("ultimo_recebido_em") @db.Timestamptz(6)
+  reentregas       Int                @default(0)
+  status           EventoOrigemStatus @default(pendente)
+  classificacao    Classificacao?
+  erroDetalhe      String?            @map("erro_detalhe")
+  criadoEm         DateTime           @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm     DateTime           @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  etapas EventoEtapa[]
+
+  @@unique([plataformaOrigem, idOrigem, hash], name: "evento_origem_chave_natural")
+  @@index([status, recebidoEm])
+  @@index([plataformaOrigem])
+  @@index([classificacao])
+  @@map("evento_origem")
+}
+
+model EventoEtapa {
+  id             String            @id @db.Uuid
+  eventoOrigemId String            @map("evento_origem_id") @db.Uuid
+  etapa          EtapaIngestao
+  status         EventoEtapaStatus @default(pendente)
+  resultado      Json?
+  erroDetalhe    String?           @map("erro_detalhe")
+  tentativas     Int               @default(0)
+  executadoEm    DateTime?         @map("executado_em") @db.Timestamptz(6)
+  criadoEm       DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime          @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  evento EventoOrigem @relation(fields: [eventoOrigemId], references: [id], onDelete: Restrict)
+
+  @@unique([eventoOrigemId, etapa])
+  @@index([status])
+  @@map("evento_etapa")
+}
+
+model IngestaoAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("ingestao_audit")
+}

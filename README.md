@@ -100,10 +100,11 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     prisma/      PrismaService / PrismaModule
     health/      GET /health (composição + banco)
     clientes/    pessoa + conta: identidade, dedup, merge (spec 005 — domain/ application/ infra/)
-    ingestao/ financeiro/ catalogo/ contratos/ crm/ marketing/ central/
+    ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/)
+    financeiro/ catalogo/ contratos/ crm/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
-  prisma/        schema.prisma (RBAC spec 004 + pessoa/conta spec 005) + migrações + seed.ts
+  prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -114,6 +115,7 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     auth/        AuthProvider, apiFetch (401 + 403), RequirePermissao, usePermissoesEfetivas
     admin/       Administração — abas Perfis e Usuários (spec 004)
     pessoas/ contas/  lista, detalhe, criação e merge (spec 005)
+    eventos/     painel de eventos de ingestão — revisar/erro + reprocessar (spec 006)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -144,7 +146,8 @@ npm run db:up
 #    bancos `pandora` e `pandora_test`
 
 # 4. Aplicar as migrações e semear o RBAC (spec 004 — 1ª migração de negócio;
-#    spec 005 acrescenta pessoa/conta na 2ª+3ª migração, sem seed de negócio)
+#    spec 005 acrescenta pessoa/conta na 2ª+3ª migração; spec 006 acrescenta
+#    evento_origem/evento_etapa na 4ª — todas sem seed de negócio)
 npm run prisma:migrate:deploy --workspace backend
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run prisma:migrate:dev --workspace backend` já roda o seed no fim
@@ -255,7 +258,24 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   `pessoa_origem_ref`). Catálogo RBAC ganha `pessoa:{ver,editar,merge}` +
   `conta:{ver,editar,merge}`. Painel: itens **Pessoas**/**Contas**. 0 dep nova.
   Ver [`docs/005-pessoa-identidade-dedup.md`](docs/005-pessoa-identidade-dedup.md).
-- ⏭️ Próxima: **006 — evento-origem-worker**.
+- ✅ **006 — evento-origem-worker**: 2º _bounded context_ de domínio (`ingestao`;
+  `CONTEXT_MODULES` segue 11). Materializa o Princípio IV — event log imutável + projeções.
+  Domínio puro: contrato **`EventoCanonico`** (schema `zod`) que os adapters 019–022 vão
+  produzir; `hashEvento` (`sha256` canônico — dedup por `(plataforma_origem, id_origem,
+  hash)`); `classificar` (enum **congelado** `Classificacao`; regras locais; o que depende de
+  casar Asaas↔Guru → `DESCONHECIDO`+`revisar`; nunca um palpite — regra #15); registro
+  `ETAPAS` **com dependências declaradas** + `planejarPassada` (puro). Etapas 2–6 são _no-op_
+  `pulada` — specs 018/023/024/025 plugam a real via `WorkerService.definirExecutor(...)` sem
+  tocar o worker. **Porta** `registrarEvento` (etapa 0, idempotente) + **worker** in-process
+  (`setInterval`, 0 dep) que roda cada etapa em transação própria; retry até
+  `INGESTAO_WORKER_MAX_TENTATIVAS` (3) → depois `erro` terminal; dependência não-`ok` →
+  `bloqueada`. 4ª migração Prisma (`evento_origem`/`evento_etapa`/`ingestao_audit`
+  append-only; `id_origem` nunca PK). 5 endpoints `/ingestao/eventos` (`evento:{ver,
+  reprocessar,ingerir}`); **sem `/webhooks/*`**. Env `INGESTAO_WORKER_{ENABLED,INTERVALO_MS,
+  MAX_TENTATIVAS,LOTE}` (desligado em teste). Painel: item **Eventos** (lista `revisar`/`erro`
+  + detalhe com payload e linha do tempo das etapas + Reprocessar). 0 dep nova.
+  Ver [`docs/006-evento-origem-worker.md`](docs/006-evento-origem-worker.md).
+- ⏭️ Próxima: **007 — crm-administracao** (início da Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

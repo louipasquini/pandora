@@ -44,6 +44,9 @@ const TODAS_PERMISSOES = [
   'conta:ver',
   'conta:editar',
   'conta:merge',
+  'evento:ver',
+  'evento:reprocessar',
+  'evento:ingerir',
 ];
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = typeof input === 'string' ? input : input.toString();
@@ -55,6 +58,13 @@ globalThis.fetch = (async (input: RequestInfo | URL) => {
   }
   // spec 005: listas vazias por padrão (testes específicos usam vi.stubGlobal)
   if (/\/pessoas(\?|$)/.test(url) || /\/contas(\?|$)/.test(url)) {
+    return new Response(
+      JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  // spec 006: painel de eventos vazio por padrão
+  if (/\/ingestao\/eventos(\?|$)/.test(url)) {
     return new Response(
       JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
