@@ -90,6 +90,25 @@ export const envSchema = z
     /** Máximo de eventos processados por passada. */
     INGESTAO_WORKER_LOTE: z.coerce.number().int().min(1).default(50),
 
+    // --- Administração do CRM (spec 007) ---
+    /**
+     * Chave de cifra em repouso do segredo de `integracao` — **base64 de 32
+     * bytes** (AES-256-GCM). OBRIGATÓRIA em todo `NODE_ENV`: sem default, o boot
+     * aborta nomeando a chave se ausente ou com tamanho errado (FR-043).
+     */
+    CRM_INTEGRACAO_CIFRA_KEY: z
+      .string()
+      .refine(
+        (v) => {
+          try {
+            return Buffer.from(v, 'base64').length === 32;
+          } catch {
+            return false;
+          }
+        },
+        { message: 'deve ser base64 de exatamente 32 bytes (AES-256)' },
+      ),
+
     // --- Contas de origem (7 blocos, 21 chaves, todas opcionais na 001) ---
     ...accountsShape,
   })

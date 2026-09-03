@@ -101,10 +101,11 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     health/      GET /health (composição + banco)
     clientes/    pessoa + conta: identidade, dedup, merge (spec 005 — domain/ application/ infra/)
     ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/)
-    financeiro/ catalogo/ contratos/ crm/ marketing/ central/
+    crm/         Administração do CRM: equipes, expediente, integrações, auditoria (spec 007 — domain/ application/ infra/)
+    financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
-  prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006) + migrações + seed.ts
+  prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin 007) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -138,6 +139,7 @@ cp .env.example .env
 #    edite só se for usar um Postgres próprio (troque DATABASE_URL / TEST_DATABASE_URL)
 #    OBRIGATÓRIAS desde a spec 003 (o boot aborta se faltarem, em qualquer NODE_ENV):
 #    SERVICE_JWT_SECRET (≥32), SERVICE_CLIENT_ID, SERVICE_CLIENT_SECRET (≥16).
+#    + spec 007: CRM_INTEGRACAO_CIFRA_KEY (base64 de 32 bytes — cifra do segredo de integração).
 #    O .env.example já traz placeholders válidos.
 
 # 3. Subir o Postgres de desenvolvimento (porta host 55432)
@@ -147,7 +149,8 @@ npm run db:up
 
 # 4. Aplicar as migrações e semear o RBAC (spec 004 — 1ª migração de negócio;
 #    spec 005 acrescenta pessoa/conta na 2ª+3ª migração; spec 006 acrescenta
-#    evento_origem/evento_etapa na 4ª — todas sem seed de negócio)
+#    evento_origem/evento_etapa na 4ª; spec 007 acrescenta equipe/expediente/
+#    integracao na 5ª — todas sem seed de negócio)
 npm run prisma:migrate:deploy --workspace backend
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run prisma:migrate:dev --workspace backend` já roda o seed no fim
@@ -275,7 +278,26 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   MAX_TENTATIVAS,LOTE}` (desligado em teste). Painel: item **Eventos** (lista `revisar`/`erro`
   + detalhe com payload e linha do tempo das etapas + Reprocessar). 0 dep nova.
   Ver [`docs/006-evento-origem-worker.md`](docs/006-evento-origem-worker.md).
-- ⏭️ Próxima: **007 — crm-administracao** (início da Fase 1 — CRM).
+- ✅ **007 — crm-administracao**: 3º _bounded context_ de domínio (`crm`; `CONTEXT_MODULES`
+  segue 11). Módulo de **Administração do CRM** (visão 8.11) — **sem reimplementar a 004**
+  (só estende o catálogo com `crm_admin`). Domínio puro: **`estaEmExpediente`** (livre de
+  locale — America/Sao_Paulo via `Intl` nativo, **0 dep**; feriado subtrai mesmo dentro da
+  janela; **união** global ∪ equipe ativa — CL-01; recorrente casa `(mês,dia)` exato, 29/02
+  não desloca — CL-04; sem janela → `false`); `cifra` (AES-256-GCM `node:crypto`); `api-key`
+  (`crm_`+40hex **só-hash**, revelada 1×); `mascararSegredo`. **5ª migração Prisma**
+  (`equipe` / `equipe_membro` com **índice único parcial** `WHERE saiu_em IS NULL` = ≤1
+  vínculo ativo por par / `janela_atendimento` — `hora_fim>hora_inicio`, CL-02 / `feriado` /
+  `integracao` — segredo **cifrado em repouso** ou só-hash, **nunca** volta em leitura;
+  contrato de segurança verificado por `grep` nos testes / `crm_admin_audit` append-only, só
+  delta, segredo como marcador). Chave `CRM_INTEGRACAO_CIFRA_KEY` (base64 32 bytes)
+  **obrigatória em todo `NODE_ENV`**. Catálogo RBAC ganha
+  `crm_admin:{ver,gerir_equipes,gerir_expediente,gerir_integracoes}` (`administrador` +
+  credencial de serviço de graça, 0 migração de dados). ~22 endpoints `/crm/admin/**` +
+  `GET /crm/admin/expediente`. Painel: item **CRM · Administração** (abas Equipes /
+  Expediente / Integrações; máscara de segredo; _reveal_ 1×; indicador "no expediente
+  agora?"). 0 dep nova, 1 migração (2 arquivos), +1 chave `.env`.
+  Ver [`docs/007-crm-administracao.md`](docs/007-crm-administracao.md).
+- ⏭️ Próxima: **008 — crm-lead** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

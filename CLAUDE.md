@@ -293,6 +293,48 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   canônica com regras locais), CL-04 (dependência declarada → `bloqueada`), CL-05 (retry até
   `MAX`, depois terminal) — dono do produto, 2026-09-03. Ver
   [`docs/006-evento-origem-worker.md`](docs/006-evento-origem-worker.md).
+- **crm (spec 007):** 3º _bounded context_ de domínio com entidade de negócio (`crm` deixa
+  de ser vazio; `CONTEXT_MODULES` segue 11). Módulo de **Administração do CRM** (visão Parte
+  8.11) — **sem reimplementar a 004** (perfis/permissões/usuários seguem lá; esta spec só
+  **estende o catálogo** com o recurso `crm_admin`). Divisão `domain/` (puro) · `application/`
+  · `infra/`. **Domínio puro** (`backend/src/crm/domain/`, sem banco): `expediente.ts` —
+  **`estaEmExpediente(instante, {janelas, feriados, equipe?}) → boolean`** puro/determinístico/
+  **livre de locale** (converte p/ America/Sao_Paulo via `Intl` nativo — **0 dep**, `timeZone`
+  explícito, matriz `TZ` na CI); início inclusivo/fim exclusivo; feriado subtrai **mesmo
+  dentro** da janela; recorrente casa `(mês,dia)` exato (29/02 não desloca — CL-04); **união**
+  global ∪ equipe ativa (CL-01, nunca _override_); sem janela aplicável → `false`.
+  `cifra.ts` (AES-256-GCM `node:crypto` — `cifrar`/`decifrar`, blob `base64(iv|tag|ct)`),
+  `api-key.ts` (`gerarApiKey()` → `crm_`+40hex + SHA-256 **só-hash**; revelada 1×),
+  `mascarar-segredo.ts` (`'••••••'+últimos4`; leitura nunca decifra). **5ª migração Prisma**
+  (`20260903184256_crm_admin` + `..184300_crm_admin_membro_unico`): `equipe` (sem `DELETE`,
+  só `ativo`), `equipe_membro` (FK `usuario` da 004; **índice único parcial**
+  `(equipe_id,usuario_id) WHERE saiu_em IS NULL` = ≤1 vínculo ativo por par; remoção =
+  `saiu_em`, nunca `DELETE`; usuário em N equipes), `janela_atendimento` (`equipe_id?` null=
+  global; `dia_semana` 0–6; `hora_*` `Int` minutos locais; `hora_fim > hora_inicio` — CL-02,
+  senão 422 `janela_invalida`; `DELETE` físico), `feriado` (`data @db.Date`; `recorrente_anual`;
+  `DELETE` físico), `integracao` (`tipo API_KEY|WEBHOOK|CONEXAO_INTERNA`, `alvo FINANCEIRO|
+  MARKETING|CENTRAL|EXTERNO`, `config` jsonb **sem segredo**, `ativo`, `ultimo_uso_em?`
+  reservado 011/019–022; segredo **cifrado em repouso** OU `segredo_hash` + `segredo_ultimos4`
+  claro p/ máscara; **sem `DELETE`**), `crm_admin_audit` (forma canônica do core,
+  `AJUSTE_MANUAL`, **append-only**, só delta real; segredo entra como **marcador**
+  `{segredo:'definido'|'rotacionado'}`, nunca valor). **Contrato de segurança** (teste e2e faz
+  `grep` do valor = 0): leitura projeta só `segredoDefinido` + `segredoMascarado`; API key
+  revelada 1× na criação/rotação; `rotacionar` de `CONEXAO_INTERNA` sem segredo → 409;
+  `config` com chave `token`/`secret`/`apiKey`/`password` → 422. Chave de cifra
+  **`CRM_INTEGRACAO_CIFRA_KEY`** (base64 32 bytes) **obrigatória em todo `NODE_ENV`** — boot
+  aborta sem ela; `core` re-exporta `cifraIntegracaoKey(cfg)`. **RBAC 004 estendido**:
+  catálogo ganha `crm_admin:{ver,gerir_equipes,gerir_expediente,gerir_integracoes}`
+  (`administrador` + credencial de serviço de graça, **0 migração de dados/seed**).
+  **~22 endpoints** `/crm/admin/**` (CRUD de config administrativa; leitura → `crm_admin:ver`,
+  escrita → `gerir_*`) + `GET /crm/admin/expediente?instante=&equipeId=` (reusa a função pura;
+  `instante` lixo → 400) + `GET /crm/admin/auditoria` (local; consolidado = 053). **Frontend**
+  `frontend/src/crm-admin/`: item **CRM · Administração** atrás de `crm_admin:ver`, rota sob
+  `RequirePermissao`, abas Equipes / Expediente / Integrações (controles de escrita só com
+  `gerir_*`; máscara de segredo; _reveal_ 1× não-persistente; indicador "no expediente
+  agora?"). **0 dep nova**, 1 migração (2 arquivos), +1 chave `.env`. Clarificações CL-01
+  (união global+equipe), CL-02 (rejeitar janela que cruza meia-noite), CL-03 (escala por
+  atendente fora de escopo — vai junto do 012), CL-04 (feriado 29/02 não desloca) — dono do
+  produto, 2026-09-03. Ver [`docs/007-crm-administracao.md`](docs/007-crm-administracao.md).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
   TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço
   (tela `/login` + `AuthProvider`/`useAuth` + `apiFetch` central que injeta `Authorization`
@@ -336,52 +378,51 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/006-evento-origem-worker/plan.md`](specs/006-evento-origem-worker/plan.md)
-(Fase 0 · spec 006 — evento_origem e worker de ingestão: event log canônico e pipeline em
-etapas. Preenche o _bounded context_ **`ingestao`** (vazio desde a 001; `CONTEXT_MODULES`
-segue **11**). **Domínio puro** (`src/ingestao/domain/`, sem banco): `evento-canonico.ts`
-(schema `zod` do contrato **`EventoCanonico`** que os adapters 019–022 vão produzir —
-núcleo obrigatório mínimo, resto opcional até a 018 apertar; `Dinheiro`/`Moeda` do core,
-`parseInstante`), `hash-evento.ts` (`sha256(canonicalize(payloadBruto))` — puro, livre de
-locale), `classificar.ts` (`classificar(canonico, tipoOrigem) → {classificacao, revisar,
-motivo?}`; enum **congelado** `Classificacao` = `VENDA_PROPRIA|VENDA_AFILIADA|
-COBRANCA_TERCEIRIZADA|REEMBOLSO|RECORRENCIA|OUTRO|DESCONHECIDO`; regras locais —
-estorno→REEMBOLSO, assinatura→RECORRENCIA, `ehAfiliada`→VENDA_AFILIADA, `referenciaExterna`
-→COBRANCA_TERCEIRIZADA; o que depende de casar Asaas↔Guru → `DESCONHECIDO`+`revisar` p/ a
-024/026; **nunca** um palpite — regra #15), `etapas.ts` (registro **ordenado com
-dependências declaradas**: `REGISTRAR(0)→CLASSIFICAR(1)→RESOLVER_PESSOA(2)→
-UPSERT_TRANSACAO(3)`; `RESOLVER_VINCULO(4)`/`RESOLVER_OFERTA(5)`/`PROJETAR_CONTRATO(6)`
-dependem de 3, não entre si), `plano-passada.ts` (puro: por etapa `EXECUTAR|BLOQUEADA|
-JA_OK|ESGOTADA` + `status` do evento derivado). **Etapas 2–6 são _no-op_ `pulada`
-`{implementadaNa: 18/23/24/25}`** — as specs futuras trocam o item do `ETAPAS` sem tocar o
-worker. **4ª migração Prisma** (`<ts>_ingestao`): `evento_origem` (PK UUID v7;
-`plataforma_origem` enum 7, `id_origem` **coluna comum, nunca PK**, `payload_bruto`/
-`evento_canonico?` Json, `hash`, `recebido_em`/`ultimo_recebido_em`, `reentregas`, `status
-∈ {pendente,ok,erro,revisar}` **derivado** das etapas, `classificacao?`, `erro_detalhe?`;
-`@@unique(plataforma_origem,id_origem,hash)` = dedup), `evento_etapa` (`@@unique(evento_
-origem_id,etapa)`; `status ∈ {pendente,processando,ok,erro,bloqueada,pulada}`, `resultado`
-Json, `tentativas`, `executado_em`), `ingestao_audit` (forma canônica do core,
-`AJUSTE_MANUAL`, append-only — só reprocessamento manual). **Worker** (`worker.service.ts`
-+ `worker.scheduler.ts`): `setInterval` **in-house** (0 dep — `@nestjs/schedule`
-rejeitado), env `INGESTAO_WORKER_{ENABLED,INTERVALO_MS,MAX_TENTATIVAS,LOTE}`, **desligado
-em teste**; `processarPassada()` seleciona elegíveis com `FOR UPDATE SKIP LOCKED`, roda
-cada etapa em **transação própria**, grava `evento_etapa` + deriva `status`; **idempotente**
-(etapa `ok`/`pulada` não reexecuta); etapa em `erro` re-tentada até
-`INGESTAO_WORKER_MAX_TENTATIVAS` (default 3) → depois `erro` **terminal** até reprocesso
-(CL-05); dependência não-`ok` → dependente `bloqueada` (CL-04). **Porta exportada**
-`RegistrarEventoService.registrarEvento(entrada) → {eventoId, criado}` (etapa 0: hash +
-upsert idempotente pela chave; reentrega → `criado:false` + `reentregas++`) — é o que os
-adapters 019–022 vão injetar. **5 endpoints** (`ingestao/eventos`): `POST` (`evento:ingerir`),
-`POST /processar` + `POST /{id}/reprocessar` (`evento:reprocessar`), `GET` + `GET /{id}`
-(`evento:ver`); **sem `/webhooks/*`** (019–022). **RBAC 004 estendido**: catálogo ganha
-`evento:{ver,reprocessar,ingerir}` (`administrador` + credencial de serviço concedem de
-graça). Frontend: item **Eventos** atrás de `evento:ver`, rota sob `RequirePermissao`,
-lista com filtros (conta/status/tipo/data, default `revisar`+`erro`) + detalhe com
-`payload_bruto` formatado e linha do tempo das 7 etapas + **Reprocessar**
-(`evento:reprocessar`); `apiFetch` já trata 401/403. **0 dep nova**, 1 migração, 5
-endpoints. Clarificações CL-01 (worker in-process + gatilho `POST /processar`), CL-02
-(porta in-process + endpoint HTTP), CL-03 (taxonomia canônica com regras locais), CL-04
-(dependência declarada → `bloqueada`), CL-05 (retry até `MAX`, depois terminal) —
-resolvidas com o dono do produto em 2026-09-03.
+Plano ativo: [`specs/007-crm-administracao/plan.md`](specs/007-crm-administracao/plan.md)
+(Fase 1 · spec 007 — Administração do CRM: primeira fatia do CRM e primeira entidade de
+negócio do _bounded context_ **`crm`** (vazio desde a 001; `CONTEXT_MODULES` segue **11**).
+Escopo da visão Parte 8.11, **sem reimplementar a 004** (perfis/permissões/usuários seguem
+lá — esta spec só **estende o catálogo** com o recurso `crm_admin`). Quatro subdomínios:
+**(1) Times/squads** — `equipe` (`nome`, `descricao`, `tipo COMERCIAL|ATENDIMENTO|CS`,
+`ativo`) + `equipe_membro` (FK `usuario` da 004, `papel LIDER|MEMBRO`, `entrou_em`/
+`saiu_em`; índice único **parcial** `WHERE saiu_em IS NULL` = ≤1 vínculo ativo por par;
+histórico de reentrada permitido; um usuário em N equipes). Só CRUD — atribuição automática
+é 010/012. **(2) Expediente** — `janela_atendimento` (`dia_semana` 0–6, `hora_inicio`/
+`hora_fim` como `Int` minutos locais, `equipe_id?` nullable = global, `ativo`; rejeita
+`hora_fim <= hora_inicio` — CL-02, sem cruzar meia-noite) + `feriado` (`data @db.Date`,
+`descricao`, `recorrente_anual` casa por `(mês,dia)` exato; 29/02 não desloca — CL-04;
+`equipe_id?` nullable). Função **pura** `estaEmExpediente(instante, {janelas, feriados,
+equipe?})` em `src/crm/domain/expediente.ts` — converte para America/Sao_Paulo via `Intl`
+nativo (**0 dep**, livre de locale, matriz `TZ` na CI), início inclusivo/fim exclusivo,
+feriado subtrai mesmo dentro da janela, **união** global+equipe (CL-01), equipe inativa
+ignorada, sem janela aplicável → `false`. `GET /crm/admin/expediente?instante=&equipeId=`
+reusa a função. **(3) Integrações** — `integracao` (`nome`, `tipo API_KEY|WEBHOOK|
+CONEXAO_INTERNA`, `alvo FINANCEIRO|MARKETING|CENTRAL|EXTERNO`, `config` jsonb **sem
+segredo**, `ativo`, `ultimo_uso_em` reservado p/ 011/019–022). Segredo **cifrado em
+repouso** (AES-256-GCM `node:crypto`, chave `CRM_INTEGRACAO_CIFRA_KEY` do `.env`,
+obrigatória) **ou** só-hash (SHA-256) para API key interna gerada (`crm_` + 40 hex, valor
+pleno revelado **1×** na criação/rotação). Leitura projeta só `segredoDefinido` +
+`segredoMascarado` (via `segredo_ultimos4` em claro) — valor **nunca** volta em `GET`, log
+ou auditoria. `POST /rotacionar`; sem OAuth/chamada externa (011/019–022/033 consomem).
+**(4) Auditoria** — `crm_admin_audit` na forma canônica do core (`montarRegistroAuditoria`,
+`AJUSTE_MANUAL`), **append-only**, **só delta real** (`PATCH` no-op → 0 linha); segredo
+entra como marcador (`{segredo:'definido'|'rotacionado'}`), nunca valor. **RBAC 004
+estendido**: catálogo (`src/auth/rbac/catalogo.ts`) ganha o recurso `crm_admin` —
+`crm_admin:{ver,gerir_equipes,gerir_expediente,gerir_integracoes}` (`administrador` +
+credencial de serviço concedem de graça, **0 migração de dados, 0 seed**). **5ª migração
+Prisma** (`<ts>_crm_admin`): `equipe`, `equipe_membro`, `janela_atendimento`, `feriado`,
+`integracao`, `crm_admin_audit` + enums `EquipeTipo`/`PapelEquipe`/`IntegracaoTipo`/
+`IntegracaoAlvo`; PK UUID v7 na app, `@db.Timestamptz`. **~22 endpoints** `/crm/admin/**`
+(CRUD de config administrativa — justificado como painel, não recurso de negócio; sem
+`DELETE` de `equipe`/`integracao` (só `ativo=false`), sem `DELETE` de membro (só `saiu_em`),
+`DELETE` físico só de `janela`/`feriado`); leitura → `crm_admin:ver`, escrita → `gerir_*`;
+403 ≠ 401. **Frontend** `frontend/src/crm-admin/`: item **CRM · Administração** atrás de
+`crm_admin:ver`, rota sob `RequirePermissao`, abas Equipes / Expediente / Integrações
+(controles de escrita só com `gerir_*`; máscara de segredo; _reveal_ 1× não-persistente;
+indicador "no expediente agora?"). **0 dep nova** (`date-fns-tz`/`luxon` avaliados e
+rejeitados — `Intl` basta), **1 migração**, **+1 chave `.env`**. `CONTEXT_MODULES` segue
+11. Clarificações CL-01 (união global+equipe), CL-02 (rejeitar janela que cruza meia-noite),
+CL-03 (escala por atendente fora de escopo — vai junto do 012), CL-04 (feriado 29/02 não
+desloca) — resolvidas com o dono do produto em 2026-09-03.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
 <!-- SPECKIT END -->
