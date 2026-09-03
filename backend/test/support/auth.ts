@@ -22,3 +22,16 @@ export function issueTestToken(
 export function authHeader(token?: string): { Authorization: string } {
   return { Authorization: `Bearer ${token ?? issueTestToken()}` };
 }
+
+/**
+ * JWT de serviço válido cujo `sub` é o id de um `Usuario` (spec 004) — para
+ * exercitar um sujeito **não** administrador (permissões vêm dos perfis dele).
+ */
+export function issueUserToken(usuarioId: string): string {
+  return issueTestToken({ subject: usuarioId });
+}
+
+/** `{ Authorization: 'Bearer <token de usuário>' }`. */
+export function userAuthHeader(usuarioId: string): { Authorization: string } {
+  return { Authorization: `Bearer ${issueUserToken(usuarioId)}` };
+}

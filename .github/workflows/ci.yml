@@ -54,8 +54,12 @@ jobs:
       - name: Prisma generate
         run: npm run prisma:generate --workspace backend
 
-      - name: Apply migrations (baseline)
-        run: npm run prisma:migrate:deploy --workspace backend
+      - name: Apply migrations + seed RBAC
+        run: |
+          npm run prisma:migrate:deploy --workspace backend
+          npm run --workspace backend prisma:seed
+        # e2e recria schema isolado por execução e roda migrate+seed lá (test/setup-db.ts);
+        # este passo cobre o schema `public` de pandora_test.
 
       - name: Lint
         run: npm run lint

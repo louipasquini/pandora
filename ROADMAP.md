@@ -80,11 +80,30 @@ Precedem tudo. Nenhuma feature de produto começa antes desta fase fechar.
   [`specs/003-auth-servico-jwt/`](specs/003-auth-servico-jwt/) e
   [`docs/003-auth-servico-jwt.md`](docs/003-auth-servico-jwt.md).
 
-- [ ] **004 — rbac**
-  Perfis de acesso e permissões granulares (usado por CRM, Marketing e Central). Guard por
-  permissão. Regra de quem cria/edita/vê `lead`. Log de auditoria de ações administrativas.
-  Frontend: administração de perfis (mínima).
-  Racional de estar aqui: o CRM (fase 1) depende de RBAC desde a primeira spec.
+- [x] **004 — rbac** — ✅ implementada e validada (2026-09-03)
+  Matriz de autorização **única** por cima do JWT da 003 (`auth` segue infra transversal;
+  `CONTEXT_MODULES` = 11). **Catálogo de permissões no código** (`recurso:acao` congelado:
+  `perfil:administrar` + `lead:{criar,editar,ver_todos,ver_proprios}`; `assertCatalogoCoerente()`
+  aborta no boot). **1ª migração de negócio** do projeto: Prisma `usuario` / `perfil` /
+  `perfil_permissao` / `usuario_perfil` / `rbac_audit` (PK UUID v7 na app, `@db.Timestamptz`);
+  `prisma/seed.ts` idempotente cria o perfil de sistema `administrador` (dev/e2e/CI).
+  **`PermissionGuard` = 2º `APP_GUARD`** (depois do `JwtAuthGuard`): `@RequerPermissao(...)`
+  (E) + `@AutenticadoBasta()`; rota autenticada **sem marcador → 403** (fechado por omissão,
+  CL-03); 403 ≠ 401, corpo genérico. **Permissões efetivas resolvidas a cada requisição**
+  (`SujeitoRbacService`, CL-02, sem _staleness_; JWT segue fino): credencial de serviço →
+  `administrador` = catálogo inteiro (special-case, não depende do seed). Endpoints
+  `/admin/rbac/*` (todos sob `perfil:administrar`): `GET permissoes`,
+  `GET/POST/PATCH/DELETE perfis`, `GET/POST usuarios`, `GET/PUT usuarios/{id}/perfis`;
+  `+ GET /auth/permissoes-efetivas` (`@AutenticadoBasta`). Toda escrita audita em
+  `rbac_audit` via `montarRegistroAuditoria` do core — só _delta_ real, append-only (1ª
+  tabela `_audit` do projeto; painel = 053). Frontend: item **Administração** (abas
+  Perfis/Usuários) atrás de `perfil:administrar`; `RequirePermissao` + `usePermissoesEfetivas`
+  (zero permissão _hardcoded_); `apiFetch` trata **403** num ponto único (banner, não
+  desloga). **0 dep nova**, 1 migração, 10 endpoints (5 de escrita). Decisões CL-01
+  (Postgres+Prisma), CL-02 (resolução por requisição), CL-03 (negar por padrão) + criação
+  de `usuario` (`POST`+`GET`) + abas do painel — resolvidas com o dono do produto em
+  2026-09-03. 201 testes unitários backend + 31 frontend + 59 e2e verdes. Detalhe:
+  [`specs/004-rbac/`](specs/004-rbac/) e [`docs/004-rbac.md`](docs/004-rbac.md).
 
 - [ ] **005 — pessoa-identidade-dedup**
   Entidade `pessoa` (ex-`Cliente`): identidade, contatos, endereço, histórico de e-mails/

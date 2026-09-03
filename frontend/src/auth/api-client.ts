@@ -13,9 +13,11 @@ const BASE_URL =
 
 type TokenGetter = () => string | null;
 type UnauthorizedHandler = () => void;
+type ForbiddenHandler = () => void;
 
 let getToken: TokenGetter = () => null;
 let onUnauthorized: UnauthorizedHandler = () => {};
+let onForbidden: ForbiddenHandler = () => {};
 let jaExpirou = false;
 
 export function setTokenGetter(fn: TokenGetter): void {
@@ -23,6 +25,13 @@ export function setTokenGetter(fn: TokenGetter): void {
 }
 export function setUnauthorizedHandler(fn: UnauthorizedHandler): void {
   onUnauthorized = fn;
+}
+/**
+ * 403 = autenticado, sem permissão (spec 004). Diferente do 401: **não** limpa o
+ * token, **não** desloga, **não** navega — só sinaliza um aviso na UI.
+ */
+export function setForbiddenHandler(fn: ForbiddenHandler): void {
+  onForbidden = fn;
 }
 /** Chamado após um login bem-sucedido — rearma o gate de expiração. */
 export function resetAuthGate(): void {
@@ -53,6 +62,10 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       onUnauthorized();
     }
     throw new ApiError(401, await corpoSeguro(res));
+  }
+  if (res.status === 403) {
+    onForbidden();
+    throw new ApiError(403, await corpoSeguro(res));
   }
   if (!res.ok) {
     throw new ApiError(res.status, await corpoSeguro(res));
