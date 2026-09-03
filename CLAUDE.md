@@ -178,9 +178,17 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   (decisão de 2026-09-01 — substitui o Python/FastAPI da v1; código e ~329 testes da v1
   não são reaproveitados). Um módulo NestJS por bounded context (`backend/src/<contexto>/`);
   lista canônica em `backend/src/app.context-modules.ts`. Config tipada por zod em
-  `backend/src/config/env.schema.ts` (falha cedo, sem default silencioso). `core` já expõe
-  `EntidadeId` (Value Object, UUID v7), `uuidv7()` e o enum `PlataformaOrigem` (7 contas);
-  `Dinheiro`/tempo/status canônico entram na spec 002.
+  `backend/src/config/env.schema.ts` (falha cedo, sem default silencioso); o `core` é o dono
+  do contrato de config (re-export tipado) e uma regra ESLint barra `process.env` fora de
+  `config/`/`core/`/`main.ts`. `core` expõe (barrel `core.module.ts`): `EntidadeId` (UUID
+  v7) + `uuidv7()`, `PlataformaOrigem` (7 contas), **`Dinheiro`** (`bigint` valor interno,
+  escala ×10000, sem float) + **`Moeda`** (código ISO 4217 validado) + `ratear`/
+  `ratearPorPesos` (`multiplicarPorEscalar` só fator inteiro), **`parseInstante`** (parser
+  de borda tolerante e livre de locale) + `agoraUtc()`, **`StatusTransacaoCanonico`** /
+  **`StatusContratoCanonico`** + funções puras `liberaAcesso` / `contaComoReceita` /
+  `contratoLiberaAcesso` + `paraStatusTransacaoCanonico` (rede de segurança), e a base de
+  auditoria `EntidadeAuditavel` / `RegistroAuditoria` / `montarRegistroAuditoria` (contrato,
+  sem tabela). Ver [`docs/002-core-value-objects.md`](docs/002-core-value-objects.md).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
   TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço.
   Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
@@ -214,10 +222,12 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/001-bootstrap-projeto/plan.md`](specs/001-bootstrap-projeto/plan.md)
-(Fase 0 · spec 001 — esqueleto do monorepo: npm workspaces, backend NestJS 11 com módulo
-por bounded context, Prisma 6 + PostgreSQL, config zod por conta, harness de teste
-schema-per-worker, CI GitHub Actions, frontend Vite + React 19 + Tailwind v4 + TanStack
-Query + React Router). Artefatos: `research.md`, `data-model.md`, `contracts/`,
-`quickstart.md` na mesma pasta.
+Plano ativo: [`specs/002-core-value-objects/plan.md`](specs/002-core-value-objects/plan.md)
+(Fase 0 · spec 002 — primitivas canônicas do `core`, sem banco/endpoint/frontend:
+`Dinheiro` `bigint` ×10000 + `Moeda` ISO 4217 validado; `parseInstante` de borda tolerante
+livre de locale + `agoraUtc`; enums `StatusTransacaoCanonico`/`StatusContratoCanonico` com
+funções puras `liberaAcesso`/`contaComoReceita`/`contratoLiberaAcesso` + rede de segurança
+`paraStatusTransacaoCanonico`; contrato `EntidadeAuditavel` + `RegistroAuditoria`;
+consolidação da config tipada no `core` + regra ESLint `no-process-env`). Artefatos:
+`research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
 <!-- SPECKIT END -->
