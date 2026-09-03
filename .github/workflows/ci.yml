@@ -66,3 +66,23 @@ jobs:
 
       - name: Test (e2e — backend, Postgres real)
         run: npm run test:e2e
+
+  timezone-matrix:
+    # Prova que o parser de tempo do `core` (spec 002) é livre de locale:
+    # a mesma suíte tem de passar idêntica sob qualquer TZ da máquina.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tz: ['UTC', 'America/Sao_Paulo', 'Asia/Tokyo']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Test (core/tempo) sob TZ=${{ matrix.tz }}
+        run: npm test --workspace backend -- tempo
+        env:
+          TZ: ${{ matrix.tz }}
