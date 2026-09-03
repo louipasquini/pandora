@@ -8,6 +8,7 @@ import '@fontsource/inter/600.css';
 import './theme/index.css';
 import { router } from './app/router';
 import { queryClient } from './app/query-client';
+import { AuthProvider } from './auth/AuthProvider';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('#root não encontrado');
@@ -15,7 +16,9 @@ if (!rootEl) throw new Error('#root não encontrado');
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

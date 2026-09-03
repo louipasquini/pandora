@@ -34,6 +34,11 @@ jobs:
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/pandora_test
       PORT: "3001"
       NODE_ENV: development
+      # Credenciais de serviço — obrigatórias a partir da spec 003 (fixtures de CI).
+      SERVICE_JWT_SECRET: ci-service-jwt-secret-com-pelo-menos-32-caracteres
+      SERVICE_CLIENT_ID: pandora-panel
+      SERVICE_CLIENT_SECRET: ci-service-client-secret-16
+      CORS_ORIGIN: http://localhost:5174
 
     steps:
       - uses: actions/checkout@v4

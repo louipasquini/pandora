@@ -189,9 +189,21 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   `contratoLiberaAcesso` + `paraStatusTransacaoCanonico` (rede de segurança), e a base de
   auditoria `EntidadeAuditavel` / `RegistroAuditoria` / `montarRegistroAuditoria` (contrato,
   sem tabela). Ver [`docs/002-core-value-objects.md`](docs/002-core-value-objects.md).
+- **Auth (spec 003):** módulo de **infra transversal** `backend/src/auth/` (não é um 12º
+  bounded context; `CONTEXT_MODULES` segue com 11). `POST /auth/token` troca
+  `SERVICE_CLIENT_ID`/`SERVICE_CLIENT_SECRET` por um **JWT HS256** (`SERVICE_JWT_SECRET`,
+  TTL `SERVICE_JWT_TTL` default 12 h / teto 24 h, _stateless_, sem refresh). `JwtAuthGuard`
+  é `APP_GUARD` — API **fechada por padrão**, com allowlist explícita: `@Public()` em
+  `/health` e `/auth/token` + prefixo `/webhooks/`; `NotFoundAuthFilter` faz caminho
+  inexistente sem token → 401. `WebhookAuthenticator` (exportado) verifica
+  `<PLATAFORMA>_WEBHOOK_TOKEN` por conta em tempo constante, separado do JWT. `SERVICE_*`
+  agora **obrigatórias** no `env.schema` em todo `NODE_ENV`. Dep nova: `@nestjs/jwt`. Ver
+  [`docs/003-auth-servico-jwt.md`](docs/003-auth-servico-jwt.md).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
-  TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço.
-  Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
+  TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço
+  (tela `/login` + `AuthProvider`/`useAuth` + `apiFetch` central que injeta `Authorization`
+  e trata 401 num ponto único; token em `localStorage`). `vite.config.ts` lê o `.env` da
+  raiz (`envDir: '..'`). Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
   nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`.
 - **Testes:** unitários sem banco; e2e do backend contra Postgres real, schema isolado por
@@ -222,12 +234,19 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/002-core-value-objects/plan.md`](specs/002-core-value-objects/plan.md)
-(Fase 0 · spec 002 — primitivas canônicas do `core`, sem banco/endpoint/frontend:
-`Dinheiro` `bigint` ×10000 + `Moeda` ISO 4217 validado; `parseInstante` de borda tolerante
-livre de locale + `agoraUtc`; enums `StatusTransacaoCanonico`/`StatusContratoCanonico` com
-funções puras `liberaAcesso`/`contaComoReceita`/`contratoLiberaAcesso` + rede de segurança
-`paraStatusTransacaoCanonico`; contrato `EntidadeAuditavel` + `RegistroAuditoria`;
-consolidação da config tipada no `core` + regra ESLint `no-process-env`). Artefatos:
+Plano ativo: [`specs/003-auth-servico-jwt/plan.md`](specs/003-auth-servico-jwt/plan.md)
+(Fase 0 · spec 003 — autenticação de serviço JWT da API interna. Backend: `POST /auth/token`
+(troca `SERVICE_CLIENT_ID`/`SERVICE_CLIENT_SECRET` por JWT HS256 assinado com
+`SERVICE_JWT_SECRET`, TTL 12 h / env `SERVICE_JWT_TTL`, teto 24 h, _stateless_, sem
+persistência/refresh); `JwtAuthGuard` global (`APP_GUARD`) — API fechada por padrão, com
+allowlist explícita `@Public()` (`/health`, `/auth/token`) + prefixo `/webhooks/`;
+`WebhookAuthenticator` — primitiva de token de webhook por conta (`<PLATAFORMA>_WEBHOOK_TOKEN`,
+comparação em tempo constante), separada do JWT, sem rota `/webhooks/*` ainda; `SERVICE_*`
+promovidas a obrigatórias no `env.schema` em todo ambiente; _rate limiting_ leve in-house
+no `/auth/token`. `auth` é módulo de **infra transversal**, não um 12º bounded context
+(`CONTEXT_MODULES` segue com 11). Frontend: tela `/login`, `AuthProvider` + `localStorage`
+(`pandora.token`), `RequireAuth`, `apiFetch` central que injeta `Authorization` e trata 401
+num ponto único. +1 dep backend (`@nestjs/jwt`); 0 dep frontend; 0 migração; 1 endpoint.
+Decisões CL-01 (TTL 12 h) e CL-02 (`localStorage`) resolvidas em 2026-09-03. Artefatos:
 `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
 <!-- SPECKIT END -->

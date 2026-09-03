@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router';
 import { NAV_ITEMS } from './nav-items';
+import { useAuth } from '../auth/auth-context';
 
 /**
  * Shell de layout: cabeçalho da marca + navegação lateral + área de conteúdo
@@ -7,6 +8,7 @@ import { NAV_ITEMS } from './nav-items';
  * (FR-024, FR-028).
  */
 export function AppShell() {
+  const { logout } = useAuth();
   return (
     <div className="grid min-h-screen grid-rows-[auto_1fr] md:grid-cols-[16rem_1fr] md:grid-rows-[auto_1fr]">
       <header
@@ -20,6 +22,13 @@ export function AppShell() {
         />
         <span className="text-lg font-semibold tracking-tight">Projeto Pandora</span>
         <span className="ml-auto text-sm opacity-80">Amor em Nutrir</span>
+        <button
+          type="button"
+          onClick={() => logout()}
+          className="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
+        >
+          Sair
+        </button>
       </header>
 
       <nav

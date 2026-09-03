@@ -130,6 +130,9 @@ npm ci        # ou: npm install
 # 2. Configuração
 cp .env.example .env
 #    edite só se for usar um Postgres próprio (troque DATABASE_URL / TEST_DATABASE_URL)
+#    OBRIGATÓRIAS desde a spec 003 (o boot aborta se faltarem, em qualquer NODE_ENV):
+#    SERVICE_JWT_SECRET (≥32), SERVICE_CLIENT_ID, SERVICE_CLIENT_SECRET (≥16).
+#    O .env.example já traz placeholders válidos.
 
 # 3. Subir o Postgres de desenvolvimento (porta host 55432)
 npm run db:up
@@ -145,7 +148,13 @@ npm run dev --workspace frontend
 
 # 6. Verificar
 curl http://localhost:3001/health          # {"status":"ok","db":"up","contexts":[... 11 ...]}
-#    abrir http://localhost:5174            # shell da marca com a navegação
+#    abrir http://localhost:5174            # cai em /login — entre com SERVICE_CLIENT_ID/SECRET
+#    token de serviço fora do painel:
+curl -sX POST http://localhost:3001/auth/token \
+  -H 'content-type: application/json' \
+  -d '{"client_id":"pandora-panel","client_secret":"<SERVICE_CLIENT_SECRET>"}'
+#    → {"access_token":"<jwt>","token_type":"Bearer","expires_in":43200}
+#    use em Authorization: Bearer <jwt> nas rotas protegidas
 
 # 7. Qualidade e testes
 npm run lint && npm run typecheck && npm run build
@@ -204,7 +213,15 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   `RegistroAuditoria`; config tipada consolidada no `core` + regra ESLint `no-process-env`.
   113 testes unitários; matriz de `TZ` na CI. Ver
   [`docs/002-core-value-objects.md`](docs/002-core-value-objects.md).
-- ⏭️ Próxima: **003 — auth-servico-jwt** (`POST /auth/token` → JWT, guard, tela de Login).
+- ✅ **003 — auth-servico-jwt**: autenticação de serviço da API interna. `POST /auth/token`
+  (credenciais de serviço → JWT HS256 _stateless_, TTL 12 h / teto 24 h, sem refresh);
+  `JwtAuthGuard` global — API fechada por padrão, allowlist `@Public()` (`/health`,
+  `/auth/token`) + prefixo `/webhooks/`; `WebhookAuthenticator` (token de webhook por conta,
+  separado do JWT). `SERVICE_*` promovidas a obrigatórias no `env.schema`. Painel: tela
+  `/login`, `AuthProvider`/`useAuth`, `apiFetch` central (injeta `Authorization`, trata 401
+  num ponto único), token em `localStorage`. Dep nova `@nestjs/jwt`; 0 migração. Ver
+  [`docs/003-auth-servico-jwt.md`](docs/003-auth-servico-jwt.md).
+- ⏭️ Próxima: **004 — rbac** (perfis de acesso, permissões granulares, guard por permissão).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
