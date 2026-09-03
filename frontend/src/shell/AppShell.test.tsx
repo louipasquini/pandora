@@ -1,15 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { AppShell } from './AppShell';
+import { semearToken } from '../test/auth-helpers';
+import { ComAuth } from '../test/ComAuth';
 
 /** US4: o shell tem cabeçalho, navegação e área de conteúdo. */
 describe('AppShell', () => {
   function renderShell() {
+    semearToken();
     const router = createMemoryRouter(
       [{ path: '/', element: <AppShell />, children: [{ index: true, element: <p>conteúdo</p> }] }],
       { initialEntries: ['/'] },
     );
-    return render(<RouterProvider router={router} />);
+    return render(
+      <ComAuth>
+        <RouterProvider router={router} />
+      </ComAuth>,
+    );
   }
 
   it('mostra o cabeçalho da marca', () => {
