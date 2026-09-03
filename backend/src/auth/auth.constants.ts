@@ -26,3 +26,20 @@ export const PUBLIC_PATH_PREFIXES = ['/webhooks/'] as const;
 
 /** Chave de `localStorage` onde o painel guarda o token (referência p/ o frontend). */
 export const TOKEN_STORAGE_KEY = 'pandora.token';
+
+// --- RBAC (spec 004) ---
+
+/** Metadata-key do `@RequerPermissao(...)` (permissões exigidas por um handler). */
+export const PERM_METADATA_KEY = 'pandora:rbac:requer';
+
+/** Metadata-key do `@AutenticadoBasta()` (rota que exige só JWT válido, sem permissão). */
+export const AUTENTICADO_BASTA_KEY = 'pandora:rbac:autenticadoBasta';
+
+/**
+ * Id fixo do perfil de sistema `administrador`. É `de_sistema`, imutável, e a
+ * resolução de permissões o trata como "concede o catálogo inteiro" (não depende
+ * das linhas de `perfil_permissao` estarem sincronizadas — ver `resolver-permissoes.ts`).
+ */
+export const PERFIL_ADMIN_ID = '01a06769-2c28-7623-986e-6c6b610505f8';
+export const PERFIL_ADMIN_NOME = 'Administrador';
+export const PERFIL_ADMIN_NOME_NORMALIZADO = 'administrador';

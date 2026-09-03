@@ -199,15 +199,37 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   `<PLATAFORMA>_WEBHOOK_TOKEN` por conta em tempo constante, separado do JWT. `SERVICE_*`
   agora **obrigatórias** no `env.schema` em todo `NODE_ENV`. Dep nova: `@nestjs/jwt`. Ver
   [`docs/003-auth-servico-jwt.md`](docs/003-auth-servico-jwt.md).
+- **RBAC (spec 004):** dentro do `auth` (`backend/src/auth/rbac/`, ainda infra transversal;
+  `CONTEXT_MODULES` = 11). **Catálogo de permissões no código** (`catalogo.ts`,
+  `recurso:acao` congelado; `perfil:administrar` + `lead:{criar,editar,ver_todos,ver_proprios}`;
+  `assertCatalogoCoerente()` aborta no boot). **1ª migração de negócio** do projeto:
+  Prisma `usuario` / `perfil` / `perfil_permissao` / `usuario_perfil` / `rbac_audit`
+  (PK UUID v7 na app, `@db.Timestamptz`); `prisma/seed.ts` idempotente cria o perfil de
+  sistema `administrador` (dev/e2e/CI). **`PermissionGuard` é o 2º `APP_GUARD`** (depois do
+  `JwtAuthGuard`): `@RequerPermissao(...)` (E) e `@AutenticadoBasta()`; rota autenticada
+  **sem marcador → 403** (fechado por omissão, CL-03); 403 ≠ 401, corpo genérico.
+  **Permissões efetivas resolvidas a cada requisição** (`SujeitoRbacService`, CL-02, sem
+  _staleness_): credencial de serviço → `administrador` = catálogo inteiro (special-case,
+  não depende do seed). Endpoints `/admin/rbac/*` (todos sob `perfil:administrar`):
+  `GET permissoes`, `GET/POST/PATCH/DELETE perfis`, `GET/POST usuarios`,
+  `GET/PUT usuarios/{id}/perfis`; `+ GET /auth/permissoes-efetivas` (`@AutenticadoBasta`).
+  Toda escrita audita em `rbac_audit` via `montarRegistroAuditoria` do core (só _delta_
+  real; append-only; 1ª tabela `_audit` do projeto, painel = spec 053). 0 dep nova.
+  Ver [`docs/004-rbac.md`](docs/004-rbac.md).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
   TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço
   (tela `/login` + `AuthProvider`/`useAuth` + `apiFetch` central que injeta `Authorization`
-  e trata 401 num ponto único; token em `localStorage`). `vite.config.ts` lê o `.env` da
-  raiz (`envDir: '..'`). Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
+  e trata 401 num ponto único; token em `localStorage`). RBAC (spec 004): item de navegação
+  **Administração** (abas Perfis/Usuários) atrás de `perfil:administrar`; `RequirePermissao`
+  + `usePermissoesEfetivas` (consome `/auth/permissoes-efetivas`, zero permissão
+  _hardcoded_); `apiFetch` trata **403** num ponto único (banner, **não** desloga).
+  `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
+  `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
   nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`.
 - **Testes:** unitários sem banco; e2e do backend contra Postgres real, schema isolado por
-  execução (`backend/test/setup-db.ts`). CI: `.github/workflows/ci.yml`.
+  execução (`backend/test/setup-db.ts` roda `prisma migrate deploy` + `prisma db seed`).
+  CI: `.github/workflows/ci.yml`.
 - **Identidade visual:** azul `#2E4E78`, coral `#EC5F6A`, menta `#68C0B2`, fonte Inter.
 - Trocar qualquer peça exige emenda da constituição e o Princípio II.
 
@@ -234,19 +256,29 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/003-auth-servico-jwt/plan.md`](specs/003-auth-servico-jwt/plan.md)
-(Fase 0 · spec 003 — autenticação de serviço JWT da API interna. Backend: `POST /auth/token`
-(troca `SERVICE_CLIENT_ID`/`SERVICE_CLIENT_SECRET` por JWT HS256 assinado com
-`SERVICE_JWT_SECRET`, TTL 12 h / env `SERVICE_JWT_TTL`, teto 24 h, _stateless_, sem
-persistência/refresh); `JwtAuthGuard` global (`APP_GUARD`) — API fechada por padrão, com
-allowlist explícita `@Public()` (`/health`, `/auth/token`) + prefixo `/webhooks/`;
-`WebhookAuthenticator` — primitiva de token de webhook por conta (`<PLATAFORMA>_WEBHOOK_TOKEN`,
-comparação em tempo constante), separada do JWT, sem rota `/webhooks/*` ainda; `SERVICE_*`
-promovidas a obrigatórias no `env.schema` em todo ambiente; _rate limiting_ leve in-house
-no `/auth/token`. `auth` é módulo de **infra transversal**, não um 12º bounded context
-(`CONTEXT_MODULES` segue com 11). Frontend: tela `/login`, `AuthProvider` + `localStorage`
-(`pandora.token`), `RequireAuth`, `apiFetch` central que injeta `Authorization` e trata 401
-num ponto único. +1 dep backend (`@nestjs/jwt`); 0 dep frontend; 0 migração; 1 endpoint.
-Decisões CL-01 (TTL 12 h) e CL-02 (`localStorage`) resolvidas em 2026-09-03. Artefatos:
-`research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+Plano ativo: [`specs/004-rbac/plan.md`](specs/004-rbac/plan.md)
+(Fase 0 · spec 004 — RBAC: perfis de acesso e permissões granulares, a matriz **única** que
+CRM/Marketing/Central consomem. Estende o `auth` da 003 (segue infra transversal;
+`CONTEXT_MODULES` = 11). **Catálogo de permissões no código** (`src/auth/rbac/catalogo.ts`,
+`recurso:acao`, congelado, `assertCatalogoCoerente()` aborta no boot) — nesta spec:
+`perfil:administrar` + `lead:{criar,editar,ver_todos,ver_proprios}`. **Persistência Prisma**
+(1ª migração de negócio do projeto): `usuario`, `perfil`, `perfil_permissao`,
+`usuario_perfil`, `rbac_audit` (PK UUID v7 na app; `@db.Timestamptz`); `prisma/seed.ts`
+idempotente cria o perfil de sistema `administrador` (dev/e2e/CI). **Guard**: `@RequerPermissao(...)`
+(E) + `@AutenticadoBasta()` + `PermissionGuard` como **2º `APP_GUARD`** (depois do
+`JwtAuthGuard`); rota autenticada **sem marcador → 403** (CL-03, fechado por omissão);
+403 ≠ 401, corpo genérico. **Resolução por requisição** (CL-02, sem _staleness_; JWT segue
+fino): credencial de serviço → `administrador` = catálogo inteiro (special-case, não depende
+do seed); `sub` de `Usuario` → união das permissões dos perfis. **Endpoints** (`/admin/rbac/*`,
+todos sob `perfil:administrar`): `GET /permissoes`, `GET/POST/PATCH/DELETE /perfis`,
+`GET/POST /usuarios`, `GET/PUT /usuarios/{id}/perfis` + `GET /auth/permissoes-efetivas`
+(`@AutenticadoBasta`); toda escrita audita em `rbac_audit` via `montarRegistroAuditoria` do
+core, só _delta_ real. **Auditoria** `_audit` persistida é 1ª do projeto (painel = 053).
+Frontend: item **Administração** (abas Perfis | Usuários) atrás de `perfil:administrar`;
+`RequirePermissao` + `usePermissoesEfetivas` (consome `/auth/permissoes-efetivas`, zero
+permissão _hardcoded_); `apiFetch` central ganha tratamento de **403** (banner, **não**
+desloga). **0 dep nova**, 1 migração, 10 endpoints (5 de escrita). Clarificações CL-01
+(Postgres+Prisma), CL-02 (resolução por requisição), CL-03 (negar por padrão) + criação de
+`usuario` (`POST`+`GET`) + abas do painel — resolvidas com o dono do produto em 2026-09-03.
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
 <!-- SPECKIT END -->
