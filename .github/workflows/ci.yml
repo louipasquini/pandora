@@ -39,6 +39,9 @@ jobs:
       SERVICE_CLIENT_ID: pandora-panel
       SERVICE_CLIENT_SECRET: ci-service-client-secret-16
       CORS_ORIGIN: http://localhost:5174
+      # Worker de ingestão (spec 006): sem laço de fundo na CI — a suíte e2e
+      # dispara passadas explícitas.
+      INGESTAO_WORKER_ENABLED: "false"
 
     steps:
       - uses: actions/checkout@v4
