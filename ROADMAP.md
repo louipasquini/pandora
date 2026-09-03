@@ -139,13 +139,38 @@ Precedem tudo. Nenhuma feature de produto começa antes desta fase fechar.
   Detalhe: [`specs/005-pessoa-identidade-dedup/`](specs/005-pessoa-identidade-dedup/) e
   [`docs/005-pessoa-identidade-dedup.md`](docs/005-pessoa-identidade-dedup.md).
 
-- [ ] **006 — evento-origem-worker**
-  `evento_origem` imutável (`plataforma_origem`, `id_origem`, `tipo_origem`,
-  `payload_bruto jsonb`, `hash`, `recebido_em`, `status ∈ {pendente,ok,erro,revisar}`,
-  `erro_detalhe`), dedup `(plataforma_origem, id_origem, hash)`. Contrato `EventoCanonico`
-  (dataclass). Worker idempotente que lê pendentes e chama o pipeline em etapas
-  independentes com commit próprio. Painel de `revisar`/`erro`. É o backbone que CRM
-  (Workflow) e Marketing consomem. Frontend: painel de eventos em revisão.
+- [x] **006 — evento-origem-worker** — ✅ implementada e validada (2026-09-03)
+  2º _bounded context_ de domínio com entidade de negócio (`ingestao` deixa de ser vazio;
+  `CONTEXT_MODULES` segue 11). Materializa o Princípio IV. **Domínio puro**
+  (`backend/src/ingestao/domain/`, sem banco): `evento-canonico.ts` (schema `zod` do contrato
+  **`EventoCanonico`** que os adapters 019–022 vão produzir), `hash-evento.ts`
+  (`sha256(canonicalizar(payload))` — determinístico, livre de locale; dedup), `classificar.ts`
+  (enum **congelado** `Classificacao`; regras locais — estorno→`REEMBOLSO`, `ehAfiliada`→
+  `VENDA_AFILIADA`, assinatura→`RECORRENCIA`; o que depende de casar Asaas↔Guru →
+  `DESCONHECIDO`+`revisar` p/ 024/026; nunca um palpite — regra #15), `etapas.ts` (registro
+  **ordenado com dependências declaradas**), `plano-passada.ts` (puro:
+  `EXECUTAR|BLOQUEADA|JA_OK|ESGOTADA` + `status` do evento derivado). **Etapas 2–6 = _no-op_
+  `pulada`** — specs 018/023/024/025 trocam o executor via `WorkerService.definirExecutor(...)`
+  sem tocar o worker. **Porta exportada** `RegistrarEventoService.registrarEvento` (etapa 0:
+  `hash` + upsert idempotente pela chave; reentrega → `criado:false` + `reentregas++`).
+  **`WorkerService.processarPassada()`**: seleciona elegíveis, mutex por evento, cada etapa
+  em **transação própria**, idempotente; retry até `INGESTAO_WORKER_MAX_TENTATIVAS` (3) →
+  depois `erro` terminal até reprocesso (CL-05); dependência não-`ok` → dependente
+  `bloqueada` (CL-04). **`WorkerScheduler`** = `setInterval` in-house (0 dep), env
+  `INGESTAO_WORKER_{ENABLED,INTERVALO_MS,MAX_TENTATIVAS,LOTE}`, desligado em teste.
+  Reprocessamento manual → 1 `ingestao_audit` (forma canônica do core, append-only; o worker
+  não audita). **4ª migração Prisma** (`20260903171321_ingestao`): `evento_origem`
+  (`@@unique(plataforma_origem,id_origem,hash)` = dedup; `status` **derivado**; `id_origem`
+  nunca PK), `evento_etapa` (`@@unique(evento_origem_id,etapa)`), `ingestao_audit`. **5
+  endpoints** (`/ingestao/eventos`): `POST` (`evento:ingerir`), `POST /processar` +
+  `POST /{id}/reprocessar` (`evento:reprocessar`), `GET` + `GET /{id}` (`evento:ver`); **sem
+  `/webhooks/*`** (019–022). **RBAC 004 estendido**: `evento:{ver,reprocessar,ingerir}`.
+  Frontend: item **Eventos** atrás de `evento:ver`, lista com filtros (default `revisar`+
+  `erro`) + detalhe com `payload_bruto` e linha do tempo das 7 etapas + **Reprocessar**.
+  **0 dep nova**, 1 migração, 5 endpoints. 270 unit backend + 44 frontend + 113 e2e verdes.
+  Clarificações CL-01..CL-05 resolvidas com o dono do produto em 2026-09-03. Detalhe:
+  [`specs/006-evento-origem-worker/`](specs/006-evento-origem-worker/) e
+  [`docs/006-evento-origem-worker.md`](docs/006-evento-origem-worker.md).
 
 ---
 

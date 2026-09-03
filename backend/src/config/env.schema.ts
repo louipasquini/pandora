@@ -77,6 +77,19 @@ export const envSchema = z
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60_000),
     RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
 
+    // --- Worker de ingestão (spec 006) ---
+    /** Liga o laço de fundo do worker. Desligado em teste (setup-db.ts força `false`). */
+    INGESTAO_WORKER_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    /** Intervalo entre passadas do worker, em ms. */
+    INGESTAO_WORKER_INTERVALO_MS: z.coerce.number().int().min(250).default(5_000),
+    /** Tentativas de uma etapa em `erro` antes de virar `erro` terminal (CL-05). */
+    INGESTAO_WORKER_MAX_TENTATIVAS: z.coerce.number().int().min(1).default(3),
+    /** Máximo de eventos processados por passada. */
+    INGESTAO_WORKER_LOTE: z.coerce.number().int().min(1).default(50),
+
     // --- Contas de origem (7 blocos, 21 chaves, todas opcionais na 001) ---
     ...accountsShape,
   })
