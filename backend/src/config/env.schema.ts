@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { PLATAFORMAS_ORIGEM, PlataformaOrigem } from '../core/plataforma-origem.enum';
+import { duracaoParaSegundos } from '../core/tempo/duracao';
+
+/** Teto rígido do TTL do JWT de serviço: 24 h (FR-005 da spec 003). */
+const TTL_MAX_SEGUNDOS = 86_400;
 
 /**
  * Fonte de verdade tipada de TODA a configuração do backend (Padrão Transversal
@@ -41,10 +45,37 @@ export const envSchema = z
     DATABASE_URL: pgUrl,
     TEST_DATABASE_URL: pgUrl.optional(),
 
-    // --- Autenticação de serviço (obrigatória de fato só a partir da spec 003) ---
-    SERVICE_JWT_SECRET: z.string().min(32).optional(),
-    SERVICE_CLIENT_ID: z.string().min(1).optional(),
-    SERVICE_CLIENT_SECRET: z.string().min(16).optional(),
+    // --- Autenticação de serviço (OBRIGATÓRIA a partir da spec 003, em todo NODE_ENV) ---
+    SERVICE_JWT_SECRET: z.string().min(32),
+    SERVICE_CLIENT_ID: z.string().min(1),
+    SERVICE_CLIENT_SECRET: z.string().min(16),
+    /**
+     * TTL do token de acesso. Forma compacta `<n>[s|m|h|d]`; default 12 h.
+     * Convertido para SEGUNDOS aqui, com teto rígido de 24 h — valor acima
+     * aborta o boot nomeando `SERVICE_JWT_TTL` (FR-005).
+     */
+    SERVICE_JWT_TTL: z
+      .string()
+      .regex(/^\d+[smhd]$/, 'use <n>[s|m|h|d], ex.: "12h"')
+      .default('12h')
+      .transform((v, ctx): number => {
+        const seg = duracaoParaSegundos(v);
+        if (seg > TTL_MAX_SEGUNDOS) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `máximo 24h (${TTL_MAX_SEGUNDOS}s); recebido ${seg}s`,
+          });
+          return z.NEVER;
+        }
+        return seg;
+      }),
+
+    // --- HTTP da API interna (spec 003) ---
+    /** Origem única do painel autorizada por CORS. */
+    CORS_ORIGIN: z.string().url().default('http://localhost:5174'),
+    /** Rate limiting leve de `POST /auth/token` (janela fixa por IP). */
+    RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60_000),
+    RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
 
     // --- Contas de origem (7 blocos, 21 chaves, todas opcionais na 001) ---
     ...accountsShape,
