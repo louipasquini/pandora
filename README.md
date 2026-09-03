@@ -102,15 +102,17 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     ingestao/ financeiro/ catalogo/ contratos/ clientes/ crm/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
-  prisma/        schema.prisma (sem entidade de negócio ainda) + migração baseline
-  test/          harness e2e contra Postgres real (schema isolado por execução)
+  prisma/        schema.prisma (RBAC: usuario/perfil/... — spec 004) + migrações + seed.ts
+  test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
   src/
     theme/       tokens.css — ponto único das cores da marca + Inter
-    shell/       AppShell (header + nav + conteúdo roteável)
+    shell/       AppShell (header + nav filtrada por permissão + conteúdo roteável)
     app/         router + query client
-    pages/       telas (placeholder na 001)
+    auth/        AuthProvider, apiFetch (401 + 403), RequirePermissao, usePermissoesEfetivas
+    admin/       Administração — abas Perfis e Usuários (spec 004)
+    pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
 specs/         uma pasta por feature: spec.md, plan.md, tasks.md, contracts/
@@ -139,8 +141,10 @@ npm run db:up
 #    sem Docker: aponte DATABASE_URL/TEST_DATABASE_URL para seu Postgres e crie os
 #    bancos `pandora` e `pandora_test`
 
-# 4. Aplicar as migrações (baseline)
+# 4. Aplicar as migrações e semear o RBAC (spec 004 — 1ª migração de negócio)
 npm run prisma:migrate:deploy --workspace backend
+npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
+#    em dev, `npm run prisma:migrate:dev --workspace backend` já roda o seed no fim
 
 # 5. Subir backend (porta 3001) e frontend (porta 5174) — dois terminais
 npm run start:dev --workspace backend
@@ -155,6 +159,9 @@ curl -sX POST http://localhost:3001/auth/token \
   -d '{"client_id":"pandora-panel","client_secret":"<SERVICE_CLIENT_SECRET>"}'
 #    → {"access_token":"<jwt>","token_type":"Bearer","expires_in":43200}
 #    use em Authorization: Bearer <jwt> nas rotas protegidas
+#    RBAC (spec 004): a API nega por omissão — toda rota autenticada precisa de
+#    @RequerPermissao(...) ou @AutenticadoBasta(); a credencial de serviço resolve
+#    para o perfil "Administrador" (todas as permissões). Painel: menu "Administração".
 
 # 7. Qualidade e testes
 npm run lint && npm run typecheck && npm run build
@@ -221,7 +228,17 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   `/login`, `AuthProvider`/`useAuth`, `apiFetch` central (injeta `Authorization`, trata 401
   num ponto único), token em `localStorage`. Dep nova `@nestjs/jwt`; 0 migração. Ver
   [`docs/003-auth-servico-jwt.md`](docs/003-auth-servico-jwt.md).
-- ⏭️ Próxima: **004 — rbac** (perfis de acesso, permissões granulares, guard por permissão).
+- ✅ **004 — rbac**: matriz de autorização única por cima do JWT da 003. Catálogo de
+  permissões no código (`recurso:acao`); **1ª migração de negócio** — Prisma `usuario` /
+  `perfil` / `perfil_permissao` / `usuario_perfil` / `rbac_audit` + `prisma/seed.ts`
+  idempotente (perfil de sistema `Administrador`). `PermissionGuard` como 2º `APP_GUARD`:
+  `@RequerPermissao(...)` / `@AutenticadoBasta()`, **nega por omissão** (403 ≠ 401).
+  Permissões efetivas resolvidas a cada requisição (JWT segue fino). Endpoints
+  `/admin/rbac/*` (perfis + usuários, sob `perfil:administrar`) — toda escrita audita em
+  `rbac_audit` (append-only, só _delta_ real; painel = 053). Painel: menu **Administração**
+  (abas Perfis/Usuários) atrás de `perfil:administrar`; `apiFetch` trata 403 num ponto
+  único. 0 dep nova. Ver [`docs/004-rbac.md`](docs/004-rbac.md).
+- ⏭️ Próxima: **005 — pessoa-identidade-dedup**.
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

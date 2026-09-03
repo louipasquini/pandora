@@ -8,6 +8,8 @@ export interface AuthApi {
   /** `false` se o token só vive em memória (localStorage indisponível). */
   persistente: boolean;
   logoutReason: LogoutReason;
+  /** Carimbo do último 403 recebido (spec 004) — dispara o banner "sem permissão". `null` = nenhum. */
+  semPermissaoEm: number | null;
   login(clientId: string, clientSecret: string): Promise<void>;
   logout(reason?: 'expirada'): void;
 }

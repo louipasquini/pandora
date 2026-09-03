@@ -3,6 +3,8 @@ import { AppShell } from '../shell/AppShell';
 import { DashboardPlaceholder } from '../pages/DashboardPlaceholder';
 import { LoginPage } from '../pages/LoginPage';
 import { RequireAuth } from '../auth/RequireAuth';
+import { RequirePermissao } from '../auth/RequirePermissao';
+import { AdminPage } from '../admin/AdminPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -18,7 +20,17 @@ export const routes: RouteObject[] = [
     children: [
       {
         element: <AppShell />,
-        children: [{ index: true, element: <DashboardPlaceholder /> }],
+        children: [
+          { index: true, element: <DashboardPlaceholder /> },
+          {
+            path: 'admin',
+            element: (
+              <RequirePermissao perm="perfil:administrar">
+                <AdminPage />
+              </RequirePermissao>
+            ),
+          },
+        ],
       },
     ],
   },
