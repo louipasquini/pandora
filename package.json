@@ -19,7 +19,10 @@
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "npm run test:e2e --workspace backend",
     "db:up": "docker compose up -d db",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "db:migrate:status": "npm run prisma:migrate:status --workspace backend",
+    "db:migrate": "npm run prisma:migrate:dev --workspace backend",
+    "db:migrate:deploy": "npm run prisma:migrate:deploy --workspace backend"
   },
   "allowScripts": {
     "@prisma/client@6.19.3": true,
