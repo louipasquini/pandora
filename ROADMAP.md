@@ -351,12 +351,41 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/010-crm-pipeline/`](specs/010-crm-pipeline/) e
   [`docs/010-crm-pipeline.md`](docs/010-crm-pipeline.md).
 
-- [ ] **011 — crm-whatsapp-integracao**
-  Provedor WhatsApp Business API, conexão, `template_whatsapp` (nome Meta, categoria,
-  corpo, `status_aprovacao`), janela de atendimento de 24h, webhook de recebimento →
-  `interacao` + `evento_origem`, gestão de opt-out/descadastro (LGPD).
-  ⚠ clarify: Cloud API oficial da Meta ou via BSP (Twilio, Take Blip, Zenvia, 360dialog)?
-  Frontend: configuração de canal e templates.
+- [x] **011 — crm-whatsapp-integracao** — ✅ implementada e validada (2026-09-04)
+  Quinta fatia da Fase 1 (CRM), visão Parte 8.5/8.12. Conecta o WhatsApp Business (**Cloud
+  API oficial da Meta** — decisão do dono do produto, não BSP) como canal de 1ª classe do
+  CRM. **`canal_whatsapp`** (conexão — segredos cifrados com a mesma
+  `CRM_INTEGRACAO_CIFRA_KEY` da 007), **`template_whatsapp`** (catálogo espelhado da Meta,
+  sincronizado **só sob demanda** — Princípio VIII, nunca automático), **`mensagem_whatsapp`**
+  (detalhe 1:1 de uma `interacao` tipo `WHATSAPP` já existente desde a 009 — mantém
+  `interacao` agnóstica de canal), **`evento_webhook_whatsapp`** (evento cru imutável do
+  webhook, dedupado por hash — **não** reaproveita `evento_origem`/`PlataformaOrigem` da
+  `ingestao`, dimensão fechada das 7 contas financeiras) e **`opt_out_whatsapp`** (histórico
+  de pedidos de não-contato, LGPD; retenção de conversas **indefinida**, pseudonimização só
+  na exclusão da `pessoa` — decisão do dono do produto). Webhook de entrada
+  (`/webhooks/whatsapp`, público — 1ª rota `/webhooks/*` do projeto) autenticado por
+  **HMAC-SHA256** — não pelo `WebhookAuthenticator` da 003, escopado às 7 contas financeiras
+  — resolve pessoa/lead pelo telefone (cria `Lead` novo se desconhecido, reusando
+  `RegistrarLeadService` da 008) e registra via `RegistrarInteracaoService` (009, porta
+  exportada especificamente para esta spec). **Janela de 24h** e "está em opt-out" são
+  sempre **derivados** na leitura (Princípio V). Envio (livre dentro da janela, ou por
+  template aprovado fora dela) é **síncrono** — sem fila (disparo em massa é escopo da 015).
+  **9ª migração Prisma** (`20260904165949_crm_whatsapp` — 5 tabelas + 6 enums; **nenhuma
+  tabela de auditoria nova**, canal/template/opt-out reaproveitam `crm_admin_audit` da 007).
+  **RBAC 004 estendido**: +4 permissões (`whatsapp:{ver,enviar,gerir_optout}`,
+  `crm_admin:gerir_whatsapp`). **~14 endpoints** autenticados + 2 públicos de webhook.
+  Frontend `frontend/src/whatsapp/`: **CRM · WhatsApp** — conectar canal (segredos
+  só-escrita, nunca preenchidos de volta), templates por canal com badge de status e
+  "sincronizar agora"; indicador de janela/ação de opt-out dentro de uma conversa **adiados
+  deliberadamente para a 012** (Chat ao Vivo — não há hoje tela de conversa para
+  hospedá-los; os endpoints de backend já existem e estão testados). **0 dep nova** (`fetch`
+  nativo do Node 24 + `rawBody: true` nativo do Nest), **1 migração, 0 chave `.env` nova**.
+  Decisões do dono do produto resolvidas em 2026-09-04 **antes** da escrita do `spec.md`:
+  provedor = Cloud API oficial da Meta; retenção = indefinida. 423 testes unitários backend
+  (32 novos) + 222 e2e (23 novos, Postgres real) + 76 frontend (4 novos), todos verdes;
+  lint/typecheck/build limpos nos dois workspaces.
+  Detalhe: [`specs/011-crm-whatsapp-integracao/`](specs/011-crm-whatsapp-integracao/) e
+  [`docs/011-crm-whatsapp-integracao.md`](docs/011-crm-whatsapp-integracao.md).
 
 - [ ] **012 — crm-chat-ao-vivo**
   Fila de atendimento com priorização, endereçamento a atendente, transferência de conversa
@@ -706,12 +735,12 @@ financeiro/comercial/identidade — compõe e explica; ações viram comando ao 
 | Spec | Decisão pendente |
 | --- | --- |
 | ~~008~~ | ✅ resolvida (2026-09-04): Lead → `pessoa` **arquiva + vincula** o registro (`status=CONVERTIDO` + `pessoa_id`), não migra fisicamente. |
-| 011 | WhatsApp: Cloud API oficial da Meta ou via BSP? |
+| ~~011~~ | ✅ resolvida (2026-09-04): WhatsApp = **Cloud API oficial da Meta**, não BSP. |
 | 012 | Endereçamento de chamado: aleatório ou por carga/disponibilidade? |
 | 036 | Modelo de atribuição default de Marketing. |
 | 045 | Método de login da aluna no portal da Central. |
 | — | Escopo de `conta` (household) na v1 (afeta 005, 010, 044) — visão Parte 8.12. |
-| — | Retenção/anonimização de conversas de WhatsApp (afeta 011, 047, 055). |
+| ~~—~~ | ✅ resolvida (2026-09-04): retenção/anonimização de conversas de WhatsApp = **indefinida**, pseudonimização só na exclusão da `pessoa` (mesma disciplina do resto do sistema; sem TTL automático) — afetava 011/047/055. |
 | — | Volume esperado de atendimento simultâneo (dimensiona 012 e 015). |
 
 ## Resumo por fase
