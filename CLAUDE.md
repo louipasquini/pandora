@@ -378,7 +378,11 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   `crm_admin:gerir_pipelines`). `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`).
   Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
-  nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`.
+  nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`. Scripts
+  `backend` `prisma:migrate:{dev,deploy,status}`/`prisma:seed`/`prisma:reset` carregam o
+  `.env` da raiz sozinhos (`set -a && . ../.env && set +a` antes do `prisma`) — não precisa
+  exportar `DATABASE_URL` na mão para rodar o CLI do Prisma; atalhos na raiz:
+  `npm run db:migrate` (dev + seed), `db:migrate:deploy`, `db:migrate:status`.
 - **Testes:** unitários sem banco; e2e do backend contra Postgres real, schema isolado por
   execução (`backend/test/setup-db.ts` roda `prisma migrate deploy` + `prisma db seed`).
   CI: `.github/workflows/ci.yml`.
