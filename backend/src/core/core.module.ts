@@ -84,3 +84,13 @@ export {
   accountConfig,
   cifraIntegracaoKey,
 } from './config';
+
+// --- identidade (008) — contrato de inversão de dependência p/ a engine da 005 ---
+export {
+  type DadosIdentidadeLead,
+  type OrigemIdentidade,
+  type OpcoesPortaIdentidade,
+  type ResultadoPortaIdentidade,
+  type PortaIdentidade,
+  PORTA_IDENTIDADE,
+} from './identidade/porta-identidade';
