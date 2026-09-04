@@ -13,8 +13,10 @@ Convenção: `[P]` = paralelizável (arquivos diferentes, sem dependência entre
 - [x] T002 Gerar a migração (`prisma migrate dev --name crm_interacao`) e editar o SQL
       gerado: acrescentar os 2 `CHECK`s (`interacao`, `tag_associacao`) e os 3 índices
       únicos parciais de `tag_associacao`; confirmar `ALTER TABLE lead DROP COLUMN tags`.
-- [ ] T003 Rodar a migração no banco de dev + regenerar `@prisma/client`; confirmar que o
-      `test/setup-db.ts` aplica limpo num schema novo.
+- [x] T003 Rodar a migração + regenerar `@prisma/client`; confirmar que o
+      `test/setup-db.ts` aplica limpo num schema novo. Verificado na **CI do PR #8**
+      (sandbox de desenvolvimento sem Docker/Postgres) — migração aplicada limpa contra
+      Postgres real.
 
 ## Fase 2 — Domínio puro (sem banco) `[P]` entre arquivos diferentes
 
@@ -106,7 +108,13 @@ Convenção: `[P]` = paralelizável (arquivos diferentes, sem dependência entre
 
 - [x] T037 `backend/test/support/crm-interacao.ts` — helpers (criar pessoa/lead/interação,
       registrar tag, criar segmento, ler auditoria).
-- [ ] T038 `backend/test/crm-interacao.e2e-spec.ts` — cobre: migração; timeline unida sem
+- [x] T038 `backend/test/crm-interacao.e2e-spec.ts` — **verde na CI do PR #8** (Postgres
+      real; 176/176 testes e2e passaram, incluindo regressão 003–008). Duas rodadas de CI
+      encontraram e corrigiram 2 bugs reais que o sandbox de desenvolvimento (sem Docker)
+      não pôde revelar: `autor_id`/`criado_por` recebendo o `sub` bruto do JWT (quebra com
+      a credencial de serviço, que não é UUID de `Usuario`) e a faixa 0–10 de `notaNps`
+      duplicada no DTO (mascarava o 422 semântico do domínio com um 400 estrutural). Cobre:
+      migração; timeline unida sem
       duplicar; âncora inválida → 422; mutabilidade por tipo (matriz completa); escopo por
       âncora (lead `ver_proprios`, pessoa `pessoa:ver`, timeline da pessoa inclui lead
       convertido mesmo sem `lead:ver_*`); tag compartilhada + idempotência + regressão do
@@ -137,9 +145,9 @@ Convenção: `[P]` = paralelizável (arquivos diferentes, sem dependência entre
 ## Fase 9 — Qualidade e documentação
 
 - [x] T051 `npm run lint && npm run typecheck && npm run build` — verde.
-- [~] T052 `npm test` (unit backend + frontend) verdes; `npm run test:e2e` **não executado**
-      nesta sessão (sem Docker/Postgres no sandbox) — roda na CI do PR #8 e deve ser
-      conferido lá antes do merge.
+- [x] T052 `npm test` (unit backend + frontend) verdes localmente; `npm run test:e2e`
+      verde na **CI do PR #8** (176/176, Postgres real — o sandbox de desenvolvimento não
+      tinha Docker/Postgres para rodar isto localmente).
 - [x] T053 `docs/009-crm-interacao-timeline.md` — novo (padrão dos docs 001–008).
 - [x] T054 `CLAUDE.md` — seção Stack ganha o bloco condensado de 008+009; plano ativo
       (SPECKIT) aponta para 009 (a mais recente implementada); 008 arquivada em `<details>`.

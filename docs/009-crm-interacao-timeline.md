@@ -190,11 +190,16 @@ Sem seed de negócio.
 
 **0 dep nova** · **1 migração** (`20260904150000_crm_interacao`) · **~19 endpoints novos**
 · **+5 permissões** de catálogo · **0 porta nova** · **0 `.env` nova**. Backend: **362
-testes unitários** no total, verdes (unit; domínio 100% sem banco). Frontend: **66 testes**
-no total, verdes.
+testes unitários** + **176 e2e** (Postgres real, `crm-interacao.e2e-spec.ts` + regressão
+003–008 + `/health` = 11), todos verdes. Frontend: **66 testes** no total, verdes.
 
-> **Nota de ambiente**: a migração Prisma e a suíte e2e (`crm-interacao.e2e-spec.ts`, escrita
-> e com typecheck/lint verdes) **não puderam ser executadas nesta sessão** — o ambiente não
-> tinha acesso a Docker/Postgres (`docker compose up -d db` falhou por permissão do socket).
-> Antes de mesclar, rode localmente: `npm run db:up && npm run prisma:migrate:dev --workspace
-> backend && npm run test:e2e`.
+> **Nota de ambiente**: o sandbox de desenvolvimento que gerou esta spec não tinha acesso a
+> Docker/Postgres (`docker compose up -d db` falhou por permissão do socket), então a
+> migração e a suíte e2e só puderam ser verificadas na **CI do PR #8** (Postgres real) — que
+> encontrou e levou à correção de 2 bugs reais que os testes unitários e o typecheck não
+> detectavam: `interacao.autor_id`/`tag_associacao.criado_por`/`segmento.criado_por`
+> recebendo o `sub` bruto do JWT (quebra com a credencial de serviço, que não é UUID de
+> `Usuario` — corrigido: resolve para um `Usuario` real via `EntidadeId.isValido` +
+> checagem no banco, ou `null`; `segmento.criado_por` virou nullable) e a faixa 0–10 de
+> `notaNps` duplicada no DTO zod (mascarava o 422 semântico do domínio com um 400
+> estrutural). Migração e e2e confirmadas verdes depois da correção.
