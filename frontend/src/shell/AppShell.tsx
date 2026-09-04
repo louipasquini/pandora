@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router';
-import { NAV_ITEMS } from './nav-items';
+import { NAV_ITEMS, satisfazPermissao } from './nav-items';
 import { useAuth } from '../auth/auth-context';
 import { usePermissoesEfetivas } from '../auth/usePermissoes';
 
@@ -11,8 +11,8 @@ import { usePermissoesEfetivas } from '../auth/usePermissoes';
 export function AppShell() {
   const { logout, semPermissaoEm } = useAuth();
   const { permissoes } = usePermissoesEfetivas();
-  const itens = NAV_ITEMS.filter(
-    (item) => item.requerPermissao == null || permissoes.has(item.requerPermissao),
+  const itens = NAV_ITEMS.filter((item) =>
+    satisfazPermissao(item.requerPermissao, permissoes),
   );
   return (
     <div className="grid min-h-screen grid-rows-[auto_1fr] md:grid-cols-[16rem_1fr] md:grid-rows-[auto_1fr]">
