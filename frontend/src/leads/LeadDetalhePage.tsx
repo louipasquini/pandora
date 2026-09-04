@@ -2,16 +2,22 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import { usePodeUsar } from '../auth/usePermissoes';
+import { TagPicker } from '../interacoes/TagPicker';
+import { TimelineInteracoes } from '../interacoes/TimelineInteracoes';
 import { ESTAGIOS, leadsApi } from './leads-api';
 
-/** Detalhe de um lead (spec 008): contato, score, tags, campos personalizados, auditoria. */
+/**
+ * Detalhe de um lead (spec 008 + 009): contato, score, tags (catálogo
+ * compartilhado), campos personalizados, timeline de interações, auditoria.
+ */
 export function LeadDetalhePage() {
   const { id = '' } = useParams();
   const qc = useQueryClient();
   const { pode: podeEditar } = usePodeUsar('lead:editar');
   const { pode: podePessoa } = usePodeUsar('pessoa:editar');
+  const { pode: podeInteracaoRegistrar } = usePodeUsar('interacao:registrar');
+  const { pode: podeInteracaoGerir } = usePodeUsar('interacao:gerir');
   const [erro, setErro] = useState<string | null>(null);
-  const [novaTag, setNovaTag] = useState('');
 
   const lead = useQuery({ queryKey: ['lead', id], queryFn: () => leadsApi.obter(id) });
   const auditoria = useQuery({
@@ -120,44 +126,16 @@ export function LeadDetalhePage() {
         </div>
       </dl>
 
-      {/* tags */}
+      {/* tags — catálogo compartilhado (spec 009) */}
       <div className="mt-6">
         <h2 className="text-xs uppercase text-slate-400">Tags</h2>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          {l.tags.map((t) => (
-            <span key={t} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">
-              {t}
-              {podeEditar && (
-                <button
-                  type="button"
-                  aria-label={`remover ${t}`}
-                  onClick={() => void semErro(leadsApi.removerTag(id, t).then(refetch))}
-                  className="ml-1 text-slate-400"
-                >
-                  ×
-                </button>
-              )}
-            </span>
-          ))}
-          {podeEditar && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (novaTag.trim()) {
-                  void semErro(leadsApi.addTag(id, novaTag.trim()).then(refetch));
-                  setNovaTag('');
-                }
-              }}
-            >
-              <input
-                aria-label="Nova tag"
-                value={novaTag}
-                onChange={(e) => setNovaTag(e.target.value)}
-                placeholder="+ tag"
-                className="w-24 rounded-md border border-slate-300 px-2 py-0.5 text-xs"
-              />
-            </form>
-          )}
+        <div className="mt-1">
+          <TagPicker
+            ancora={{ tipo: 'lead', id }}
+            tags={l.tags}
+            podeEditar={podeEditar}
+            onChange={refetch}
+          />
         </div>
       </div>
 
@@ -187,6 +165,16 @@ export function LeadDetalhePage() {
         {l.status === 'CONVERTIDO' && (
           <p className="text-sm text-slate-500">Convertido — este lead virou uma pessoa.</p>
         )}
+      </div>
+
+      {/* timeline de interações (spec 009) — inclui as do lead; após conversão, a
+          timeline unificada da pessoa também as mostra (CL-01) */}
+      <div className="mt-6">
+        <TimelineInteracoes
+          ancora={{ leadId: id }}
+          podeRegistrar={podeInteracaoRegistrar}
+          podeGerir={podeInteracaoGerir}
+        />
       </div>
 
       {/* auditoria */}
