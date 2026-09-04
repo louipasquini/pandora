@@ -51,6 +51,15 @@ describe('crm — WhatsApp (e2e)', () => {
     dublê.chamadasEnviar = [];
     await prisma.crmAdminAudit.deleteMany({});
     await prisma.optOutWhatsapp.deleteMany({});
+    // spec 012 — o webhook agora abre/reaproveita `atendimento` a cada
+    // interação de entrada nova (integração wired em `webhook-whatsapp.
+    // service.ts`); precisa sumir ANTES de `interacao`/`canalWhatsapp`
+    // (`atendimento.canalWhatsappId` é `onDelete: Restrict`) e antes de
+    // qualquer `pessoa.deleteMany({})`/`lead.deleteMany({})` de outra suíte
+    // (`atendimento.pessoaId`/`leadId` também são `onDelete: Restrict`).
+    await prisma.respostaAtendimento.deleteMany({});
+    await prisma.transferenciaAtendimento.deleteMany({});
+    await prisma.atendimento.deleteMany({});
     // `mensagem_whatsapp.interacao_id` é `onDelete: Cascade` — apagar
     // `interacao` já limpa `mensagem_whatsapp`; `interacao.pessoa_id`/
     // `lead_id` são `onDelete: Restrict` (009), então precisa sumir antes de
