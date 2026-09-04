@@ -50,7 +50,9 @@ export interface EntradaAuditoriaCrm {
     | 'equipe_membro'
     | 'janela_atendimento'
     | 'feriado'
-    | 'integracao';
+    | 'integracao'
+    // spec 008 — definições de campo personalizado de lead são config administrativa
+    | 'campo_personalizado_lead';
   entidadeId: string;
   campo: string;
   valorAnterior: unknown;

@@ -8,9 +8,13 @@ import { usePermissoesEfetivas } from './usePermissoes';
  */
 export function RequirePermissao({
   perm,
+  anyOf,
   children,
 }: {
-  perm: string;
+  /** Permissão exigida (exata). */
+  perm?: string;
+  /** Alternativa: basta o sujeito ter **qualquer uma** destas (OU — spec 008). */
+  anyOf?: string[];
   children?: ReactNode;
 }) {
   const { permissoes, isLoading } = usePermissoesEfetivas();
@@ -22,7 +26,9 @@ export function RequirePermissao({
       </p>
     );
   }
-  if (!permissoes.has(perm)) return <SemPermissao />;
+  const alvos = anyOf ?? (perm ? [perm] : []);
+  const ok = alvos.length === 0 || alvos.some((p) => permissoes.has(p));
+  if (!ok) return <SemPermissao />;
   return <>{children ?? <Outlet />}</>;
 }
 

@@ -9,6 +9,7 @@ import { FinanceiroModule } from './financeiro/financeiro.module';
 import { CatalogoModule } from './catalogo/catalogo.module';
 import { ContratosModule } from './contratos/contratos.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { IdentidadeWiringModule } from './clientes/identidade-wiring.module';
 import { CrmModule } from './crm/crm.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { CentralModule } from './central/central.module';
@@ -33,6 +34,7 @@ import { AdminModule } from './admin/admin.module';
     CatalogoModule,
     ContratosModule,
     ClientesModule,
+    IdentidadeWiringModule,
     CrmModule,
     MarketingModule,
     CentralModule,
