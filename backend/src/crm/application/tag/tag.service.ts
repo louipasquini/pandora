@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { EntidadeId } from '../../../core/core.module';
 import { normalizarTag } from '../../domain/tag/normalizar-tag';
 import type { CriarTagDto, AtualizarTagDto } from '../../dto/tag.schema';
 import {
@@ -50,6 +51,17 @@ export class TagService {
   }
 
   /**
+   * `criado_por` é FK para `Usuario` — o `sub` do JWT pode ser a credencial de
+   * serviço (não é linha de `usuario`), então só grava quando corresponde a um
+   * `Usuario` real; caso contrário `null` (mesmo tratamento de
+   * `interacao.autor_id`).
+   */
+  private async resolverCriadoPor(criadoPor: string | null): Promise<string | null> {
+    if (!criadoPor || !EntidadeId.isValido(criadoPor)) return null;
+    return (await this.leads.usuarioExiste(criadoPor)) ? criadoPor : null;
+  }
+
+  /**
    * Igual a `associar`, mas **sem** gravar auditoria própria — para quando o
    * chamador (ex.: `LeadService.criar`) vai embutir o resultado num único
    * registro de auditoria maior (ex.: "lead criado com tags X, Y").
@@ -94,7 +106,11 @@ export class TagService {
     }
     const tag = await this.resolverOuCriar(textoBruto);
     const antes = await this.listarSlugs(ancora);
-    const { criada } = await this.associacoes.associar(tag.id, ancora, criadoPor);
+    const { criada } = await this.associacoes.associar(
+      tag.id,
+      ancora,
+      await this.resolverCriadoPor(criadoPor),
+    );
     if (!criada) return { tag, associada: false, tags: antes };
 
     const depois = [...antes, tag.slug];

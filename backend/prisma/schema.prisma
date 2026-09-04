@@ -820,11 +820,15 @@ model Segmento {
   alvo         SegmentoAlvo
   filtro       Json
   ativo        Boolean      @default(true)
-  criadoPor    String       @map("criado_por") @db.Uuid
+  // Nullable: `criadoPor` só é gravado quando o sujeito é um `Usuario` real —
+  // a credencial de serviço (que também cria segmentos, ex. via testes/automação
+  // administrativa) não tem linha em `usuario` (mesmo tratamento de
+  // `interacao.autorId`/`tag_associacao.criadoPor`).
+  criadoPor    String?      @map("criado_por") @db.Uuid
   criadoEm     DateTime     @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime     @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  autor Usuario @relation(fields: [criadoPor], references: [id], onDelete: Restrict)
+  autor Usuario? @relation(fields: [criadoPor], references: [id], onDelete: Restrict)
 
   @@index([alvo])
   @@map("segmento")

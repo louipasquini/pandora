@@ -360,9 +360,8 @@ describe('crm — Interação/Tag/Segmento (e2e)', () => {
 
     it('catálogo ganha exatamente as 5 permissões novas', async () => {
       const res = await http().get('/admin/rbac/permissoes').set(ADMIN);
-      const ids = (res.body as { recurso: string; permissoes: { id: string }[] }[]).flatMap((g) =>
-        g.permissoes.map((p) => p.id),
-      );
+      const recursos = res.body.recursos as { recurso: string; permissoes: { id: string }[] }[];
+      const ids = recursos.flatMap((g) => g.permissoes.map((p) => p.id));
       for (const id of [
         'interacao:registrar',
         'interacao:gerir',
