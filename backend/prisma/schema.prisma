@@ -42,6 +42,12 @@ model Usuario {
   oportunidadesResponsavel    Oportunidade[]
   movimentacoesRealizadas     OportunidadeMovimentacao[]
   regrasAtribuicaoResponsavel RegraAtribuicaoPipeline[]
+  atendimentosAtendenteAtual  Atendimento[]              @relation("AtendimentoAtendenteAtual")
+  atendimentosEncerradoPor    Atendimento[]              @relation("AtendimentoEncerradoPor")
+  transferenciasDe            TransferenciaAtendimento[] @relation("TransferenciaDeAtendente")
+  transferenciasPara          TransferenciaAtendimento[] @relation("TransferenciaParaAtendente")
+  transferenciasExecutadas    TransferenciaAtendimento[] @relation("TransferenciaExecutadaPor")
+  respostasAtendimento        RespostaAtendimento[]
 
   @@map("usuario")
 }
@@ -162,6 +168,7 @@ model Pessoa {
   tagAssociacoes  TagAssociacao[]
   oportunidades   Oportunidade[]
   optOutsWhatsapp OptOutWhatsapp[]
+  atendimentos    Atendimento[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -487,18 +494,24 @@ enum IntegracaoAlvo {
 }
 
 model Equipe {
-  id           String     @id @db.Uuid
-  nome         String
-  descricao    String?
-  tipo         EquipeTipo
-  ativo        Boolean    @default(true)
-  criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  id                         String     @id @db.Uuid
+  nome                       String
+  descricao                  String?
+  tipo                       EquipeTipo
+  ativo                      Boolean    @default(true)
+  // spec 012 — só relevantes para `tipo = ATENDIMENTO`; `null` = usa o default global.
+  mensagemForaExpediente     String?    @map("mensagem_fora_expediente")
+  slaPrimeiraRespostaMinutos Int?       @map("sla_primeira_resposta_minutos")
+  criadoEm                   DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm               DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  membros   EquipeMembro[]
-  janelas   JanelaAtendimento[]
-  feriados  Feriado[]
-  pipelines Pipeline[]
+  membros            EquipeMembro[]
+  janelas            JanelaAtendimento[]
+  feriados           Feriado[]
+  pipelines          Pipeline[]
+  atendimentos       Atendimento[]
+  transferenciasDe   TransferenciaAtendimento[] @relation("TransferenciaDeEquipe")
+  transferenciasPara TransferenciaAtendimento[] @relation("TransferenciaParaEquipe")
 
   @@index([ativo])
   @@map("equipe")
@@ -661,6 +674,7 @@ model Lead {
   tagAssociacoes  TagAssociacao[]
   oportunidades   Oportunidade[]
   optOutsWhatsapp OptOutWhatsapp[]
+  atendimentos    Atendimento[]
 
   // Índice único PARCIAL `(origem, id_externo) WHERE id_externo IS NOT NULL`
   // criado no migration.sql — o Prisma não expressa índice parcial no schema.
@@ -755,27 +769,33 @@ enum SegmentoAlvo {
 }
 
 model Interacao {
-  id           String            @id @db.Uuid
-  pessoaId     String?           @map("pessoa_id") @db.Uuid
-  leadId       String?           @map("lead_id") @db.Uuid
-  tipo         InteracaoTipo
-  direcao      InteracaoDirecao?
-  conteudo     String
-  notaNps      Int?              @map("nota_nps")
-  autorId      String?           @map("autor_id") @db.Uuid
-  canalOrigem  String?           @map("canal_origem")
-  idExterno    String?           @map("id_externo")
-  ocorridoEm   DateTime          @map("ocorrido_em") @db.Timestamptz(6)
-  editadoEm    DateTime?         @map("editado_em") @db.Timestamptz(6)
-  removidoEm   DateTime?         @map("removido_em") @db.Timestamptz(6)
-  criadoEm     DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime          @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  id            String            @id @db.Uuid
+  pessoaId      String?           @map("pessoa_id") @db.Uuid
+  leadId        String?           @map("lead_id") @db.Uuid
+  tipo          InteracaoTipo
+  direcao       InteracaoDirecao?
+  conteudo      String
+  notaNps       Int?              @map("nota_nps")
+  autorId       String?           @map("autor_id") @db.Uuid
+  canalOrigem   String?           @map("canal_origem")
+  idExterno     String?           @map("id_externo")
+  // spec 012 — agrupa a interação sob um atendimento (fila/CSAT/etc.), sem
+  // alterar nenhum contrato já validado pela 009 (SetNull: interacao nunca
+  // perde dado por causa de atendimento).
+  atendimentoId String?           @map("atendimento_id") @db.Uuid
+  ocorridoEm    DateTime          @map("ocorrido_em") @db.Timestamptz(6)
+  editadoEm     DateTime?         @map("editado_em") @db.Timestamptz(6)
+  removidoEm    DateTime?         @map("removido_em") @db.Timestamptz(6)
+  criadoEm      DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime          @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  pessoa           Pessoa?           @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
-  lead             Lead?             @relation(fields: [leadId], references: [id], onDelete: Restrict)
-  autor            Usuario?          @relation(fields: [autorId], references: [id], onDelete: Restrict)
-  tagAssociacoes   TagAssociacao[]
-  mensagemWhatsapp MensagemWhatsapp?
+  pessoa              Pessoa?              @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  lead                Lead?                @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  autor               Usuario?             @relation(fields: [autorId], references: [id], onDelete: Restrict)
+  atendimento         Atendimento?         @relation(fields: [atendimentoId], references: [id], onDelete: SetNull)
+  tagAssociacoes      TagAssociacao[]
+  mensagemWhatsapp    MensagemWhatsapp?
+  respostaAtendimento RespostaAtendimento?
 
   // CHECK (num_nonnulls(pessoa_id, lead_id) = 1) — âncora exclusiva (CL-01),
   // criado no migration.sql (Prisma não modela CHECK). Índice único PARCIAL
@@ -784,6 +804,7 @@ model Interacao {
   @@index([pessoaId, ocorridoEm])
   @@index([leadId, ocorridoEm])
   @@index([tipo])
+  @@index([atendimentoId, ocorridoEm])
   @@map("interacao")
 }
 
@@ -1127,6 +1148,7 @@ model CanalWhatsapp {
   templates      TemplateWhatsapp[]
   mensagens      MensagemWhatsapp[]
   eventosWebhook EventoWebhookWhatsapp[]
+  atendimentos   Atendimento[]
 
   @@unique([phoneNumberId])
   @@index([ativo])
@@ -1211,4 +1233,117 @@ model OptOutWhatsapp {
 
   @@index([telefone, optadoEm])
   @@map("opt_out_whatsapp")
+}
+
+// ============================================================================
+// crm — Chat ao Vivo (spec 012) — 10ª migração de negócio. Inbox de atendimento
+// que constrói SOBRE a timeline de `interacao` já existente (009) — não é uma
+// 2ª tabela de mensagens (a coluna `interacao.atendimento_id` acima agrupa o
+// que já existe). `atendimento` (a conversa/caso — fila, prioridade, atendente/
+// equipe atual, SLA de 1ª resposta sempre DERIVADO, elegibilidade de CSAT),
+// `transferencia_atendimento` (histórico append-only de 1ª classe — não é o
+// audit genérico, mesmo raciocínio de `oportunidade_movimentacao`, spec 010),
+// `resposta_atendimento` (detalhe 1:1 de uma `interacao` de saída — quem
+// respondeu, com/sem IA). Endereçamento (`escolherAtendentePorCarga`) e SLA
+// (`calcularSlaAtendimento`) são funções PURAS em `crm/domain/atendimento/` —
+// nunca contador/coluna persistidos, nunca job de fundo (volume baixo, CL-02
+// do spec.md). CSAT reaproveita `interacao` tipo `NPS` — nenhuma tabela nova.
+// Ver docs/012-crm-chat-ao-vivo.md e specs/012-crm-chat-ao-vivo/research.md.
+// ============================================================================
+
+enum AtendimentoCanal {
+  WHATSAPP
+  MANUAL
+}
+
+enum AtendimentoStatus {
+  AGUARDANDO
+  EM_ATENDIMENTO
+  ENCERRADO
+}
+
+enum AtendimentoPrioridade {
+  NORMAL
+  ALTA
+  URGENTE
+}
+
+model Atendimento {
+  id                 String                @id @db.Uuid
+  pessoaId           String?               @map("pessoa_id") @db.Uuid
+  leadId             String?               @map("lead_id") @db.Uuid
+  canal              AtendimentoCanal
+  canalWhatsappId    String?               @map("canal_whatsapp_id") @db.Uuid
+  equipeId           String?               @map("equipe_id") @db.Uuid
+  atendenteAtualId   String?               @map("atendente_atual_id") @db.Uuid
+  status             AtendimentoStatus     @default(AGUARDANDO)
+  prioridade         AtendimentoPrioridade @default(NORMAL)
+  abertoEm           DateTime              @map("aberto_em") @db.Timestamptz(6)
+  primeiraRespostaEm DateTime?             @map("primeira_resposta_em") @db.Timestamptz(6)
+  slaMinutos         Int                   @map("sla_minutos")
+  encerradoEm        DateTime?             @map("encerrado_em") @db.Timestamptz(6)
+  encerradoPorId     String?               @map("encerrado_por_id") @db.Uuid
+  motivoEncerramento String?               @map("motivo_encerramento")
+  csatSolicitadoEm   DateTime?             @map("csat_solicitado_em") @db.Timestamptz(6)
+  criadoEm           DateTime              @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime              @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa         Pessoa?                    @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  lead           Lead?                      @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  canalWhatsapp  CanalWhatsapp?             @relation(fields: [canalWhatsappId], references: [id], onDelete: Restrict)
+  equipe         Equipe?                    @relation(fields: [equipeId], references: [id], onDelete: Restrict)
+  atendenteAtual Usuario?                   @relation("AtendimentoAtendenteAtual", fields: [atendenteAtualId], references: [id], onDelete: Restrict)
+  encerradoPor   Usuario?                   @relation("AtendimentoEncerradoPor", fields: [encerradoPorId], references: [id], onDelete: Restrict)
+  interacoes     Interacao[]
+  transferencias TransferenciaAtendimento[]
+  respostas      RespostaAtendimento[]
+
+  // CHECK (num_nonnulls(pessoa_id, lead_id) = 1) — âncora exclusiva (mesma
+  // disciplina de Interacao/Oportunidade), criado no migration.sql.
+  @@index([status, prioridade, abertoEm])
+  @@index([atendenteAtualId, status])
+  @@index([equipeId, status])
+  @@index([pessoaId])
+  @@index([leadId])
+  @@map("atendimento")
+}
+
+model TransferenciaAtendimento {
+  id               String   @id @db.Uuid
+  atendimentoId    String   @map("atendimento_id") @db.Uuid
+  deAtendenteId    String?  @map("de_atendente_id") @db.Uuid
+  paraAtendenteId  String?  @map("para_atendente_id") @db.Uuid
+  deEquipeId       String?  @map("de_equipe_id") @db.Uuid
+  paraEquipeId     String?  @map("para_equipe_id") @db.Uuid
+  transferidoPorId String?  @map("transferido_por_id") @db.Uuid
+  motivo           String?
+  criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  atendimento    Atendimento @relation(fields: [atendimentoId], references: [id], onDelete: Cascade)
+  deAtendente    Usuario?    @relation("TransferenciaDeAtendente", fields: [deAtendenteId], references: [id], onDelete: Restrict)
+  paraAtendente  Usuario?    @relation("TransferenciaParaAtendente", fields: [paraAtendenteId], references: [id], onDelete: Restrict)
+  deEquipe       Equipe?     @relation("TransferenciaDeEquipe", fields: [deEquipeId], references: [id], onDelete: Restrict)
+  paraEquipe     Equipe?     @relation("TransferenciaParaEquipe", fields: [paraEquipeId], references: [id], onDelete: Restrict)
+  transferidoPor Usuario?    @relation("TransferenciaExecutadaPor", fields: [transferidoPorId], references: [id], onDelete: Restrict)
+
+  // Append-only — sem PATCH/DELETE (histórico de 1ª classe, FR-008).
+  @@index([atendimentoId, criadoEm])
+  @@map("transferencia_atendimento")
+}
+
+model RespostaAtendimento {
+  id            String   @id @db.Uuid
+  atendimentoId String   @map("atendimento_id") @db.Uuid
+  interacaoId   String   @unique @map("interacao_id") @db.Uuid
+  atendenteId   String   @map("atendente_id") @db.Uuid
+  viaIa         Boolean  @default(false) @map("via_ia")
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  atendimento Atendimento @relation(fields: [atendimentoId], references: [id], onDelete: Cascade)
+  interacao   Interacao   @relation(fields: [interacaoId], references: [id], onDelete: Cascade)
+  atendente   Usuario     @relation(fields: [atendenteId], references: [id], onDelete: Restrict)
+
+  // Append-only — sem PATCH/DELETE (histórico de 1ª classe, FR-012/FR-013).
+  @@index([atendimentoId, criadoEm])
+  @@map("resposta_atendimento")
 }
