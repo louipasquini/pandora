@@ -16,9 +16,10 @@ não existe, reaproveita se existe), cria `tag_associacao` se ainda não existe 
 
 ## Remoção
 
-- `DELETE /crm/{leads|pessoas|interacoes}/{id}/tags/{slug}` — mesma permissão da associação
-  correspondente. Remove só a `tag_associacao` daquela âncora; a `tag` e as associações em
-  outras âncoras permanecem.
+- `DELETE /crm/{leads|pessoas|interacoes}/{id}/tags` — mesmo body `{ "tag": "<texto>" }` da
+  associação, mesma permissão correspondente (corpo em vez de `:slug` no path, para manter
+  os três anchors no mesmo formato do contrato original da 008). Remove só a
+  `tag_associacao` daquela âncora; a `tag` e as associações em outras âncoras permanecem.
 
 ## Catálogo
 
