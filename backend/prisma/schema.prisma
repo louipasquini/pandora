@@ -32,12 +32,16 @@ model Usuario {
   criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  perfis                UsuarioPerfil[]
-  equipesComoMembro     EquipeMembro[]
-  leadsResponsavel      Lead[]
-  interacoesAutor       Interacao[]
-  tagAssociacoesCriadas TagAssociacao[]
-  segmentosCriados      Segmento[]
+  perfis                      UsuarioPerfil[]
+  equipesComoMembro           EquipeMembro[]
+  leadsResponsavel            Lead[]
+  interacoesAutor             Interacao[]
+  tagAssociacoesCriadas       TagAssociacao[]
+  segmentosCriados            Segmento[]
+  pipelinesUltimoAtribuido    Pipeline[]                 @relation("PipelineUltimoAtribuido")
+  oportunidadesResponsavel    Oportunidade[]
+  movimentacoesRealizadas     OportunidadeMovimentacao[]
+  regrasAtribuicaoResponsavel RegraAtribuicaoPipeline[]
 
   @@map("usuario")
 }
@@ -156,6 +160,7 @@ model Pessoa {
   leads          Lead[]
   interacoes     Interacao[]
   tagAssociacoes TagAssociacao[]
+  oportunidades  Oportunidade[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -489,9 +494,10 @@ model Equipe {
   criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  membros  EquipeMembro[]
-  janelas  JanelaAtendimento[]
-  feriados Feriado[]
+  membros   EquipeMembro[]
+  janelas   JanelaAtendimento[]
+  feriados  Feriado[]
+  pipelines Pipeline[]
 
   @@index([ativo])
   @@map("equipe")
@@ -652,6 +658,7 @@ model Lead {
   valores        ValorCampoLead[]
   interacoes     Interacao[]
   tagAssociacoes TagAssociacao[]
+  oportunidades  Oportunidade[]
 
   // Índice único PARCIAL `(origem, id_externo) WHERE id_externo IS NOT NULL`
   // criado no migration.sql — o Prisma não expressa índice parcial no schema.
@@ -849,4 +856,191 @@ model CrmInteracaoAudit {
 
   @@index([entidade, entidadeId])
   @@map("crm_interacao_audit")
+}
+
+// ============================================================================
+// Pipeline / Oportunidade do CRM (spec 010) — visão Parte 8.7. `oportunidade`
+// segue a mesma âncora polimórfica `pessoa` XOR `lead` da `interacao` (009).
+// `oportunidade_movimentacao` é o histórico de 1ª classe de mudança de etapa
+// (fonte de SLA/métricas — nunca contador incremental, Princípio V).
+// `PortaObservacaoPagamentoCrm` (sem tabela própria) é implementada em
+// application/pipeline/porta-observacao-pagamento.service.ts.
+// ============================================================================
+
+enum EtapaPipelineTipo {
+  ABERTA
+  GANHA
+  PERDIDA
+}
+
+enum ModoAtribuicao {
+  MANUAL
+  RODIZIO
+  REGRA
+}
+
+enum RegraAtribuicaoCampo {
+  ORIGEM
+  VALOR_ESTIMADO_MINIMO
+}
+
+model Pipeline {
+  id                       String          @id @db.Uuid
+  nome                     String
+  descricao                String?
+  equipeId                 String?         @map("equipe_id") @db.Uuid
+  modoAtribuicao           ModoAtribuicao  @default(MANUAL) @map("modo_atribuicao")
+  atribuicaoFallback       ModoAtribuicao? @map("atribuicao_fallback")
+  diasEsfriando            Int?            @map("dias_esfriando")
+  ultimoAtribuidoUsuarioId String?         @map("ultimo_atribuido_usuario_id") @db.Uuid
+  ativo                    Boolean         @default(true)
+  criadoEm                 DateTime        @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm             DateTime        @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  equipe           Equipe?                   @relation(fields: [equipeId], references: [id], onDelete: Restrict)
+  ultimoAtribuido  Usuario?                  @relation("PipelineUltimoAtribuido", fields: [ultimoAtribuidoUsuarioId], references: [id], onDelete: SetNull)
+  etapas           EtapaPipeline[]
+  oportunidades    Oportunidade[]
+  regrasAtribuicao RegraAtribuicaoPipeline[]
+
+  @@index([ativo])
+  @@map("pipeline")
+}
+
+model EtapaPipeline {
+  id           String            @id @db.Uuid
+  pipelineId   String            @map("pipeline_id") @db.Uuid
+  nome         String
+  ordem        Int
+  tipo         EtapaPipelineTipo
+  slaHoras     Int?              @map("sla_horas")
+  criadoEm     DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime          @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pipeline              Pipeline                   @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  oportunidades         Oportunidade[]
+  movimentacoesAnterior OportunidadeMovimentacao[] @relation("MovimentacaoEtapaAnterior")
+  movimentacoesNova     OportunidadeMovimentacao[] @relation("MovimentacaoEtapaNova")
+
+  // Índice único (pipeline_id, ordem) já coberto por @@unique abaixo.
+  @@unique([pipelineId, ordem])
+  @@index([pipelineId, tipo])
+  @@map("etapa_pipeline")
+}
+
+model Oportunidade {
+  id                     String    @id @db.Uuid
+  pipelineId             String    @map("pipeline_id") @db.Uuid
+  etapaId                String    @map("etapa_id") @db.Uuid
+  pessoaId               String?   @map("pessoa_id") @db.Uuid
+  leadId                 String?   @map("lead_id") @db.Uuid
+  titulo                 String
+  valorEstimadoInt       BigInt    @map("valor_estimado_int")
+  valorEstimadoMoeda     String    @map("valor_estimado_moeda") @db.Char(3)
+  responsavelId          String?   @map("responsavel_id") @db.Uuid
+  dataPrevistaFechamento DateTime? @map("data_prevista_fechamento") @db.Date
+  entrouEtapaEm          DateTime  @map("entrou_etapa_em") @db.Timestamptz(6)
+  criadoEm               DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm           DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pipeline      Pipeline                   @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
+  etapa         EtapaPipeline              @relation(fields: [etapaId], references: [id], onDelete: Restrict)
+  pessoa        Pessoa?                    @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  lead          Lead?                      @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  responsavel   Usuario?                   @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
+  movimentacoes OportunidadeMovimentacao[]
+  valoresCampos ValorCampoOportunidade[]
+
+  // CHECK (num_nonnulls(pessoa_id, lead_id) = 1) — âncora exclusiva (D-01),
+  // criado no migration.sql (Prisma não modela CHECK).
+  @@index([pipelineId, etapaId])
+  @@index([responsavelId])
+  @@index([pessoaId])
+  @@index([leadId])
+  @@map("oportunidade")
+}
+
+model OportunidadeMovimentacao {
+  id              String   @id @db.Uuid
+  oportunidadeId  String   @map("oportunidade_id") @db.Uuid
+  etapaAnteriorId String?  @map("etapa_anterior_id") @db.Uuid
+  etapaNovaId     String   @map("etapa_nova_id") @db.Uuid
+  movidoPorId     String?  @map("movido_por_id") @db.Uuid
+  motivo          String?
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  oportunidade  Oportunidade   @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
+  etapaAnterior EtapaPipeline? @relation("MovimentacaoEtapaAnterior", fields: [etapaAnteriorId], references: [id], onDelete: Restrict)
+  etapaNova     EtapaPipeline  @relation("MovimentacaoEtapaNova", fields: [etapaNovaId], references: [id], onDelete: Restrict)
+  movidoPor     Usuario?       @relation(fields: [movidoPorId], references: [id], onDelete: Restrict)
+
+  // Append-only — sem PATCH/DELETE (histórico de 1ª classe, FR-012).
+  @@index([oportunidadeId, criadoEm])
+  @@map("oportunidade_movimentacao")
+}
+
+model RegraAtribuicaoPipeline {
+  id            String               @id @db.Uuid
+  pipelineId    String               @map("pipeline_id") @db.Uuid
+  ordem         Int
+  campo         RegraAtribuicaoCampo
+  valor         Json
+  responsavelId String               @map("responsavel_id") @db.Uuid
+  criadoEm      DateTime             @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime             @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pipeline    Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  responsavel Usuario  @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
+
+  @@unique([pipelineId, ordem])
+  @@map("regra_atribuicao_pipeline")
+}
+
+model CampoPersonalizadoOportunidade {
+  id           String                 @id @db.Uuid
+  chave        String                 @unique
+  rotulo       String
+  tipo         CampoPersonalizadoTipo
+  opcoes       String[]               @default([])
+  obrigatorio  Boolean                @default(false)
+  ativo        Boolean                @default(true)
+  criadoEm     DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime               @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  valores ValorCampoOportunidade[]
+
+  @@map("campo_personalizado_oportunidade")
+}
+
+model ValorCampoOportunidade {
+  id             String   @id @db.Uuid
+  oportunidadeId String   @map("oportunidade_id") @db.Uuid
+  definicaoId    String   @map("definicao_id") @db.Uuid
+  valor          String
+  criadoEm       DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  oportunidade Oportunidade                   @relation(fields: [oportunidadeId], references: [id], onDelete: Cascade)
+  definicao    CampoPersonalizadoOportunidade @relation(fields: [definicaoId], references: [id], onDelete: Restrict)
+
+  @@unique([oportunidadeId, definicaoId])
+  @@index([definicaoId])
+  @@map("valor_campo_oportunidade")
+}
+
+model CrmPipelineAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("crm_pipeline_audit")
 }

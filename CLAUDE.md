@@ -335,20 +335,31 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   (união global+equipe), CL-02 (rejeitar janela que cruza meia-noite), CL-03 (escala por
   atendente fora de escopo — vai junto do 012), CL-04 (feriado 29/02 não desloca) — dono do
   produto, 2026-09-03. Ver [`docs/007-crm-administracao.md`](docs/007-crm-administracao.md).
-- **crm (spec 008 — lead; spec 009 — interação/tag/segmento):** 008 é a **1ª entidade
-  compartilhada** do projeto (`lead` — CRM **e** Marketing, acesso por RBAC 004, não por
-  fronteira; conversão Lead→Pessoa reusa a engine da 005 via **`PortaIdentidade`** no `core`
-  — inversão de dependência, `crm` nunca importa `clientes`; scoring puro/derivado; campos
-  personalizados com esquema administrável; **6ª migração**). 009 fecha o esboço 5.2‑E:
-  `interacao` (âncora `pessoa` XOR `lead`, timeline unida na leitura sem re-apontar linha —
-  CL-01; só `NOTA` edita/remove, canal é append-only — CL-05), `tag` (entidade de 1ª classe
-  compartilhada lead\|pessoa\|interacao, migrando `lead.tags` da 008 sem quebrar o contrato
-  REST — CL-04), `segmento` (query salva, membros sempre derivados na leitura — CL-03);
-  **nenhum contrato novo no `core`** (FK direta no schema, mesmo precedente da 008); **7ª
-  migração**; **+5 permissões** RBAC. Resumo completo de cada uma em
-  [`docs/008-crm-lead.md`](docs/008-crm-lead.md) e
-  [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md) (o histórico
-  detalhado de plano/decisões vive arquivado na seção `SPECKIT` abaixo).
+- **crm (spec 008 — lead; spec 009 — interação/tag/segmento; spec 010 —
+  pipeline/oportunidade):** 008 é a **1ª entidade compartilhada** do projeto (`lead` — CRM
+  **e** Marketing, acesso por RBAC 004, não por fronteira; conversão Lead→Pessoa reusa a
+  engine da 005 via **`PortaIdentidade`** no `core` — inversão de dependência, `crm` nunca
+  importa `clientes`; scoring puro/derivado; campos personalizados com esquema
+  administrável; **6ª migração**). 009 fecha o esboço 5.2‑E: `interacao` (âncora `pessoa`
+  XOR `lead`, timeline unida na leitura sem re-apontar linha — CL-01; só `NOTA` edita/
+  remove, canal é append-only — CL-05), `tag` (entidade de 1ª classe compartilhada
+  lead\|pessoa\|interacao, migrando `lead.tags` da 008 sem quebrar o contrato REST — CL-04),
+  `segmento` (query salva, membros sempre derivados na leitura — CL-03); **nenhum contrato
+  novo no `core`** (FK direta no schema, mesmo precedente da 008); **7ª migração**; **+5
+  permissões** RBAC. 010 entrega o pipeline de vendas (visão Parte 8.7): `pipeline`/
+  `etapa_pipeline` (configurável, `tipo ABERTA|GANHA|PERDIDA`), `oportunidade` (mesma âncora
+  polimórfica `pessoa` XOR `lead` — **1ª persistência de `Dinheiro` do core** no schema),
+  `oportunidade_movimentacao` (histórico de 1ª classe, não o audit genérico — motivo
+  obrigatório só ao entrar em etapa `PERDIDA`), atribuição automática (round robin
+  determinístico reusando `equipe` da 007, ou regra simples, D-03), `slaEstourado`/
+  `esfriando` **sempre derivados** (nunca coluna — reusa `interacao` da 009 p/ esfriando),
+  campos personalizados e métricas por etapa/moeda; porta `PortaObservacaoPagamentoCrm`
+  (D-02, regra 8.2.3 da visão — sem gatilho real, Financeiro ainda não existe); **8ª
+  migração**; **+6 permissões** RBAC. Resumo completo de cada uma em
+  [`docs/008-crm-lead.md`](docs/008-crm-lead.md),
+  [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md) e
+  [`docs/010-crm-pipeline.md`](docs/010-crm-pipeline.md) (o histórico detalhado de plano/
+  decisões vive arquivado na seção `SPECKIT` abaixo).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
   TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço
   (tela `/login` + `AuthProvider`/`useAuth` + `apiFetch` central que injeta `Authorization`
@@ -360,9 +371,12 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   **CRM · Administração** (007, `crm_admin:ver`, abas Equipes/Expediente/Integrações);
   **CRM · Leads** (008, `lead:ver_todos`\|`ver_proprios`, score/campos personalizados/
   converter); **CRM · Segmentos** (009, `segmento:ver`, lista+detalhe+membros) +
-  `TimelineInteracoes`/`TagPicker` compartilhados plugados em Pessoas e Leads.
-  `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
-  `frontend/src/theme/tokens.css`.
+  `TimelineInteracoes`/`TagPicker` compartilhados plugados em Pessoas e Leads; **CRM ·
+  Pipelines** (010, `oportunidade:ver_todas`\|`ver_proprias`, board Kanban com
+  drag-and-drop **HTML5 nativo** — 0 dep — + modal de motivo em etapa `PERDIDA`;
+  administração de pipeline/etapa/atribuição/campos personalizados atrás de
+  `crm_admin:gerir_pipelines`). `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`).
+  Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
   nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`. Scripts
   `backend` `prisma:migrate:{dev,deploy,status}`/`prisma:seed`/`prisma:reset` carregam o
@@ -398,7 +412,64 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/009-crm-interacao-timeline/plan.md`](specs/009-crm-interacao-timeline/plan.md)
+Plano ativo: [`specs/010-crm-pipeline/plan.md`](specs/010-crm-pipeline/plan.md)
+(Fase 1 · spec 010 — **Pipeline de Vendas do CRM**: pipelines de vendas configuráveis
+(visão Parte 8.7) — `pipeline`/`etapa_pipeline` (etapas ordenadas, `tipo ABERTA|GANHA|
+PERDIDA`, `slaHoras?`), `oportunidade` (âncora polimórfica `pessoa` XOR `lead`, mesma
+disciplina da `interacao` da 009 — D-01; **1ª persistência de `Dinheiro` do core** no
+schema, `valor_estimado_int bigint` ×10000 + `valor_estimado_moeda char(3)`),
+`oportunidade_movimentacao` (histórico de **1ª classe**, não o audit genérico — motivo
+obrigatório só ao **entrar** em etapa `PERDIDA`; mover para a etapa atual é no-op; reabrir
+`GANHA`/`PERDIDA` para `ABERTA` não exige motivo). Mora no _bounded context_ **`crm`** (já
+não-vazio desde a 007/008/009; `CONTEXT_MODULES` segue **11**). **Atribuição automática**
+(D-03): `pipeline.modoAtribuicao MANUAL|RODIZIO|REGRA` (+ `atribuicaoFallback`); `RODIZIO`
+reusa `equipe`/`equipe_membro` da 007 — round robin **determinístico** via cursor
+`pipeline.ultimoAtribuidoUsuarioId` persistido (`domain/pipeline/atribuicao.ts`, puro); sem
+membro ativo → nasce sem responsável, **nunca erro**; `REGRA` — lista ordenada de condições
+simples (`ORIGEM`, `VALOR_ESTIMADO_MINIMO`) com *fallback* opcional; `responsavelId`
+explícito sempre vence. **SLA e "esfriando" — sempre derivados** (Princípio V, nunca
+coluna): `slaEstourado`/`esfriando` calculados em toda leitura; "esfriando" reusa a
+`interacao` da 009 (última `ocorridoEm` da âncora, busca em **lote** — sem N+1) em vez de
+duplicar como coluna denormalizada. **Campos personalizados de oportunidade** — mesmo
+padrão da 008. **Métricas** (`GET /crm/pipelines/{id}/metricas`) — funil por etapa, valor
+por etapa **por moeda** (nunca soma entre moedas), tempo médio na etapa, taxa de conversão —
+sempre recalculado, `groupBy` Prisma, nunca contador persistido. **Porta
+`PortaObservacaoPagamentoCrm`** (D-02, regra 8.2.3 da visão) — exportada do `CrmModule`,
+entrega só o **efeito** (mover oportunidade `ABERTA` para a 1ª etapa `GANHA` do pipeline,
+idempotente); o Financeiro (specs 018–030) **ainda não existe**, então **sem gatilho real**
+nesta spec — nunca cria/edita/lê Contrato; testada isoladamente (injeção direta do
+provider, sem endpoint HTTP). **Nenhum contrato novo no `core`** (mesmo precedente da
+009 — FK direta no `schema.prisma` para `Pessoa`/`Lead`, fronteira do Princípio VI é sobre
+import de módulo TS, não sobre o schema). **RBAC 004 estendido**: **+6** permissões —
+`oportunidade:{criar,editar,mover,ver_todas,ver_proprias}` (mesmo padrão `ver_todos`/
+`ver_proprios` da 008) + `crm_admin:gerir_pipelines` (recurso `crm_admin` da 007);
+`administrador`/credencial de serviço de graça, **0 migração de dados/seed**. **8ª migração
+Prisma** (`20260904154451_crm_pipeline`): `pipeline`, `etapa_pipeline`, `oportunidade`,
+`oportunidade_movimentacao`, `regra_atribuicao_pipeline`,
+`campo_personalizado_oportunidade`, `valor_campo_oportunidade`, `crm_pipeline_audit` (forma
+canônica do core, append-only, só delta real — **não** recebe mudança de etapa, que é
+`oportunidade_movimentacao`) + enums `EtapaPipelineTipo`/`ModoAtribuicao`/
+`RegraAtribuicaoCampo`; 1 `CHECK` de âncora XOR via SQL bruto (Prisma não modela `CHECK`).
+**~26 endpoints** novos `/crm/pipelines/**`, `/crm/oportunidades/**`,
+`/crm/{pessoas,leads}/:id/oportunidades`, `/crm/admin/campos-oportunidade/**`. **Frontend**:
+`frontend/src/pipelines/` — **CRM · Pipelines** (board Kanban, colunas por etapa,
+drag-and-drop **HTML5 nativo** — `@hello-pangea/dnd` avaliada e rejeitada, ver
+`research.md`, 0 dep nova —, `MoverMotivoModal` ao soltar em etapa `PERDIDA`,
+`MetricasPanel`); `PipelineAdminPage` (etapas/atribuição/campos personalizados) atrás de
+`crm_admin:gerir_pipelines`. **0 dep nova**, **1 migração**, **nenhuma porta nova**,
+**nenhuma chave `.env` nova**. `CONTEXT_MODULES` segue 11. Decisões D-01..D-06 resolvidas
+como defaults documentados na própria spec (não marcada `⚠ clarify` no ROADMAP, diferente
+de 011/012) — spec §Clarifications, 2026-09-04. 391 testes unitários backend + 199 e2e
+(Postgres real, ambiente isolado — container próprio na porta 55433, já que 3001/5174/55432
+estavam em uso por outra sessão neste ambiente) + 72 frontend, todos verdes; lint/typecheck/
+build limpos nos dois workspaces. Um bug real pego pelo e2e e corrigido: `REGRA.ORIGEM`
+não resolvia a `origem` do lead (`OportunidadeService` passava `origem: null` fixo) —
+corrigido com `OportunidadeRepository.origemDoLead`.
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+<details><summary>Spec 009 — Timeline de Interações do CRM (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/009-crm-interacao-timeline/plan.md`](specs/009-crm-interacao-timeline/plan.md)
 (Fase 1 · spec 009 — **Timeline de Interações do CRM**: fecha o esboço 5.2‑E que ainda
 faltava — `interacao` (timeline unificada), `tag` (categorização compartilhada) e
 `segmento` (lista dinâmica por query salva). Mora no _bounded context_ **`crm`** (já
@@ -468,6 +539,8 @@ executadas** por falta de acesso a Postgres/Docker no ambiente da sessão que as
 rodar antes do merge: `npm run db:up && npm run prisma:migrate:dev --workspace backend &&
 npm run test:e2e`.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+</details>
 
 <details><summary>Spec 008 — Lead do CRM (implementada, resumo arquivado)</summary>
 
