@@ -7,8 +7,21 @@ export interface NavItem {
   to: string;
   /** Ainda não implementado (spec futura). */
   soon?: boolean;
-  /** Só aparece se as permissões efetivas do sujeito incluírem esta (spec 004). */
-  requerPermissao?: string;
+  /**
+   * Só aparece se as permissões efetivas do sujeito incluírem a permissão
+   * (spec 004). Uma **lista** = basta ter **qualquer uma** (OU — spec 008).
+   */
+  requerPermissao?: string | string[];
+}
+
+/** `true` se o sujeito satisfaz `req` (string = exata; lista = qualquer uma). */
+export function satisfazPermissao(
+  req: string | string[] | undefined,
+  permissoes: ReadonlySet<string>,
+): boolean {
+  if (req == null) return true;
+  const alvos = Array.isArray(req) ? req : [req];
+  return alvos.some((p) => permissoes.has(p));
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -20,6 +33,11 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'CRM · Administração',
     to: '/crm/admin',
     requerPermissao: 'crm_admin:ver',
+  },
+  {
+    label: 'CRM · Leads',
+    to: '/crm/leads',
+    requerPermissao: ['lead:ver_todos', 'lead:ver_proprios'],
   },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },

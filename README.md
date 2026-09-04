@@ -101,11 +101,11 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     health/      GET /health (composição + banco)
     clientes/    pessoa + conta: identidade, dedup, merge (spec 005 — domain/ application/ infra/)
     ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/)
-    crm/         Administração do CRM: equipes, expediente, integrações, auditoria (spec 007 — domain/ application/ infra/)
+    crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring, campos personalizados, conversão (spec 008 — domain/ application/ infra/, subpasta lead/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
-  prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin 007) + migrações + seed.ts
+  prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin 007 + lead 008) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -117,6 +117,8 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     admin/       Administração — abas Perfis e Usuários (spec 004)
     pessoas/ contas/  lista, detalhe, criação e merge (spec 005)
     eventos/     painel de eventos de ingestão — revisar/erro + reprocessar (spec 006)
+    crm-admin/   CRM · Administração — abas Equipes / Expediente / Integrações (spec 007)
+    leads/       CRM · Leads — lista, detalhe, score, campos personalizados, converter (spec 008)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -150,7 +152,8 @@ npm run db:up
 # 4. Aplicar as migrações e semear o RBAC (spec 004 — 1ª migração de negócio;
 #    spec 005 acrescenta pessoa/conta na 2ª+3ª migração; spec 006 acrescenta
 #    evento_origem/evento_etapa na 4ª; spec 007 acrescenta equipe/expediente/
-#    integracao na 5ª — todas sem seed de negócio)
+#    integracao na 5ª; spec 008 acrescenta lead/campos-personalizados na 6ª —
+#    todas sem seed de negócio)
 npm run prisma:migrate:deploy --workspace backend
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run prisma:migrate:dev --workspace backend` já roda o seed no fim
@@ -297,7 +300,36 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   Expediente / Integrações; máscara de segredo; _reveal_ 1×; indicador "no expediente
   agora?"). 0 dep nova, 1 migração (2 arquivos), +1 chave `.env`.
   Ver [`docs/007-crm-administracao.md`](docs/007-crm-administracao.md).
-- ⏭️ Próxima: **008 — crm-lead** (Fase 1 — CRM).
+- ✅ **008 — crm-lead**: 1ª entidade **compartilhada** do projeto — uma única tabela `lead`
+  para CRM **e** Marketing (visão 8.2.1), acesso por RBAC 004 (`lead:{criar,editar,
+  ver_todos,ver_proprios}` já no catálogo desde a 004), não por fronteira. Mora no `crm`
+  (`CONTEXT_MODULES` segue 11). **Lead scoring** derivado por `calcularScore` (função pura,
+  livre de locale, tabela de pesos **congelada** `PESOS_SCORE_LEAD`; `score` é _cache_
+  `[0,100]`, nunca `+= delta` — regra 8.2.2, nunca setável por `PATCH`); `recalcular-score`
+  individual + lote, idempotentes. **Conversão Lead → `pessoa`** (`POST /crm/leads/:id/
+  converter`, guard `lead:editar` + `pessoa:editar`) reusa a engine de identidade da **005**
+  por **inversão de dependência** (CL-02): `core` ganha a interface `PortaIdentidade` + token
+  `PORTA_IDENTIDADE`; `clientes` ganha um adaptador + módulo `@Global()`
+  `IdentidadeWiringModule`; o `crm` **injeta a interface, nunca importa `src/clientes/**`**
+  (ESLint + `grep` no e2e). CL-01: pós-conversão o lead é **arquivado + vinculado**
+  (`status=CONVERTIDO` + `pessoa_id`, nada apagado/migrado); idempotente. **Campos
+  personalizados** (CL-03 — esquema administrável): `campo_personalizado_lead` (definição,
+  sob a permissão nova `crm_admin:gerir_campos_lead`) + `valor_campo_lead` (validado por
+  tipo → 422); `PUT` = substituição total. **Escopo de visão**: rotas de leitura
+  `@AutenticadoBasta()` + gate "OU" + filtro **no `where`** (`ver_proprios` = só
+  `responsavel_id` = sujeito e não-nulo; fila não atribuída só p/ `ver_todos`; fora do
+  escopo → 404). **Porta in-process** `RegistrarLeadService` (idempotente por
+  `(origem, id_externo)` — id de origem **nunca** PK) para a spec 035; sem `/webhooks/*`,
+  OAuth ou chamada externa. **Sem `DELETE` físico de lead** (só `DESCARTADO`). Auditoria
+  `crm_lead_audit` (forma canônica do core, append-only, só delta real). **6ª migração
+  Prisma** (`20260904122426_crm_lead` — `lead` / `campo_personalizado_lead` /
+  `valor_campo_lead` / `crm_lead_audit`). Painel `frontend/src/leads/`: item **CRM · Leads**
+  atrás de `lead:ver_todos` **ou** `lead:ver_proprios` (`requerPermissao`/`RequirePermissao`
+  ganham `anyOf`), lista + filtros + coluna de score, detalhe com tags / campos
+  personalizados / timeline de auditoria + **Converter em pessoa**. **0 dep nova, 1
+  migração, nenhuma porta nova, nenhuma chave `.env` nova**, +1 permissão de catálogo.
+  Ver [`docs/008-crm-lead.md`](docs/008-crm-lead.md).
+- ⏭️ Próxima: **009 — crm-interacao-timeline** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

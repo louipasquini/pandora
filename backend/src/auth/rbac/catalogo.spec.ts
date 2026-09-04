@@ -58,12 +58,13 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
-  it('inclui o recurso crm_admin (spec 007)', () => {
+  it('inclui o recurso crm_admin (spec 007 + 008)', () => {
     for (const id of [
       'crm_admin:ver',
       'crm_admin:gerir_equipes',
       'crm_admin:gerir_expediente',
       'crm_admin:gerir_integracoes',
+      'crm_admin:gerir_campos_lead',
     ]) {
       expect(PERMISSAO_IDS.has(id)).toBe(true);
     }
@@ -112,6 +113,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin:gerir_equipes',
       'crm_admin:gerir_expediente',
       'crm_admin:gerir_integracoes',
+      'crm_admin:gerir_campos_lead',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',
