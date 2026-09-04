@@ -78,6 +78,11 @@ export class TagService {
     return this.tags.criar({ slug: n.valor, rotulo: textoBruto.trim() || n.valor });
   }
 
+  /** Tags atuais de uma âncora (lead/pessoa/interação) — leitura pública. */
+  async listarDe(ancora: AncoraTag): Promise<string[]> {
+    return this.listarSlugs(ancora);
+  }
+
   private async listarSlugs(ancora: AncoraTag): Promise<string[]> {
     const rows = await this.associacoes.listarPorAncora(ancora);
     return rows.map((r) => r.tag.slug);

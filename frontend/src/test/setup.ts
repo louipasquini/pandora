@@ -52,6 +52,11 @@ const TODAS_PERMISSOES = [
   'crm_admin:gerir_expediente',
   'crm_admin:gerir_integracoes',
   'crm_admin:gerir_campos_lead',
+  'crm_admin:gerir_tags',
+  'interacao:registrar',
+  'interacao:gerir',
+  'segmento:ver',
+  'segmento:gerir',
 ];
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = typeof input === 'string' ? input : input.toString();
@@ -112,6 +117,37 @@ globalThis.fetch = (async (input: RequestInfo | URL) => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+  // spec 009: timeline/tags/segmentos — vazios por padrão
+  if (/\/crm\/(pessoas|leads)\/[^/]+\/interacoes(\?|$)/.test(url)) {
+    return new Response(
+      JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (/\/crm\/(pessoas|leads|interacoes)\/[^/]+\/tags(\?|$)/.test(url)) {
+    return new Response(JSON.stringify({ tags: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (/\/crm\/tags(\?|$)/.test(url)) {
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (/\/crm\/segmentos\/[^/]+\/membros(\?|$)/.test(url)) {
+    return new Response(
+      JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (/\/crm\/segmentos(\?|$)/.test(url)) {
+    return new Response(
+      JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
   }
   return new Response(JSON.stringify({ message: `fetch não mockado: ${url}` }), {
     status: 599,

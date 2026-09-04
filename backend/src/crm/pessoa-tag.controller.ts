@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, HttpCode, Param, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { z, type ZodTypeAny } from 'zod';
 import type { AuthContext } from '../auth/guards/jwt-auth.guard';
@@ -28,6 +28,12 @@ function parse<S extends ZodTypeAny>(schema: S, data: unknown): z.infer<S> {
 @Controller('crm/pessoas')
 export class PessoaTagController {
   constructor(private readonly tags: TagService) {}
+
+  @RequerPermissao('pessoa:ver')
+  @Get(':id/tags')
+  async listar(@Param('id') id: string) {
+    return { tags: await this.tags.listarDe({ tipo: 'pessoa', id }) };
+  }
 
   @RequerPermissao('pessoa:editar')
   @Post(':id/tags')
