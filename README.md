@@ -106,14 +106,17 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  timeline unificada, tag compartilhada, query salva (spec 009) + Pipeline/
                  Oportunidade: etapas, atribuição automática, SLA/esfriando derivados,
                  métricas (spec 010) + WhatsApp: canal, template, webhook autenticado por
-                 HMAC, janela de 24h, envio, opt-out (spec 011 — domain/ application/
-                 infra/, subpastas lead/ interacao/ tag/ segmento/ pipeline/ whatsapp/)
+                 HMAC, janela de 24h, envio, opt-out (spec 011) + Chat ao Vivo: fila,
+                 endereçamento por carga, SLA de 1ª resposta e CSAT sempre derivados,
+                 transferência, resposta automática fora do expediente (spec 012 — domain/
+                 application/ infra/, subpastas lead/ interacao/ tag/ segmento/ pipeline/
+                 whatsapp/ atendimento/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
                  007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
-                 whatsapp 011) + migrações + seed.ts
+                 whatsapp 011 + atendimento 012) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -132,6 +135,9 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     pipelines/   CRM · Pipelines — board Kanban (drag-and-drop nativo), administração de
                  pipeline/etapa/atribuição/campos personalizados (spec 010)
     whatsapp/    CRM · WhatsApp — conectar canal, sincronizar e ver templates (spec 011)
+    atendimento/ CRM · Chat ao Vivo — fila com indicador de SLA, conversa (assumir/
+                 responder/transferir/encerrar/CSAT), administração de SLA e mensagem
+                 fora do expediente por equipe (spec 012)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -169,7 +175,8 @@ npm run db:up
 #    spec 009 acrescenta interacao/tag/segmento na 7ª (e remove lead.tags);
 #    spec 010 acrescenta pipeline/oportunidade na 8ª; spec 011 acrescenta
 #    canal_whatsapp/template_whatsapp/mensagem_whatsapp/evento_webhook_whatsapp/
-#    opt_out_whatsapp na 9ª — todas sem seed de negócio)
+#    opt_out_whatsapp na 9ª; spec 012 acrescenta atendimento/
+#    transferencia_atendimento/resposta_atendimento na 10ª — todas sem seed de negócio)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
@@ -237,7 +244,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
-(CRM) em andamento** (specs 007–011 entregues; próxima 012).
+(CRM) em andamento** (specs 007–012 entregues; próxima 013).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -415,7 +422,30 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   volta), templates por canal com badge de status e "sincronizar agora". **0 dep nova**
   (`fetch` nativo do Node 24 + `rawBody: true` nativo do Nest), **1 migração, 0 chave `.env`
   nova**. Ver [`docs/011-crm-whatsapp-integracao.md`](docs/011-crm-whatsapp-integracao.md).
-- ⏭️ Próxima: **012 — crm-chat-ao-vivo** (Fase 1 — CRM).
+- ✅ **012 — crm-chat-ao-vivo**: inbox de atendimento ao vivo (visão 8.5/8.12), construída
+  **sobre** a timeline de `interacao` (009) e o canal WhatsApp já conectado (011) — não uma
+  2ª tabela de mensagens. **`atendimento`** (fila, prioridade, atendente/equipe atual, SLA
+  de 1ª resposta sempre **derivado**), **`transferencia_atendimento`**/
+  **`resposta_atendimento`** (histórico de 1ª classe — quem respondeu, com/sem IA — não o
+  audit genérico, mesmo racional de `oportunidade_movimentacao` da 010); mais
+  `interacao.atendimentoId` (agrupa a timeline já existente sem duplicá-la) e
+  `equipe.mensagemForaExpediente`/`slaPrimeiraRespostaMinutos`. **Endereçamento por carga/
+  disponibilidade** (decisão do dono do produto, não aleatório/round robin): entre os
+  membros ativos de uma equipe em expediente (reusa `estaEmExpediente` da 007), escolhe
+  quem tem menos atendimentos em andamento **agora** — sempre derivado
+  (`escolherAtendentePorCarga`, puro), nunca um contador persistido; SLA igualmente
+  derivado, sem job de fundo (volume baixo — até ~10 conversas simultâneas, decisão do
+  dono do produto, herdada pela 015). **CSAT reaproveita a `interacao` tipo `NPS`** já
+  existente — nenhuma entidade nova; resposta automática fora do expediente reusa só
+  `estaEmExpediente`, só canal WhatsApp, no máximo 1× por atendimento. **10ª migração
+  Prisma** (3 tabelas + 3 enums + 2 colunas; nenhuma tabela de auditoria genérica nova).
+  Catálogo RBAC ganha `atendimento:{ver_todos,ver_proprios,atender,transferir,encerrar}` +
+  `crm_admin:gerir_atendimento` (+6). ~16 endpoints autenticados, 0 endpoint público novo.
+  Painel: **CRM · Chat ao Vivo** — fila com indicador de SLA + conversa reaproveitando
+  `TimelineInteracoes` (009) para o histórico completo; administração de SLA/mensagem fora
+  do expediente por equipe. **0 dep nova**, **1 migração, 0 chave `.env` nova**. Ver
+  [`docs/012-crm-chat-ao-vivo.md`](docs/012-crm-chat-ao-vivo.md).
+- ⏭️ Próxima: **013 — crm-faq-e-sugestao-ia** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

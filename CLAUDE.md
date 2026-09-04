@@ -377,8 +377,13 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   administração de pipeline/etapa/atribuição/campos personalizados atrás de
   `crm_admin:gerir_pipelines`); **CRM · WhatsApp** (011, `crm_admin:ver`\|`whatsapp:ver`,
   conectar canal com segredos só-escrita + templates por canal com badge de status e
-  "sincronizar agora" atrás de `crm_admin:gerir_whatsapp`). `vite.config.ts` lê o `.env` da
-  raiz (`envDir: '..'`). Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
+  "sincronizar agora" atrás de `crm_admin:gerir_whatsapp`); **CRM · Chat ao Vivo** (012,
+  `atendimento:ver_todos`\|`ver_proprios`, fila com indicador de SLA + conversa
+  reaproveitando `TimelineInteracoes` em modo leitura, assumir/responder/transferir/
+  encerrar/CSAT condicionados à permissão; administração de SLA/mensagem fora do
+  expediente por equipe atrás de `crm_admin:gerir_atendimento`). `vite.config.ts` lê o
+  `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
+  `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
   nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`. Scripts
   `backend` `prisma:migrate:{dev,deploy,status}`/`prisma:seed`/`prisma:reset` carregam o
@@ -414,7 +419,70 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/011-crm-whatsapp-integracao/plan.md`](specs/011-crm-whatsapp-integracao/plan.md)
+Plano ativo: [`specs/012-crm-chat-ao-vivo/plan.md`](specs/012-crm-chat-ao-vivo/plan.md)
+(Fase 1 · spec 012 — **CRM · Chat ao Vivo**: inbox de atendimento ao vivo (visão Parte
+8.5/8.12), construída **sobre** a timeline de `interacao` unificada (009) e o canal
+WhatsApp já conectado (011) — não uma 2ª tabela de mensagens. Mora no _bounded context_
+**`crm`** (já não-vazio desde 007/008/009/010/011; `CONTEXT_MODULES` segue **11**).
+**`atendimento`** (a conversa/caso — fila, prioridade, atendente/equipe atual, SLA de 1ª
+resposta **sempre derivado**, elegibilidade de CSAT; âncora polimórfica `pessoa` XOR
+`lead`, mesma disciplina de `interacao`/`oportunidade`). **`transferencia_atendimento`**/
+**`resposta_atendimento`** — histórico **append-only de 1ª classe** (quem transferiu para
+quem e por quê; quem respondeu e se foi assistido por IA) — **não** `crm_admin_audit`,
+mesmo racional de `oportunidade_movimentacao` (010) não ser o audit genérico. Duas colunas
+novas em tabelas já existentes: `interacao.atendimentoId` (nullable — agrupa a timeline já
+existente sob um atendimento, sem duplicá-la nem alterar o contrato de mutabilidade da 009)
+e `equipe.mensagemForaExpediente`/`slaPrimeiraRespostaMinutos` (config por equipe
+`ATENDIMENTO`). **Endereçamento por carga/disponibilidade** (decisão do dono do produto,
+2026-09-04 — nunca aleatório, nunca round robin puro): entre os membros ativos de uma
+equipe `tipo = ATENDIMENTO` em expediente (reusa **`estaEmExpediente`** da 007, sem 2º
+conceito), `escolherAtendentePorCarga` (pura) escolhe quem tem menos atendimentos
+`EM_ATENDIMENTO` **agora** — sempre um `COUNT` ao vivo, nunca um contador persistido;
+empate por menor `usuarioId` (desempate determinístico, não round robin). **SLA de 1ª
+resposta** (`calcularSlaAtendimento`, pura) igualmente recalculado em toda leitura — o
+padrão `WorkerScheduler` da 006 foi deliberadamente **rejeitado** aqui, dado o volume baixo
+(decisão do dono do produto: até ~10 conversas simultâneas — sem fila/broker, índices
+comuns bastam; suposição herdada pela 015). **CSAT reaproveita a `interacao` tipo `NPS`**
+já existente desde a 009 — nenhuma entidade nova; captura manual (`POST .../csat`) ou
+automática (o webhook do WhatsApp, editado, reconhece uma resposta numérica 0–10 logo após
+o encerramento de um atendimento elegível e grava como `NPS` em vez de mensagem comum).
+**Resposta automática fora do expediente** reusa só `estaEmExpediente`, texto configurável
+por equipe, só canal WhatsApp, no máximo 1× por atendimento, **nunca** conta como a 1ª
+resposta humana para efeito de SLA. Responder um atendimento de canal WhatsApp continua
+saindo pelo **`EnvioWhatsappService`/`GraphApiClient`** já existentes (011, mesma validação
+de janela de 24h/template — nenhuma regra nova); `RegistrarInteracaoService` (009) segue
+sendo a porta usada tanto pelo canal manual quanto pelo webhook. **10ª migração Prisma**
+(`20260904180825_crm_atendimento`): 3 tabelas + 3 enums + 2 colunas; 1 `CHECK` de âncora
+XOR via SQL bruto (Prisma não modela `CHECK`). **RBAC 004 estendido**: **+6** permissões —
+`atendimento:{ver_todos,ver_proprios,atender,transferir,encerrar}` +
+`crm_admin:gerir_atendimento`; `administrador`/credencial de serviço de graça, **0
+migração de dados/seed**. **~16 endpoints** autenticados (`/crm/atendimentos/**` — fila/
+assumir/responder/transferir/encerrar/csat/timeline; `/crm/admin/atendimento/equipes/:id`
+— SLA/mensagem fora do expediente), **0 endpoint público novo** (reaproveita o webhook já
+existente da 011, agora também abrindo/reaproveitando `atendimento` e detectando CSAT).
+**Frontend** `frontend/src/atendimento/`: **CRM · Chat ao Vivo**
+(`AtendimentoInboxPage.tsx`, atrás de `atendimento:ver_todos`\|`atendimento:ver_proprios`)
+— fila com indicador de SLA (`FilaAtendimento.tsx`) + conversa
+(`ConversaAtendimento.tsx`: assumir/responder/transferir/encerrar/CSAT condicionados à
+permissão, reaproveita `TimelineInteracoes` da 009 em modo leitura para o histórico
+completo da pessoa/lead — o composer de resposta é próprio, passa por
+`POST /crm/atendimentos/:id/responder`, não pela porta genérica de `interacao`);
+`TransferirModal.tsx`; `AtendimentoAdminPage.tsx` (SLA/mensagem fora do expediente por
+equipe, atrás de `crm_admin:gerir_atendimento`). Hooks TanStack Query **inline** nos
+componentes, mesmo padrão de `whatsapp/WhatsappAdminPage.tsx` (011). **0 dep nova**
+(backend e frontend — testes de componente usam `fireEvent`, mesmo padrão de
+`pipelines/PipelinesPage.test.tsx`, não `@testing-library/user-event`), **1 migração**,
+**nenhuma porta nova**, **nenhuma chave `.env` nova**. `CONTEXT_MODULES` segue 11. As 2
+decisões que bloqueavam esta spec no ROADMAP (⚠ clarify) — endereçamento por carga/
+disponibilidade e volume esperado baixo — foram resolvidas com o dono do produto **antes**
+da escrita do `spec.md`, 2026-09-04. 454 testes unitários backend (31 novos, todos de
+domínio puro — sem banco) + 245 e2e (23 novos, Postgres real, suíte 003–012 completa) + 83
+frontend (7 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces.
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+<details><summary>Spec 011 — CRM · Integração com WhatsApp (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/011-crm-whatsapp-integracao/plan.md`](specs/011-crm-whatsapp-integracao/plan.md)
 (Fase 1 · spec 011 — **CRM · Integração com WhatsApp**: conecta o WhatsApp Business — **Cloud
 API oficial da Meta**, decisão do dono do produto 2026-09-04, não BSP — como canal de 1ª
 classe do CRM (visão Parte 8.5/8.12). Mora no _bounded context_ **`crm`** (já não-vazio desde
@@ -477,6 +545,8 @@ da escrita do `spec.md`, 2026-09-04. 423 testes unitários backend (32 novos, to
 puro — sem banco) + 222 e2e (23 novos, Postgres real, suíte 003–011 completa) + 76 frontend
 (4 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+</details>
 
 <details><summary>Spec 010 — Pipeline de Vendas do CRM (implementada, resumo arquivado)</summary>
 

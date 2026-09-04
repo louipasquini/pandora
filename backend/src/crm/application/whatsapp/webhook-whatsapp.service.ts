@@ -23,6 +23,8 @@ import {
 import { RegistrarInteracaoService } from '../interacao/registrar-interacao.service';
 import { RegistrarLeadService } from '../lead/registrar-lead.service';
 import { CanalWhatsappService } from './canal-whatsapp.service';
+import { AbrirAtendimentoService, CsatService } from '../atendimento';
+import { AtendimentoRepository } from '../../infra/atendimento';
 
 export type ResultadoProcessarWebhook =
   | { ok: true }
@@ -42,6 +44,11 @@ export class WebhookWhatsappService {
     private readonly mensagens: MensagemWhatsappRepository,
     private readonly registrarInteracao: RegistrarInteracaoService,
     private readonly registrarLead: RegistrarLeadService,
+    // spec 012 — abre/reaproveita o atendimento da inbox e detecta resposta de CSAT
+    // antes do fluxo padrão de mensagem recebida (D-R5).
+    private readonly abrirAtendimento: AbrirAtendimentoService,
+    private readonly csat: CsatService,
+    private readonly atendimentos: AtendimentoRepository,
   ) {}
 
   /** Handshake `GET` — compara `verifyToken` contra todo canal ativo. */
@@ -166,6 +173,17 @@ export class WebhookWhatsappService {
     const telefone = norm.valor as string;
     const ancora = await this.resolverAncora(telefone, nomeContato);
 
+    // spec 012, D-R5 — resposta de CSAT (nota numérica) logo após o encerramento
+    // de um atendimento elegível vira `interacao` tipo NPS, não uma mensagem
+    // comum; qualquer outro texto segue o fluxo padrão abaixo.
+    if (mensagem.type === 'text' && mensagem.text?.body) {
+      const viraCsat = await this.csat.interpretarEntradaWebhook(ancora, mensagem.text.body);
+      if (viraCsat) {
+        this.logger.log(`webhook.whatsapp.csat_registrado canal=${canal.id} de=${telefone}`);
+        return;
+      }
+    }
+
     const conteudo =
       mensagem.type === 'text' && mensagem.text?.body ? mensagem.text.body : `[${mensagem.type} recebido]`;
     const ocorridoEm = new Date(Number(mensagem.timestamp) * 1000);
@@ -193,6 +211,15 @@ export class WebhookWhatsappService {
         statusEntrega: 'RECEBIDA',
         erroDetalhe: null,
       });
+
+      // spec 012 — agrupa a nova interação sob o atendimento (fila/roteamento/
+      // SLA), criando ou reaproveitando um atendimento aberto da mesma âncora.
+      const abertura = await this.abrirAtendimento.abrirOuReaproveitar({
+        ...ancora,
+        canal: 'WHATSAPP',
+        canalWhatsappId: canal.id,
+      });
+      await this.atendimentos.marcarInteracaoDoAtendimento(resultado.interacaoId, abertura.atendimentoId);
     }
   }
 

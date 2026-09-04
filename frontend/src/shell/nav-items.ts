@@ -54,6 +54,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/crm/whatsapp',
     requerPermissao: ['crm_admin:ver', 'whatsapp:ver'],
   },
+  {
+    label: 'CRM · Chat ao Vivo',
+    to: '/crm/atendimentos',
+    requerPermissao: ['atendimento:ver_todos', 'atendimento:ver_proprios'],
+  },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },

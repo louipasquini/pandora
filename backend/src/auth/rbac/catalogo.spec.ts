@@ -158,6 +158,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'segmento',
       'oportunidade',
       'whatsapp',
+      'atendimento',
     ]);
     expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
       'crm_admin:ver',
@@ -168,6 +169,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin:gerir_tags',
       'crm_admin:gerir_pipelines',
       'crm_admin:gerir_whatsapp',
+      'crm_admin:gerir_atendimento',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',

@@ -173,6 +173,37 @@ export const PERMISSOES = Object.freeze([
     recurso: 'crm_admin',
     rotulo: 'Configurar canal de WhatsApp e sincronizar templates',
   },
+  // --- Chat ao vivo / fila de atendimento (spec 012) ---
+  {
+    id: 'atendimento:ver_todos',
+    recurso: 'atendimento',
+    rotulo: 'Ver todos os atendimentos (fila e em andamento de qualquer atendente)',
+  },
+  {
+    id: 'atendimento:ver_proprios',
+    recurso: 'atendimento',
+    rotulo: 'Ver apenas os atendimentos do próprio atendente',
+  },
+  {
+    id: 'atendimento:atender',
+    recurso: 'atendimento',
+    rotulo: 'Assumir, responder e registrar CSAT de atendimentos',
+  },
+  {
+    id: 'atendimento:transferir',
+    recurso: 'atendimento',
+    rotulo: 'Transferir atendimentos entre atendentes/equipes',
+  },
+  {
+    id: 'atendimento:encerrar',
+    recurso: 'atendimento',
+    rotulo: 'Encerrar atendimentos',
+  },
+  {
+    id: 'crm_admin:gerir_atendimento',
+    recurso: 'crm_admin',
+    rotulo: 'Configurar SLA de 1ª resposta e mensagem fora do expediente por equipe',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */
