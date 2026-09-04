@@ -103,13 +103,16 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/)
     crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring,
                  campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
-                 timeline unificada, tag compartilhada, query salva (spec 009 — domain/
-                 application/ infra/, subpastas lead/ interacao/ tag/ segmento/)
+                 timeline unificada, tag compartilhada, query salva (spec 009) + Pipeline/
+                 Oportunidade: etapas, atribuição automática, SLA/esfriando derivados,
+                 métricas (spec 010 — domain/ application/ infra/, subpastas lead/
+                 interacao/ tag/ segmento/ pipeline/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
-                 007 + lead 008 + interacao/tag/segmento 009) + migrações + seed.ts
+                 007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010)
+                 + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -125,6 +128,8 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     leads/       CRM · Leads — lista, detalhe, score, campos personalizados, converter (spec 008)
     interacoes/  TimelineInteracoes + TagPicker — compartilhados por Pessoa e Lead (spec 009)
     segmentos/   CRM · Segmentos — lista, detalhe, membros derivados na leitura (spec 009)
+    pipelines/   CRM · Pipelines — board Kanban (drag-and-drop nativo), administração de
+                 pipeline/etapa/atribuição/campos personalizados (spec 010)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -159,8 +164,8 @@ npm run db:up
 #    spec 005 acrescenta pessoa/conta na 2ª+3ª migração; spec 006 acrescenta
 #    evento_origem/evento_etapa na 4ª; spec 007 acrescenta equipe/expediente/
 #    integracao na 5ª; spec 008 acrescenta lead/campos-personalizados na 6ª;
-#    spec 009 acrescenta interacao/tag/segmento na 7ª (e remove lead.tags) —
-#    todas sem seed de negócio)
+#    spec 009 acrescenta interacao/tag/segmento na 7ª (e remove lead.tags);
+#    spec 010 acrescenta pipeline/oportunidade na 8ª — todas sem seed de negócio)
 npm run prisma:migrate:deploy --workspace backend
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run prisma:migrate:dev --workspace backend` já roda o seed no fim
