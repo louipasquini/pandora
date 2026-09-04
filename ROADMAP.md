@@ -387,12 +387,45 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/011-crm-whatsapp-integracao/`](specs/011-crm-whatsapp-integracao/) e
   [`docs/011-crm-whatsapp-integracao.md`](docs/011-crm-whatsapp-integracao.md).
 
-- [ ] **012 — crm-chat-ao-vivo**
-  Fila de atendimento com priorização, endereçamento a atendente, transferência de conversa
-  com contexto preservado, CSAT pós-atendimento, resposta automática fora do expediente,
-  SLA de 1ª resposta + alerta, log de auditoria (quem respondeu, com/sem IA).
-  ⚠ clarify: endereçamento aleatório puro ou por carga/disponibilidade?
-  Frontend: inbox de atendimento.
+- [x] **012 — crm-chat-ao-vivo** — ✅ implementada e validada (2026-09-04)
+  Sexta fatia da Fase 1 (CRM), visão Parte 8.5/8.12. Inbox de atendimento ao vivo
+  construída **sobre** a timeline de `interacao` unificada (009) e o canal WhatsApp já
+  conectado (011) — não uma 2ª tabela de mensagens. **`atendimento`** (a conversa/caso —
+  fila, prioridade, atendente/equipe atual, SLA de 1ª resposta sempre **derivado**,
+  elegibilidade de CSAT), **`transferencia_atendimento`** (histórico append-only de 1ª
+  classe, não o audit genérico — mesmo racional de `oportunidade_movimentacao`, 010),
+  **`resposta_atendimento`** (detalhe 1:1 de uma `interacao` de saída — quem respondeu,
+  com/sem IA); mais `interacao.atendimentoId` (nullable, agrupa a timeline já existente sem
+  duplicá-la) e `equipe.mensagemForaExpediente`/`slaPrimeiraRespostaMinutos` (novas colunas
+  em tabelas já existentes). **Endereçamento por carga/disponibilidade** (decisão do dono
+  do produto — nunca aleatório, nunca round robin puro): entre os membros ativos de uma
+  equipe `tipo = ATENDIMENTO` em expediente (reusa `estaEmExpediente`, 007), escolhe quem
+  tem menos atendimentos `EM_ATENDIMENTO` **agora** — sempre um cálculo derivado
+  (`escolherAtendentePorCarga`, puro), nunca um contador persistido. **SLA de 1ª resposta**
+  igualmente derivado a cada leitura (`calcularSlaAtendimento`, puro) — o padrão
+  `WorkerScheduler` da 006 foi deliberadamente **rejeitado** dado o volume baixo (decisão do
+  dono do produto: até ~10 conversas simultâneas, herdada pela 015). **CSAT reaproveita a
+  `interacao` tipo `NPS`** já existente desde a 009 — nenhuma entidade nova; captura manual
+  ou automática (resposta numérica via webhook do WhatsApp logo após o encerramento).
+  **Resposta automática fora do expediente** reusa só `estaEmExpediente` (nenhum segundo
+  conceito), texto configurável por equipe, só canal WhatsApp, no máximo 1× por atendimento,
+  nunca conta como 1ª resposta humana. Resposta em canal WhatsApp continua saindo pelo
+  `EnvioWhatsappService`/`GraphApiClient` já existentes (011). **10ª migração Prisma**
+  (`20260904180825_crm_atendimento` — 3 tabelas + 3 enums + 2 colunas; **nenhuma tabela de
+  auditoria genérica nova**, histórico de negócio é 1ª classe). **RBAC 004 estendido**: +6
+  permissões (`atendimento:{ver_todos,ver_proprios,atender,transferir,encerrar}`,
+  `crm_admin:gerir_atendimento`). **~16 endpoints** autenticados, **0 endpoint público
+  novo** (reaproveita o webhook já existente da 011, agora também abrindo/reaproveitando
+  `atendimento` e detectando CSAT). Frontend `frontend/src/atendimento/`: **CRM · Chat ao
+  Vivo** — fila com indicador de SLA + conversa reaproveitando `TimelineInteracoes` (009,
+  modo leitura) para o histórico completo; administração de SLA/mensagem fora do expediente
+  por equipe. **0 dep nova**, **1 migração, 0 chave `.env` nova**. Decisões do dono do
+  produto resolvidas em 2026-09-04 **antes** da escrita do `spec.md`: endereçamento por
+  carga/disponibilidade; volume baixo. 454 testes unitários backend (31 novos) + 245 e2e (23
+  novos, Postgres real) + 83 frontend (7 novos), todos verdes; lint/typecheck/build limpos
+  nos dois workspaces.
+  Detalhe: [`specs/012-crm-chat-ao-vivo/`](specs/012-crm-chat-ao-vivo/) e
+  [`docs/012-crm-chat-ao-vivo.md`](docs/012-crm-chat-ao-vivo.md).
 
 - [ ] **013 — crm-faq-e-sugestao-ia**
   `faq_item` (produto FK nullable OU campanha FK nullable — exatamente um), FAQ por produto
@@ -736,12 +769,12 @@ financeiro/comercial/identidade — compõe e explica; ações viram comando ao 
 | --- | --- |
 | ~~008~~ | ✅ resolvida (2026-09-04): Lead → `pessoa` **arquiva + vincula** o registro (`status=CONVERTIDO` + `pessoa_id`), não migra fisicamente. |
 | ~~011~~ | ✅ resolvida (2026-09-04): WhatsApp = **Cloud API oficial da Meta**, não BSP. |
-| 012 | Endereçamento de chamado: aleatório ou por carga/disponibilidade? |
+| ~~012~~ | ✅ resolvida (2026-09-04): endereçamento de chamado = **por carga/disponibilidade** (menor nº de conversas em andamento agora, entre os disponíveis em expediente), não aleatório nem round robin puro. |
 | 036 | Modelo de atribuição default de Marketing. |
 | 045 | Método de login da aluna no portal da Central. |
 | — | Escopo de `conta` (household) na v1 (afeta 005, 010, 044) — visão Parte 8.12. |
 | ~~—~~ | ✅ resolvida (2026-09-04): retenção/anonimização de conversas de WhatsApp = **indefinida**, pseudonimização só na exclusão da `pessoa` (mesma disciplina do resto do sistema; sem TTL automático) — afetava 011/047/055. |
-| — | Volume esperado de atendimento simultâneo (dimensiona 012 e 015). |
+| ~~—~~ | ✅ resolvida (2026-09-04): volume esperado de atendimento simultâneo = **baixo** (até ~10 conversas simultâneas) — dimensionou a 012 (sem fila/broker, índices comuns bastam) e é herdado como a mesma suposição de base para a 015, que deve revalidá-la para o caso específico de disparo em massa antes de assumi-la sem revisão. |
 
 ## Resumo por fase
 

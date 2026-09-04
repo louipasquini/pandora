@@ -76,6 +76,14 @@ export class InteracaoRepository {
     return this.listar(where, opts);
   }
 
+  /** Timeline de um `atendimento` (spec 012) — mesma `interacao`, sem cópia/2ª tabela. */
+  listarPorAtendimento(atendimentoId: string): Promise<InteracaoRow[]> {
+    return this.prisma.interacao.findMany({
+      where: { atendimentoId },
+      orderBy: [{ ocorridoEm: 'asc' }, { id: 'asc' }],
+    });
+  }
+
   private async listar(
     where: Prisma.InteracaoWhereInput,
     opts: PaginacaoOpts,
