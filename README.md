@@ -161,9 +161,12 @@ npm run db:up
 #    integracao na 5ª; spec 008 acrescenta lead/campos-personalizados na 6ª;
 #    spec 009 acrescenta interacao/tag/segmento na 7ª (e remove lead.tags) —
 #    todas sem seed de negócio)
-npm run prisma:migrate:deploy --workspace backend
+npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
-#    em dev, `npm run prisma:migrate:dev --workspace backend` já roda o seed no fim
+#    em dev, `npm run db:migrate` já roda o seed no fim
+#    os scripts prisma:* do backend (migrate/seed/reset) carregam o `.env` da raiz
+#    sozinhos (`set -a && . ../.env`) — não precisa exportar DATABASE_URL na mão;
+#    `npm run db:migrate:status` checa se há migração pendente sem aplicar nada
 
 # 5. Subir backend (porta 3001) e frontend (porta 5174) — dois terminais
 npm run start:dev --workspace backend
