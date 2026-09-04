@@ -101,11 +101,15 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     health/      GET /health (composição + banco)
     clientes/    pessoa + conta: identidade, dedup, merge (spec 005 — domain/ application/ infra/)
     ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/)
-    crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring, campos personalizados, conversão (spec 008 — domain/ application/ infra/, subpasta lead/)
+    crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring,
+                 campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
+                 timeline unificada, tag compartilhada, query salva (spec 009 — domain/
+                 application/ infra/, subpastas lead/ interacao/ tag/ segmento/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
-  prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin 007 + lead 008) + migrações + seed.ts
+  prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
+                 007 + lead 008 + interacao/tag/segmento 009) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -119,6 +123,8 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     eventos/     painel de eventos de ingestão — revisar/erro + reprocessar (spec 006)
     crm-admin/   CRM · Administração — abas Equipes / Expediente / Integrações (spec 007)
     leads/       CRM · Leads — lista, detalhe, score, campos personalizados, converter (spec 008)
+    interacoes/  TimelineInteracoes + TagPicker — compartilhados por Pessoa e Lead (spec 009)
+    segmentos/   CRM · Segmentos — lista, detalhe, membros derivados na leitura (spec 009)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -152,7 +158,8 @@ npm run db:up
 # 4. Aplicar as migrações e semear o RBAC (spec 004 — 1ª migração de negócio;
 #    spec 005 acrescenta pessoa/conta na 2ª+3ª migração; spec 006 acrescenta
 #    evento_origem/evento_etapa na 4ª; spec 007 acrescenta equipe/expediente/
-#    integracao na 5ª; spec 008 acrescenta lead/campos-personalizados na 6ª —
+#    integracao na 5ª; spec 008 acrescenta lead/campos-personalizados na 6ª;
+#    spec 009 acrescenta interacao/tag/segmento na 7ª (e remove lead.tags) —
 #    todas sem seed de negócio)
 npm run prisma:migrate:deploy --workspace backend
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
@@ -217,7 +224,8 @@ de verdade, pelos endpoints de curadoria da v2.
 
 ## Status
 
-Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em andamento.**
+Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
+(CRM) em andamento** (specs 007–009 entregues; próxima 010).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -329,7 +337,28 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) em anda
   personalizados / timeline de auditoria + **Converter em pessoa**. **0 dep nova, 1
   migração, nenhuma porta nova, nenhuma chave `.env` nova**, +1 permissão de catálogo.
   Ver [`docs/008-crm-lead.md`](docs/008-crm-lead.md).
-- ⏭️ Próxima: **009 — crm-interacao-timeline** (Fase 1 — CRM).
+- ✅ **009 — crm-interacao-timeline**: fecha o esboço 5.2‑E. **`interacao`** com âncora
+  polimórfica `pessoa` XOR `lead` (`CHECK` no banco); timeline da pessoa = **união**, na
+  leitura, das próprias com as de todo lead convertido nela (CL-01) — sem re-apontar
+  nenhuma linha; leitura sem permissão nova (deriva de `pessoa:ver` ou do escopo `lead:ver_*`
+  da 008). **Mutabilidade híbrida** (CL-05): só `tipo = NOTA` edita/remove
+  (_soft-delete_, autor ou `interacao:gerir`); canal (`WHATSAPP|EMAIL|LIGACAO|TICKET|NPS`) é
+  **append-only**. **`tag`** promovida a entidade de 1ª classe compartilhada
+  lead\|pessoa\|interacao (CL-04) — migra `lead.tags` da 008 preservando o contrato REST
+  (`POST`/`DELETE .../tags` mesma forma nas 3 âncoras); catálogo com _upsert_ por slug,
+  admin sob `crm_admin:gerir_tags`. **`segmento`** — query salva declarativa (CL-03):
+  `filtro` validado por esquema **fechado** por `alvo`; membros **sempre derivados** na
+  leitura, combinando o filtro com o escopo de visão do sujeito — nunca amplia o que ele já
+  vê. **Nenhum contrato novo no `core`** — as FKs de `interacao`/`tag_associacao` para
+  `Pessoa` vivem só no `schema.prisma` compartilhado (mesmo precedente de
+  `Lead.pessoaId`/`Lead.responsavelId`). **7ª migração Prisma**
+  (`20260904150000_crm_interacao` — `interacao` / `tag` / `tag_associacao` / `segmento` /
+  `crm_interacao_audit`; remove `lead.tags`). Catálogo RBAC ganha
+  `interacao:{registrar,gerir}`, `segmento:{ver,gerir}`, `crm_admin:gerir_tags` (+5).
+  Painel: `TimelineInteracoes`/`TagPicker` compartilhados (Pessoa e Lead) + **CRM ·
+  Segmentos** (nova). **0 dep nova, 1 migração, 0 porta nova, 0 chave `.env` nova.**
+  Ver [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md).
+- ⏭️ Próxima: **010 — crm-pipeline** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

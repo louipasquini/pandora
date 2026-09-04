@@ -32,9 +32,12 @@ model Usuario {
   criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  perfis            UsuarioPerfil[]
-  equipesComoMembro EquipeMembro[]
-  leadsResponsavel  Lead[]
+  perfis                UsuarioPerfil[]
+  equipesComoMembro     EquipeMembro[]
+  leadsResponsavel      Lead[]
+  interacoesAutor       Interacao[]
+  tagAssociacoesCriadas TagAssociacao[]
+  segmentosCriados      Segmento[]
 
   @@map("usuario")
 }
@@ -142,15 +145,17 @@ model Pessoa {
   criadoEm         DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  conta        Conta?            @relation(fields: [contaId], references: [id], onDelete: SetNull)
-  sobrevivente Pessoa?           @relation("PessoaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
-  absorvidas   Pessoa[]          @relation("PessoaMerge")
-  emails       PessoaEmail[]
-  telefones    PessoaTelefone[]
-  documentos   PessoaDocumento[]
-  enderecos    PessoaEndereco[]
-  origemRefs   PessoaOrigemRef[]
-  leads        Lead[]
+  conta          Conta?            @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  sobrevivente   Pessoa?           @relation("PessoaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
+  absorvidas     Pessoa[]          @relation("PessoaMerge")
+  emails         PessoaEmail[]
+  telefones      PessoaTelefone[]
+  documentos     PessoaDocumento[]
+  enderecos      PessoaEndereco[]
+  origemRefs     PessoaOrigemRef[]
+  leads          Lead[]
+  interacoes     Interacao[]
+  tagAssociacoes TagAssociacao[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -545,18 +550,18 @@ model Feriado {
 }
 
 model Integracao {
-  id             String         @id @db.Uuid
-  nome           String
-  tipo           IntegracaoTipo
-  alvo           IntegracaoAlvo
-  config         Json           @default("{}")
-  segredoCifrado String?        @map("segredo_cifrado")
-  segredoHash    String?        @map("segredo_hash")
-  segredoUltimos4 String?       @map("segredo_ultimos4")
-  ativo          Boolean        @default(true)
-  ultimoUsoEm    DateTime?      @map("ultimo_uso_em") @db.Timestamptz(6)
-  criadoEm       DateTime       @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm   DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  id              String         @id @db.Uuid
+  nome            String
+  tipo            IntegracaoTipo
+  alvo            IntegracaoAlvo
+  config          Json           @default("{}")
+  segredoCifrado  String?        @map("segredo_cifrado")
+  segredoHash     String?        @map("segredo_hash")
+  segredoUltimos4 String?        @map("segredo_ultimos4")
+  ativo           Boolean        @default(true)
+  ultimoUsoEm     DateTime?      @map("ultimo_uso_em") @db.Timestamptz(6)
+  criadoEm        DateTime       @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm    DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   @@index([tipo])
   @@index([alvo])
@@ -635,7 +640,6 @@ model Lead {
   estagio           LeadEstagio @default(NOVO)
   status            LeadStatus  @default(ATIVO)
   responsavelId     String?     @map("responsavel_id") @db.Uuid
-  tags              String[]    @default([])
   score             Int         @default(0)
   scoreAtualizadoEm DateTime?   @map("score_atualizado_em") @db.Timestamptz(6)
   pessoaId          String?     @map("pessoa_id") @db.Uuid
@@ -643,9 +647,11 @@ model Lead {
   criadoEm          DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm      DateTime    @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  responsavel Usuario?         @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
-  pessoa      Pessoa?          @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
-  valores     ValorCampoLead[]
+  responsavel    Usuario?         @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
+  pessoa         Pessoa?          @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  valores        ValorCampoLead[]
+  interacoes     Interacao[]
+  tagAssociacoes TagAssociacao[]
 
   // Índice único PARCIAL `(origem, id_externo) WHERE id_externo IS NOT NULL`
   // criado no migration.sql — o Prisma não expressa índice parcial no schema.
@@ -682,7 +688,7 @@ model ValorCampoLead {
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  lead     Lead                   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead      Lead                   @relation(fields: [leadId], references: [id], onDelete: Cascade)
   definicao CampoPersonalizadoLead @relation(fields: [definicaoId], references: [id], onDelete: Restrict)
 
   @@unique([leadId, definicaoId])
@@ -705,4 +711,142 @@ model CrmLeadAudit {
 
   @@index([entidade, entidadeId])
   @@map("crm_lead_audit")
+}
+
+// ============================================================================
+// crm — interação/tag/segmento (spec 009) — 7ª migração de negócio. Fecha o
+// esboço 5.2-E: `interacao` (timeline unificada pessoa/lead, âncora XOR — CHECK
+// no migration.sql, CL-01), `tag`/`tag_associacao` (entidade de 1ª classe
+// compartilhada lead|pessoa|interacao, promovendo o `lead.tags: String[]` da
+// 008 — a coluna é removida acima), `segmento` (query salva declarativa,
+// membros sempre derivados na leitura — nunca materializados, regra 8.2.2).
+// `crm_interacao_audit` = forma canônica do core, append-only, só delta real.
+// FKs para `pessoa`/`usuario` são só schema.prisma compartilhado (mesmo
+// precedente de `Lead.pessoaId`/`Lead.responsavelId`) — nenhuma porta nova no
+// `core`. Ver docs/009-crm-interacao-timeline.md.
+// ============================================================================
+
+enum InteracaoTipo {
+  WHATSAPP
+  EMAIL
+  LIGACAO
+  TICKET
+  NOTA
+  NPS
+}
+
+enum InteracaoDirecao {
+  ENTRADA
+  SAIDA
+}
+
+enum SegmentoAlvo {
+  LEAD
+  PESSOA
+}
+
+model Interacao {
+  id           String            @id @db.Uuid
+  pessoaId     String?           @map("pessoa_id") @db.Uuid
+  leadId       String?           @map("lead_id") @db.Uuid
+  tipo         InteracaoTipo
+  direcao      InteracaoDirecao?
+  conteudo     String
+  notaNps      Int?              @map("nota_nps")
+  autorId      String?           @map("autor_id") @db.Uuid
+  canalOrigem  String?           @map("canal_origem")
+  idExterno    String?           @map("id_externo")
+  ocorridoEm   DateTime          @map("ocorrido_em") @db.Timestamptz(6)
+  editadoEm    DateTime?         @map("editado_em") @db.Timestamptz(6)
+  removidoEm   DateTime?         @map("removido_em") @db.Timestamptz(6)
+  criadoEm     DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime          @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa         Pessoa?         @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  lead           Lead?           @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  autor          Usuario?        @relation(fields: [autorId], references: [id], onDelete: Restrict)
+  tagAssociacoes TagAssociacao[]
+
+  // CHECK (num_nonnulls(pessoa_id, lead_id) = 1) — âncora exclusiva (CL-01),
+  // criado no migration.sql (Prisma não modela CHECK). Índice único PARCIAL
+  // (canal_origem, id_externo) WHERE ambos NOT NULL — idempotência da porta —
+  // também no migration.sql.
+  @@index([pessoaId, ocorridoEm])
+  @@index([leadId, ocorridoEm])
+  @@index([tipo])
+  @@map("interacao")
+}
+
+model Tag {
+  id           String   @id @db.Uuid
+  slug         String   @unique
+  rotulo       String
+  cor          String?
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  associacoes TagAssociacao[]
+
+  @@map("tag")
+}
+
+model TagAssociacao {
+  id          String   @id @db.Uuid
+  tagId       String   @map("tag_id") @db.Uuid
+  leadId      String?  @map("lead_id") @db.Uuid
+  pessoaId    String?  @map("pessoa_id") @db.Uuid
+  interacaoId String?  @map("interacao_id") @db.Uuid
+  criadoPor   String?  @map("criado_por") @db.Uuid
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tag       Tag        @relation(fields: [tagId], references: [id], onDelete: Restrict)
+  lead      Lead?      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  pessoa    Pessoa?    @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+  interacao Interacao? @relation(fields: [interacaoId], references: [id], onDelete: Cascade)
+  autor     Usuario?   @relation(fields: [criadoPor], references: [id], onDelete: Restrict)
+
+  // CHECK (num_nonnulls(lead_id, pessoa_id, interacao_id) = 1) + 3 índices
+  // únicos PARCIAIS (tag_id, <ancora>) WHERE <ancora> IS NOT NULL — nenhuma
+  // tag duplicada na mesma âncora (FR-016). Ambos no migration.sql.
+  @@index([tagId])
+  @@map("tag_associacao")
+}
+
+model Segmento {
+  id           String       @id @db.Uuid
+  nome         String
+  descricao    String?
+  alvo         SegmentoAlvo
+  filtro       Json
+  ativo        Boolean      @default(true)
+  // Nullable: `criadoPor` só é gravado quando o sujeito é um `Usuario` real —
+  // a credencial de serviço (que também cria segmentos, ex. via testes/automação
+  // administrativa) não tem linha em `usuario` (mesmo tratamento de
+  // `interacao.autorId`/`tag_associacao.criadoPor`).
+  criadoPor    String?      @map("criado_por") @db.Uuid
+  criadoEm     DateTime     @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime     @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  autor Usuario? @relation(fields: [criadoPor], references: [id], onDelete: Restrict)
+
+  @@index([alvo])
+  @@map("segmento")
+}
+
+model CrmInteracaoAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("crm_interacao_audit")
 }

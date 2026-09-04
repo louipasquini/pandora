@@ -98,6 +98,23 @@ describe('catálogo de permissões (spec 004)', () => {
     ).toThrow(/não bate/);
   });
 
+  it('inclui os recursos interacao e segmento (spec 009)', () => {
+    for (const id of [
+      'interacao:registrar',
+      'interacao:gerir',
+      'segmento:ver',
+      'segmento:gerir',
+      'crm_admin:gerir_tags',
+    ]) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+    for (const p of PERMISSOES.filter(
+      (x) => x.recurso === 'interacao' || x.recurso === 'segmento',
+    )) {
+      expect(p.id.startsWith(`${p.recurso}:`)).toBe(true);
+    }
+  });
+
   it('agruparPorRecurso preserva a ordem de 1ª aparição', () => {
     const grupos = agruparPorRecurso();
     expect(grupos.map((g) => g.recurso)).toEqual([
@@ -107,6 +124,8 @@ describe('catálogo de permissões (spec 004)', () => {
       'conta',
       'evento',
       'crm_admin',
+      'interacao',
+      'segmento',
     ]);
     expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
       'crm_admin:ver',
@@ -114,6 +133,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin:gerir_expediente',
       'crm_admin:gerir_integracoes',
       'crm_admin:gerir_campos_lead',
+      'crm_admin:gerir_tags',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',

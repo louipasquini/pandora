@@ -7,11 +7,14 @@
  * fonte de verdade da dedup segue sendo a 005 — a conversão manda os dados para
  * a `PortaIdentidade`, que re-normaliza. Aqui é só validação de entrada (422) e
  * consistência da linha de `lead`.
+ *
+ * A normalização de **tag** foi promovida para `crm/domain/tag/` na spec 009
+ * (CL-04 — `tag` vira entidade de 1ª classe compartilhada); este módulo só
+ * reexporta para não quebrar os imports existentes (`lead.service.ts`).
  */
+import { normalizarTag, normalizarTags, type Norm } from '../tag/normalizar-tag';
 
-export type Norm<T = string> =
-  | { valor: T; erro?: undefined }
-  | { valor?: undefined; erro: string };
+export { normalizarTag, normalizarTags, type Norm };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -95,25 +98,3 @@ export function normalizarDocumento(bruto: string | null | undefined): Norm {
   return { erro: 'DV inválido ou comprimento inesperado' };
 }
 
-/** Tag: `trim` + `lowercase` + espaço interno → `-`. Vazia após normalizar → erro. */
-export function normalizarTag(bruto: string | null | undefined): Norm {
-  const v = (bruto ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9_-]/g, '');
-  if (!v) return { erro: 'tag vazia após normalizar' };
-  if (v.length > 60) return { erro: 'tag acima de 60 caracteres' };
-  return { valor: v };
-}
-
-/** Normaliza e deduplica uma lista de tags; propaga o 1º erro encontrado. */
-export function normalizarTags(brutas: readonly string[] | undefined): Norm<string[]> {
-  const out: string[] = [];
-  for (const t of brutas ?? []) {
-    const r = normalizarTag(t);
-    if (r.erro !== undefined) return { erro: r.erro };
-    if (!out.includes(r.valor)) out.push(r.valor);
-  }
-  return { valor: out };
-}

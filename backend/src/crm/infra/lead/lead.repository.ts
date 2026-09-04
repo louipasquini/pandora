@@ -3,7 +3,11 @@ import { Prisma } from '@prisma/client';
 import { EntidadeId } from '../../../core/core.module';
 import { PrismaService } from '../../../prisma/prisma.service';
 
-export type LeadRow = Prisma.LeadGetPayload<Record<string, never>>;
+// spec 009 (CL-04): `lead.tags: String[]` foi removida — a lista de tags é
+// projetada por `JOIN` em `tag_associacao`/`tag`, sempre incluída aqui.
+export const INCLUDE_TAGS = { tagAssociacoes: { include: { tag: true } } } as const;
+
+export type LeadRow = Prisma.LeadGetPayload<{ include: typeof INCLUDE_TAGS }>;
 
 @Injectable()
 export class LeadRepository {
@@ -14,7 +18,7 @@ export class LeadRepository {
   }
 
   porId(id: string): Promise<LeadRow | null> {
-    return this.prisma.lead.findUnique({ where: { id } });
+    return this.prisma.lead.findUnique({ where: { id }, include: INCLUDE_TAGS });
   }
 
   /** Aplica o `where` de escopo já montado (nunca ampliado por filtros). */
@@ -32,6 +36,7 @@ export class LeadRepository {
         orderBy,
         skip: (opts.pagina - 1) * opts.tamanho,
         take: opts.tamanho,
+        include: INCLUDE_TAGS,
       }),
       this.prisma.lead.count({ where }),
     ]);
@@ -39,7 +44,10 @@ export class LeadRepository {
   }
 
   obterNoEscopo(id: string, escopo: Prisma.LeadWhereInput): Promise<LeadRow | null> {
-    return this.prisma.lead.findFirst({ where: { AND: [{ id }, escopo] } });
+    return this.prisma.lead.findFirst({
+      where: { AND: [{ id }, escopo] },
+      include: INCLUDE_TAGS,
+    });
   }
 
   async semelhantesAtivos(
@@ -74,6 +82,7 @@ export class LeadRepository {
   ): Promise<LeadRow> {
     return (tx ?? this.prisma).lead.create({
       data: { id: EntidadeId.novo().value, ...data },
+      include: INCLUDE_TAGS,
     });
   }
 
@@ -82,10 +91,10 @@ export class LeadRepository {
     data: Prisma.LeadUncheckedUpdateInput,
     tx?: Prisma.TransactionClient,
   ): Promise<LeadRow> {
-    return (tx ?? this.prisma).lead.update({ where: { id }, data });
+    return (tx ?? this.prisma).lead.update({ where: { id }, data, include: INCLUDE_TAGS });
   }
 
   porOrigemExterna(origem: string, idExterno: string): Promise<LeadRow | null> {
-    return this.prisma.lead.findFirst({ where: { origem, idExterno } });
+    return this.prisma.lead.findFirst({ where: { origem, idExterno }, include: INCLUDE_TAGS });
   }
 }

@@ -4,6 +4,10 @@ import { PERMISSOES } from '../auth/rbac/catalogo';
 import { CrmAdminController } from './crm-admin.controller';
 import { LeadController } from './lead.controller';
 import { CampoPersonalizadoController } from './campo-personalizado.controller';
+import { InteracaoController } from './interacao.controller';
+import { PessoaTagController } from './pessoa-tag.controller';
+import { TagController } from './tag.controller';
+import { SegmentoController } from './segmento.controller';
 import { EquipeRepository } from './infra/equipe.repository';
 import { ExpedienteRepository } from './infra/expediente.repository';
 import { IntegracaoRepository } from './infra/integracao.repository';
@@ -22,23 +26,42 @@ import { LeadConversaoService } from './application/lead/lead-conversao.service'
 import { CampoPersonalizadoService } from './application/lead/campo-personalizado.service';
 import { ValorCampoService } from './application/lead/valor-campo.service';
 import { RegistrarLeadService } from './application/lead/registrar-lead.service';
+import { InteracaoRepository } from './infra/interacao/interacao.repository';
+import { TagRepository } from './infra/tag/tag.repository';
+import { TagAssociacaoRepository } from './infra/tag/tag-associacao.repository';
+import { SegmentoRepository } from './infra/segmento/segmento.repository';
+import { CrmInteracaoAuditService } from './application/interacao/crm-interacao-audit.service';
+import { InteracaoService } from './application/interacao/interacao.service';
+import { RegistrarInteracaoService } from './application/interacao/registrar-interacao.service';
+import { TagService } from './application/tag/tag.service';
+import { SegmentoService } from './application/segmento/segmento.service';
 
 /**
- * `crm` — bounded context de domínio (specs 007 + 008). Dono de `equipe`,
- * `janela_atendimento`, `feriado`, `integracao` (007) e de **`lead`** (008 — a
- * 1ª entidade compartilhada do projeto; acesso por RBAC 004).
+ * `crm` — bounded context de domínio (specs 007 + 008 + 009). Dono de
+ * `equipe`, `janela_atendimento`, `feriado`, `integracao` (007); `lead` (008
+ * — a 1ª entidade compartilhada do projeto; acesso por RBAC 004);
+ * `interacao`, `tag`/`tag_associacao`, `segmento` (009 — timeline unificada,
+ * catálogo de tag compartilhado lead\|pessoa\|interacao, query salva).
  *
- * Importa `core` (global), `auth` (infra transversal — guard, `Permissao`,
- * `SujeitoRbacService` para o escopo de visão do lead) e o token `PORTA_IDENTIDADE`
- * do `core` (provido pelo `IdentidadeWiringModule` `@Global()` da 005 —
- * inversão de dependência, **sem** importar `src/clientes/**`).
+ * Importa `core` (global) e `auth` (infra transversal — guard, `Permissao`,
+ * `SujeitoRbacService`). **Nenhum import de `src/clientes/**`** — as FKs de
+ * `interacao`/`tag_associacao` para `Pessoa` vivem só no `schema.prisma`
+ * compartilhado (mesmo precedente de `Lead.pessoaId`/`Lead.responsavelId`).
  *
- * **Exporta `RegistrarLeadService`** — porta in-process para a spec 035.
- * `CONTEXT_MODULES` segue com 11.
+ * **Exporta `RegistrarLeadService`** (035) e **`RegistrarInteracaoService`**
+ * (011/012) — portas in-process. `CONTEXT_MODULES` segue com 11.
  */
 @Module({
   imports: [AuthModule],
-  controllers: [CrmAdminController, LeadController, CampoPersonalizadoController],
+  controllers: [
+    CrmAdminController,
+    LeadController,
+    CampoPersonalizadoController,
+    InteracaoController,
+    PessoaTagController,
+    TagController,
+    SegmentoController,
+  ],
   providers: [
     // 007
     EquipeRepository,
@@ -60,8 +83,18 @@ import { RegistrarLeadService } from './application/lead/registrar-lead.service'
     CampoPersonalizadoService,
     ValorCampoService,
     RegistrarLeadService,
+    // 009
+    InteracaoRepository,
+    TagRepository,
+    TagAssociacaoRepository,
+    SegmentoRepository,
+    CrmInteracaoAuditService,
+    InteracaoService,
+    RegistrarInteracaoService,
+    TagService,
+    SegmentoService,
   ],
-  exports: [RegistrarLeadService],
+  exports: [RegistrarLeadService, RegistrarInteracaoService],
 })
 export class CrmModule implements OnModuleInit {
   private readonly logger = new Logger('CrmModule');
@@ -69,8 +102,10 @@ export class CrmModule implements OnModuleInit {
   onModuleInit(): void {
     const admin = PERMISSOES.filter((p) => p.recurso === 'crm_admin').map((p) => p.id);
     const lead = PERMISSOES.filter((p) => p.recurso === 'lead').map((p) => p.id);
+    const interacao = PERMISSOES.filter((p) => p.recurso === 'interacao').map((p) => p.id);
+    const segmento = PERMISSOES.filter((p) => p.recurso === 'segmento').map((p) => p.id);
     this.logger.log(
-      `crm.ready crm_admin=${admin.length} lead=${lead.length} (${[...admin, ...lead].join(', ')})`,
+      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length}`,
     );
   }
 }
