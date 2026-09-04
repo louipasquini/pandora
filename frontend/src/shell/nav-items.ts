@@ -44,6 +44,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/crm/segmentos',
     requerPermissao: 'segmento:ver',
   },
+  {
+    label: 'CRM · Pipelines',
+    to: '/crm/pipelines',
+    requerPermissao: ['oportunidade:ver_todas', 'oportunidade:ver_proprias'],
+  },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },

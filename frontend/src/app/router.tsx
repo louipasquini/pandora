@@ -16,6 +16,8 @@ import { LeadsPage } from '../leads/LeadsPage';
 import { LeadDetalhePage } from '../leads/LeadDetalhePage';
 import { SegmentosPage } from '../segmentos/SegmentosPage';
 import { SegmentoDetalhePage } from '../segmentos/SegmentoDetalhePage';
+import { PipelinesPage } from '../pipelines/PipelinesPage';
+import { PipelineAdminPage } from '../pipelines/PipelineAdminPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -126,6 +128,22 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="segmento:ver">
                 <SegmentoDetalhePage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/pipelines',
+            element: (
+              <RequirePermissao anyOf={['oportunidade:ver_todas', 'oportunidade:ver_proprias']}>
+                <PipelinesPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/pipelines/:id/admin',
+            element: (
+              <RequirePermissao perm="crm_admin:gerir_pipelines">
+                <PipelineAdminPage />
               </RequirePermissao>
             ),
           },
