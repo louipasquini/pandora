@@ -359,10 +359,6 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   Segmentos** (nova). **0 dep nova, 1 migração, 0 porta nova, 0 chave `.env` nova.**
   Ver [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md).
 - ⏭️ Próxima: **010 — crm-pipeline** (Fase 1 — CRM).
-- ⚠️ A migração `20260904150000_crm_interacao` e a suíte e2e da 009 foram escritas mas
-  **não executadas** — a sessão que as gerou não tinha acesso a Docker/Postgres. Rode
-  `npm run db:up && npm run prisma:migrate:dev --workspace backend && npm run test:e2e`
-  antes do próximo merge.
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
