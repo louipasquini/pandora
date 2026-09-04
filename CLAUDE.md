@@ -378,7 +378,66 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/007-crm-administracao/plan.md`](specs/007-crm-administracao/plan.md)
+Plano ativo: [`specs/008-crm-lead/plan.md`](specs/008-crm-lead/plan.md)
+(Fase 1 · spec 008 — **Lead do CRM**: a 1ª entidade **compartilhada** do projeto — uma
+única tabela `lead` para CRM **e** Marketing (visão Parte 8.2.1), acesso resolvido por
+**RBAC 004** (`lead:{criar,editar,ver_todos,ver_proprios}` já no catálogo desde a 004),
+não por fronteira arquitetural. Mora no _bounded context_ **`crm`** (já não-vazio desde a
+007; `CONTEXT_MODULES` segue **11**). Campos: contato (`nome` obrigatório + `email`|`telefone`
+obrigatório, `documento?` com DV), `origem`/`id_externo` + UTM (`utm_source/medium/campaign/
+term/content`), `estagio` (enum de funil `NOVO|CONTATO_FEITO|QUALIFICADO|NUTRICAO|
+DESQUALIFICADO`), `status` (`ATIVO|DESCARTADO|CONVERTIDO`), `responsavel_id?` (FK `usuario`
+da 004), `tags[]`. **Lead scoring** — `calcularScore(EstadoScoreLead) → Int [0,100]` em
+`src/crm/domain/lead/scoring.ts`: função **pura, determinística, livre de locale**
+(`agoraUtc()`/matriz `TZ` na CI), tabela de pesos **congelada** `PESOS_SCORE_LEAD`
+(completude de contato, origem rastreável, estágio, engajamento, recência, decaímento por
+idade); `score` é **derivado**/_cache_, nunca `score += delta` (regra 8.2.2), nunca
+setável por `PATCH` (422); `POST /crm/leads/:id/recalcular-score` + lote, idempotentes.
+**Conversão Lead → `pessoa`** (`POST /crm/leads/:id/converter`, `@RequerPermissao('lead:editar',
+'pessoa:editar')`) reusa a engine de identidade/dedup da **spec 005** por **inversão de
+dependência** (CL-02): o `core` ganha `src/core/identidade/porta-identidade.ts` (interface
+**`PortaIdentidade`** + token **`PORTA_IDENTIDADE`**, só contrato); `clientes` ganha
+`infra/porta-identidade.adapter.ts` + um módulo **`@Global()`** `identidade-wiring.module.ts`
+que provê/exporta o token; o `crm` **injeta a interface, nunca importa `src/clientes/**`**
+(ESLint `import/no-restricted-paths` + `grep` no e2e). **CL-01**: pós-conversão a linha de
+`lead` é **arquivada + vinculada** (`status = CONVERTIDO` + `pessoa_id`, some das listas
+padrão, nada apagado/migrado). Conversão síncrona, transacional, idempotente (2× → mesmo
+`pessoa_id`, 0 contato duplicado). **Campos personalizados** (**CL-03** — esquema
+administrável): `campo_personalizado_lead` (definição — `chave` slug único imutável,
+`rotulo`, `tipo TEXTO|NUMERO|BOOLEANO|DATA|SELECAO`, `opcoes?`, `obrigatorio`, `ativo`) sob
+a permissão **nova** `crm_admin:gerir_campos_lead` (recurso `crm_admin` da 007; +1 no
+catálogo, `administrador`/credencial de serviço de graça, **0 migração de dados/seed**) +
+`valor_campo_lead` (`@@unique(lead_id, definicao_id)`, `valor` validado por tipo → 422);
+`PUT /crm/leads/:id/campos-personalizados` = **substituição total**. **Escopo de visão**:
+rotas de leitura `@AutenticadoBasta()` + gate "OU" (`lead:ver_todos` | `lead:ver_proprios`)
++ filtro **no `where`** do `lead-consulta.service` (nunca na serialização; filtros não
+ampliam; fora do escopo → 404); `ver_proprios` = só `responsavel_id` = sujeito **e**
+não-nulo (fila não atribuída só p/ `ver_todos`); credencial de serviço cai em `ver_todos`.
+**Porta in-process** `RegistrarLeadService` (exportada do `CrmModule`, idempotente por
+`(origem, id_externo)` via índice único parcial — `id_externo` **nunca** PK) para a **spec
+035** injetar; **sem** `/webhooks/*`, OAuth ou chamada externa aqui. Lead duplicado por
+e-mail/telefone é **permitido** (`POST` devolve `leadsSemelhantes: [...]`; dedup real na
+conversão). **Sem `DELETE` físico de lead** (só `status = DESCARTADO`). Auditoria:
+`crm_lead_audit` na forma canônica do core (`montarRegistroAuditoria`, `AJUSTE_MANUAL`,
+**append-only**, só delta real — `PATCH` no-op → 0 linha); definições de campo auditam em
+`crm_admin_audit` (tabela da 007). **6ª migração Prisma** (`<ts>_crm_lead`): `lead`,
+`campo_personalizado_lead`, `valor_campo_lead`, `crm_lead_audit` + enums `LeadEstagio`/
+`LeadStatus`/`CampoPersonalizadoTipo`; PK UUID v7 na app, `@db.Timestamptz`. **~14
+endpoints** `/crm/leads/**` + `/crm/admin/campos-lead/**`. **Frontend** `frontend/src/leads/`:
+item **CRM · Leads** atrás de `lead:ver_todos` **ou** `lead:ver_proprios`
+(`requerPermissao`/`RequirePermissao` ganham `anyOf`), rota sob `RequirePermissao`, lista
+com filtros (estágio/status/origem/responsável) + busca + coluna de score, detalhe com
+score/tags/campos personalizados/timeline de auditoria + **Converter em pessoa** (só com
+`lead:editar` + `pessoa:editar` e lead `ATIVO`); `apiFetch` já trata 401/403. **0 dep
+nova**, **1 migração**, **nenhuma porta nova**, **nenhuma chave `.env` nova**.
+`CONTEXT_MODULES` segue 11. Clarificações CL-01 (arquivar+vincular), CL-02 (`PortaIdentidade`
+no `core`), CL-03 (esquema administrável de campos personalizados) — resolvidas com o dono
+do produto em 2026-09-04.
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+<details><summary>Spec 007 — Administração do CRM (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/007-crm-administracao/plan.md`](specs/007-crm-administracao/plan.md)
 (Fase 1 · spec 007 — Administração do CRM: primeira fatia do CRM e primeira entidade de
 negócio do _bounded context_ **`crm`** (vazio desde a 001; `CONTEXT_MODULES` segue **11**).
 Escopo da visão Parte 8.11, **sem reimplementar a 004** (perfis/permissões/usuários seguem
@@ -425,4 +484,6 @@ rejeitados — `Intl` basta), **1 migração**, **+1 chave `.env`**. `CONTEXT_MO
 CL-03 (escala por atendente fora de escopo — vai junto do 012), CL-04 (feriado 29/02 não
 desloca) — resolvidas com o dono do produto em 2026-09-03.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+</details>
 <!-- SPECKIT END -->

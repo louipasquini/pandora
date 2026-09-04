@@ -34,6 +34,7 @@ model Usuario {
 
   perfis            UsuarioPerfil[]
   equipesComoMembro EquipeMembro[]
+  leadsResponsavel  Lead[]
 
   @@map("usuario")
 }
@@ -149,6 +150,7 @@ model Pessoa {
   documentos   PessoaDocumento[]
   enderecos    PessoaEndereco[]
   origemRefs   PessoaOrigemRef[]
+  leads        Lead[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -577,4 +579,130 @@ model CrmAdminAudit {
 
   @@index([entidade, entidadeId])
   @@map("crm_admin_audit")
+}
+
+// ============================================================================
+// crm — Lead (spec 008) — 6ª migração de negócio.
+// `lead` é a 1ª entidade COMPARTILHADA do projeto (CRM + Marketing numa única
+// tabela; acesso resolvido por RBAC 004, não por fronteira — visão Parte 8.2.1).
+// `score` é DERIVADO por `calcularScore` (função pura; regra 8.2.2) — nunca
+// contador incremental, nunca setável por PATCH. Conversão -> `pessoa` reusa a
+// engine da 005 via a interface `PortaIdentidade` do `core` (inversão de
+// dependência — CL-02); pós-conversão o `lead` é arquivado+vinculado (CL-01).
+// Campos personalizados: esquema administrável (CL-03) — `campo_personalizado_lead`
+// (definição, sob `crm_admin:gerir_campos_lead`) + `valor_campo_lead` (valores
+// validados por tipo). `crm_lead_audit` = forma canônica do core, append-only,
+// só delta real. O índice único PARCIAL `(origem, id_externo) WHERE id_externo IS
+// NOT NULL` (idempotência da porta `RegistrarLeadService`) é criado no
+// migration.sql. Ver docs/008-crm-lead.md.
+// ============================================================================
+
+enum LeadEstagio {
+  NOVO
+  CONTATO_FEITO
+  QUALIFICADO
+  NUTRICAO
+  DESQUALIFICADO
+}
+
+enum LeadStatus {
+  ATIVO
+  DESCARTADO
+  CONVERTIDO
+}
+
+enum CampoPersonalizadoTipo {
+  TEXTO
+  NUMERO
+  BOOLEANO
+  DATA
+  SELECAO
+}
+
+model Lead {
+  id                String      @id @db.Uuid
+  nome              String
+  email             String?
+  telefone          String?
+  documento         String?
+  origem            String?
+  idExterno         String?     @map("id_externo")
+  utmSource         String?     @map("utm_source")
+  utmMedium         String?     @map("utm_medium")
+  utmCampaign       String?     @map("utm_campaign")
+  utmTerm           String?     @map("utm_term")
+  utmContent        String?     @map("utm_content")
+  estagio           LeadEstagio @default(NOVO)
+  status            LeadStatus  @default(ATIVO)
+  responsavelId     String?     @map("responsavel_id") @db.Uuid
+  tags              String[]    @default([])
+  score             Int         @default(0)
+  scoreAtualizadoEm DateTime?   @map("score_atualizado_em") @db.Timestamptz(6)
+  pessoaId          String?     @map("pessoa_id") @db.Uuid
+  convertidoEm      DateTime?   @map("convertido_em") @db.Timestamptz(6)
+  criadoEm          DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm      DateTime    @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  responsavel Usuario?         @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
+  pessoa      Pessoa?          @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  valores     ValorCampoLead[]
+
+  // Índice único PARCIAL `(origem, id_externo) WHERE id_externo IS NOT NULL`
+  // criado no migration.sql — o Prisma não expressa índice parcial no schema.
+  @@index([status, estagio])
+  @@index([responsavelId])
+  @@index([origem])
+  @@index([email])
+  @@index([telefone])
+  @@index([pessoaId])
+  @@map("lead")
+}
+
+model CampoPersonalizadoLead {
+  id           String                 @id @db.Uuid
+  chave        String                 @unique
+  rotulo       String
+  tipo         CampoPersonalizadoTipo
+  opcoes       String[]               @default([])
+  obrigatorio  Boolean                @default(false)
+  ativo        Boolean                @default(true)
+  criadoEm     DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime               @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  valores ValorCampoLead[]
+
+  @@map("campo_personalizado_lead")
+}
+
+model ValorCampoLead {
+  id           String   @id @db.Uuid
+  leadId       String   @map("lead_id") @db.Uuid
+  definicaoId  String   @map("definicao_id") @db.Uuid
+  valor        String
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  lead     Lead                   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  definicao CampoPersonalizadoLead @relation(fields: [definicaoId], references: [id], onDelete: Restrict)
+
+  @@unique([leadId, definicaoId])
+  @@index([definicaoId])
+  @@map("valor_campo_lead")
+}
+
+model CrmLeadAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("crm_lead_audit")
 }

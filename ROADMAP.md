@@ -220,11 +220,65 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   2026-09-03. Detalhe: [`specs/007-crm-administracao/`](specs/007-crm-administracao/) e
   [`docs/007-crm-administracao.md`](docs/007-crm-administracao.md).
 
-- [ ] **008 — crm-lead**
-  Entidade `lead` compartilhada (acesso via RBAC), campos personalizados das alunas,
-  lead scoring automático. Transição Lead → `pessoa` na 1ª venda pela engine da 005.
-  ⚠ clarify: registro de Lead é arquivado/linkado ou os dados migram fisicamente?
-  Frontend: lista/detalhe de leads.
+- [x] **008 — crm-lead** — ✅ implementada e validada (2026-09-04)
+  1ª entidade **compartilhada** do projeto: uma única tabela `lead` para CRM **e**
+  Marketing (visão Parte 8.2.1), acesso resolvido por **RBAC 004**
+  (`lead:{criar,editar,ver_todos,ver_proprios}`, já congeladas desde a 004 — esta spec só
+  as **consome**), não por fronteira arquitetural. Mora no `crm` (`CONTEXT_MODULES` segue
+  **11**). **Domínio puro** (`backend/src/crm/domain/lead/`): **`calcularScore(EstadoScoreLead)
+  → Int [0,100]`** — pura, determinística, **livre de locale** (`agoraUtc()` / matriz `TZ`
+  na CI), tabela de pesos **congelada** `PESOS_SCORE_LEAD` (completude de contato, origem
+  rastreável, estágio, engajamento, recência, decaimento por idade); `score` é **derivado**/
+  _cache_, nunca `score += delta` (regra 8.2.2), nunca setável por `PATCH` (400/422);
+  `normalizar-lead` (nome/origem/e-mail/telefone E.164/documento **DV CPF-CNPJ**/tags —
+  duplicação mínima da 005, o `core` ainda não expõe `normalizar`); `plano-conversao`
+  (`podeConverter` + `montarDadosIdentidade`); `validar-valor-campo` (serialização canônica
+  por tipo). **Conversão Lead → `pessoa`** (`POST /crm/leads/:id/converter`,
+  `@RequerPermissao('lead:editar','pessoa:editar')`) reusa a engine de identidade/dedup da
+  **spec 005** por **inversão de dependência** (CL-02): `core` ganha
+  `src/core/identidade/porta-identidade.ts` (interface **`PortaIdentidade`** + token
+  **`PORTA_IDENTIDADE`**, só contrato); `clientes` ganha `infra/porta-identidade.adapter.ts`
+  + o módulo **`@Global()`** `identidade-wiring.module.ts` (provê/exporta o token,
+  `AppModule` o importa); o `crm` **injeta a interface, nunca importa `src/clientes/**`**
+  (ESLint `import/no-restricted-paths` + teste e2e faz `grep` = 0). É o padrão que a **spec
+  018** herda. **CL-01**: pós-conversão a linha de `lead` é **arquivada + vinculada**
+  (`status = CONVERTIDO` + `pessoa_id` + `convertido_em`, some do filtro padrão, nada
+  apagado nem migrado); síncrona, transacional, **idempotente** (2× → mesmo `pessoa_id`,
+  0 contato duplicado, 0 audit novo). **Campos personalizados** (**CL-03** — esquema
+  administrável): `campo_personalizado_lead` (definição — `chave` slug único imutável,
+  `rotulo`, `tipo TEXTO|NUMERO|BOOLEANO|DATA|SELECAO`, `opcoes?`, `obrigatorio`, `ativo`)
+  sob a permissão **nova** `crm_admin:gerir_campos_lead` (recurso `crm_admin` da 007; +1 no
+  catálogo, `administrador`/credencial de serviço de graça, **0 migração de dados/seed**) +
+  `valor_campo_lead` (`@@unique(lead_id, definicao_id)`, `valor` validado por tipo → 422;
+  `obrigatorio` ausente → 422); `PUT /crm/leads/:id/campos-personalizados` = **substituição
+  total** (chave omitida ou `null` remove); definições auditam em `crm_admin_audit` (007).
+  **Escopo de visão**: rotas de leitura `@AutenticadoBasta()` + gate "OU" (`lead:ver_todos`
+  | `lead:ver_proprios`) + filtro **no `where`** do `LeadConsultaService` (nunca na
+  serialização; filtros com `AND` nunca ampliam; fora do escopo → **404**); `ver_proprios`
+  = só `responsavel_id` = sujeito **e** não-nulo (fila não atribuída só p/ `ver_todos`);
+  credencial de serviço cai em `ver_todos`. **Porta in-process** `RegistrarLeadService`
+  (exportada do `CrmModule`, idempotente por `(origem, id_externo)` via índice único parcial
+  — `id_externo` **nunca** PK) para a **spec 035** injetar; **sem** `/webhooks/*`, OAuth ou
+  chamada externa. Lead duplicado por e-mail/telefone é **permitido** (`POST` devolve
+  `leadsSemelhantes: [...]`; dedup real na conversão). **Sem `DELETE` físico de lead** (só
+  `status = DESCARTADO`; LGPD = spec 047 via a `pessoa`). Auditoria `crm_lead_audit` na
+  forma canônica do core (`montarRegistroAuditoria`, `AJUSTE_MANUAL`, **append-only**, **só
+  delta real** — `PATCH`/`PUT` no-op → 0 linha). **6ª migração Prisma**
+  (`20260904122426_crm_lead`): `lead`, `campo_personalizado_lead`, `valor_campo_lead`,
+  `crm_lead_audit` + enums `LeadEstagio`/`LeadStatus`/`CampoPersonalizadoTipo`; PK UUID v7
+  na app, `@db.Timestamptz`. **~14 endpoints** `/crm/leads/**` + `/crm/admin/campos-lead/**`.
+  **Frontend** `frontend/src/leads/`: `requerPermissao`/`RequirePermissao` ganham `anyOf`
+  (OU de permissão); item **CRM · Leads** atrás de `lead:ver_todos` **ou**
+  `lead:ver_proprios`, lista com filtros (estágio/status/origem) + busca + coluna de score,
+  detalhe com tags / campos personalizados / timeline de auditoria + **Converter em pessoa**
+  (só com `lead:editar` + `pessoa:editar` e lead `ATIVO`); `apiFetch` já trata 401/403. A
+  UI de gestão das **definições** de campo ficou adiada (endpoints prontos e testados).
+  **0 dep nova**, **1 migração**, **nenhuma porta nova**, **nenhuma chave `.env` nova**,
+  **+1 permissão** de catálogo. 319 unit backend + 56 frontend + 151 e2e verdes (regressão
+  003–007 + `/health` = 11). Clarificações CL-01 (arquivar+vincular), CL-02
+  (`PortaIdentidade` no `core`), CL-03 (esquema administrável de campos personalizados) —
+  resolvidas com o dono do produto em 2026-09-04. Detalhe:
+  [`specs/008-crm-lead/`](specs/008-crm-lead/) e [`docs/008-crm-lead.md`](docs/008-crm-lead.md).
 
 - [ ] **009 — crm-interacao-timeline**
   `interacao` (WhatsApp, nota, ligação, ticket, NPS) — timeline unificada por `pessoa`/
@@ -593,7 +647,7 @@ financeiro/comercial/identidade — compõe e explica; ações viram comando ao 
 
 | Spec | Decisão pendente |
 | --- | --- |
-| 008 | Lead → `pessoa`: arquivar/linkar registro ou migrar dados fisicamente? |
+| ~~008~~ | ✅ resolvida (2026-09-04): Lead → `pessoa` **arquiva + vincula** o registro (`status=CONVERTIDO` + `pessoa_id`), não migra fisicamente. |
 | 011 | WhatsApp: Cloud API oficial da Meta ou via BSP? |
 | 012 | Endereçamento de chamado: aleatório ou por carga/disponibilidade? |
 | 036 | Modelo de atribuição default de Marketing. |
