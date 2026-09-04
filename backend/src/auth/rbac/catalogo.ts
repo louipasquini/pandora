@@ -91,6 +91,12 @@ export const PERMISSOES = Object.freeze([
     recurso: 'crm_admin',
     rotulo: 'Cadastrar e rotacionar integrações',
   },
+  // --- Campos personalizados de lead (spec 008) ---
+  {
+    id: 'crm_admin:gerir_campos_lead',
+    recurso: 'crm_admin',
+    rotulo: 'Gerir campos personalizados de lead',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */
