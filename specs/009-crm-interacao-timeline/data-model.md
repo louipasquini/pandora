@@ -34,7 +34,7 @@ enum SegmentoAlvo {
 | `direcao` | `InteracaoDirecao?` | obrigatória se `tipo ∈ {WHATSAPP,EMAIL,LIGACAO,TICKET}`; opcional em `NPS`; proibida em `NOTA` |
 | `conteudo` | `TEXT` | obrigatório |
 | `nota_nps` | `SMALLINT?` | obrigatório sse `tipo = NPS`; `0..10`; proibido caso contrário |
-| `autor_id` | `UUID?` | FK `usuario.id`, `onDelete: Restrict`; nulo se veio de canal externo sem autor interno |
+| `autor_id` | `UUID?` | FK `usuario.id`, `onDelete: Restrict`; nulo se veio de canal externo sem autor interno **ou** se o sujeito autenticado é a credencial de serviço (não é linha de `usuario`) |
 | `canal_origem` | `TEXT?` | chave de idempotência de integração (011/012) |
 | `id_externo` | `TEXT?` | idem |
 | `ocorrido_em` | `TIMESTAMPTZ` | default = `criado_em` se omitido na criação |
@@ -102,7 +102,7 @@ ORDER BY i.ocorrido_em DESC;
 | `alvo` | `SegmentoAlvo` | `LEAD` \| `PESSOA` |
 | `filtro` | `JSONB` | validado por `validarFiltro(alvo, filtro)` — esquema fechado |
 | `ativo` | `BOOLEAN` | default `true` |
-| `criado_por` | `UUID` | FK `usuario.id`, `onDelete: Restrict` |
+| `criado_por` | `UUID?` | FK `usuario.id`, `onDelete: Restrict`; `null` quando criado pela credencial de serviço (não é linha de `usuario`) |
 | `criado_em`/`atualizado_em` | `TIMESTAMPTZ` | padrão |
 
 **Esquema de `filtro` por `alvo`** (`.strict()` — chave fora do conjunto → 422):
