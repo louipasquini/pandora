@@ -52,7 +52,10 @@ export interface EntradaAuditoriaCrm {
     | 'feriado'
     | 'integracao'
     // spec 008 — definições de campo personalizado de lead são config administrativa
-    | 'campo_personalizado_lead';
+    | 'campo_personalizado_lead'
+    // spec 009 — o catálogo de `tag` (criar/renomear/desativar) é config administrativa;
+    // a *associação* de uma tag a lead/pessoa/interação não passa por aqui.
+    | 'tag';
   entidadeId: string;
   campo: string;
   valorAnterior: unknown;
