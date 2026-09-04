@@ -57,6 +57,12 @@ const TODAS_PERMISSOES = [
   'interacao:gerir',
   'segmento:ver',
   'segmento:gerir',
+  'oportunidade:criar',
+  'oportunidade:editar',
+  'oportunidade:mover',
+  'oportunidade:ver_todas',
+  'oportunidade:ver_proprias',
+  'crm_admin:gerir_pipelines',
 ];
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = typeof input === 'string' ? input : input.toString();
@@ -148,6 +154,37 @@ globalThis.fetch = (async (input: RequestInfo | URL) => {
       JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
+  }
+  // spec 010: pipeline/oportunidade — coleções vazias por padrão
+  if (/\/crm\/pipelines\/[^/]+\/etapas(\?|$)/.test(url)) {
+    return new Response(JSON.stringify({ itens: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (/\/crm\/pipelines\/[^/]+\/metricas(\?|$)/.test(url)) {
+    return new Response(JSON.stringify({ porEtapa: [], taxaConversao: null }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (/\/crm\/pipelines(\?|$)/.test(url)) {
+    return new Response(JSON.stringify({ itens: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (/\/crm\/oportunidades(\?|$)/.test(url)) {
+    return new Response(
+      JSON.stringify({ itens: [], pagina: 1, tamanho: 25, total: 0 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (/\/crm\/admin\/campos-oportunidade(\?|$)/.test(url)) {
+    return new Response(JSON.stringify({ itens: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   return new Response(JSON.stringify({ message: `fetch não mockado: ${url}` }), {
     status: 599,

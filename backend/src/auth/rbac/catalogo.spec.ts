@@ -115,6 +115,22 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
+  it('inclui o recurso oportunidade e crm_admin:gerir_pipelines (spec 010)', () => {
+    for (const id of [
+      'oportunidade:criar',
+      'oportunidade:editar',
+      'oportunidade:mover',
+      'oportunidade:ver_todas',
+      'oportunidade:ver_proprias',
+      'crm_admin:gerir_pipelines',
+    ]) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+    for (const p of PERMISSOES.filter((x) => x.recurso === 'oportunidade')) {
+      expect(p.id.startsWith('oportunidade:')).toBe(true);
+    }
+  });
+
   it('agruparPorRecurso preserva a ordem de 1ª aparição', () => {
     const grupos = agruparPorRecurso();
     expect(grupos.map((g) => g.recurso)).toEqual([
@@ -126,6 +142,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin',
       'interacao',
       'segmento',
+      'oportunidade',
     ]);
     expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
       'crm_admin:ver',
@@ -134,6 +151,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin:gerir_integracoes',
       'crm_admin:gerir_campos_lead',
       'crm_admin:gerir_tags',
+      'crm_admin:gerir_pipelines',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',

@@ -123,6 +123,35 @@ export const PERMISSOES = Object.freeze([
     recurso: 'crm_admin',
     rotulo: 'Gerir o catálogo de tags (renomear, cor, ativar/desativar)',
   },
+  // --- Pipeline / oportunidade (spec 010) ---
+  { id: 'oportunidade:criar', recurso: 'oportunidade', rotulo: 'Criar oportunidades' },
+  {
+    id: 'oportunidade:editar',
+    recurso: 'oportunidade',
+    rotulo:
+      'Editar oportunidades (título, valor, responsável, campos personalizados)',
+  },
+  {
+    id: 'oportunidade:mover',
+    recurso: 'oportunidade',
+    rotulo: 'Mover oportunidades entre etapas',
+  },
+  {
+    id: 'oportunidade:ver_todas',
+    recurso: 'oportunidade',
+    rotulo: 'Ver todas as oportunidades',
+  },
+  {
+    id: 'oportunidade:ver_proprias',
+    recurso: 'oportunidade',
+    rotulo: 'Ver apenas as oportunidades do próprio responsável',
+  },
+  {
+    id: 'crm_admin:gerir_pipelines',
+    recurso: 'crm_admin',
+    rotulo:
+      'Gerir pipelines, etapas, atribuição automática e campos personalizados de oportunidade',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

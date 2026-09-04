@@ -35,21 +35,46 @@ import { InteracaoService } from './application/interacao/interacao.service';
 import { RegistrarInteracaoService } from './application/interacao/registrar-interacao.service';
 import { TagService } from './application/tag/tag.service';
 import { SegmentoService } from './application/segmento/segmento.service';
+import { PipelineController } from './pipeline.controller';
+import { OportunidadeController } from './oportunidade.controller';
+import { CampoOportunidadeController } from './campo-oportunidade.controller';
+import { PipelineRepository } from './infra/pipeline/pipeline.repository';
+import { OportunidadeRepository } from './infra/pipeline/oportunidade.repository';
+import { MovimentacaoRepository } from './infra/pipeline/movimentacao.repository';
+import { RegraAtribuicaoRepository } from './infra/pipeline/regra-atribuicao.repository';
+import { CampoOportunidadeRepository } from './infra/pipeline/campo-oportunidade.repository';
+import { ValorCampoOportunidadeRepository } from './infra/pipeline/valor-campo-oportunidade.repository';
+import { CrmPipelineAuditService } from './application/pipeline/crm-pipeline-audit.service';
+import { PipelineService } from './application/pipeline/pipeline.service';
+import { AtribuicaoService } from './application/pipeline/atribuicao.service';
+import { OportunidadeService } from './application/pipeline/oportunidade.service';
+import { OportunidadeConsultaService } from './application/pipeline/oportunidade-consulta.service';
+import { MoverOportunidadeService } from './application/pipeline/mover-oportunidade.service';
+import { CampoOportunidadeService } from './application/pipeline/campo-oportunidade.service';
+import { ValorCampoOportunidadeService } from './application/pipeline/valor-campo-oportunidade.service';
+import { MetricasService } from './application/pipeline/metricas.service';
+import { PortaObservacaoPagamentoService } from './application/pipeline/porta-observacao-pagamento.service';
 
 /**
- * `crm` — bounded context de domínio (specs 007 + 008 + 009). Dono de
+ * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010). Dono de
  * `equipe`, `janela_atendimento`, `feriado`, `integracao` (007); `lead` (008
  * — a 1ª entidade compartilhada do projeto; acesso por RBAC 004);
  * `interacao`, `tag`/`tag_associacao`, `segmento` (009 — timeline unificada,
- * catálogo de tag compartilhado lead\|pessoa\|interacao, query salva).
+ * catálogo de tag compartilhado lead\|pessoa\|interacao, query salva);
+ * `pipeline`/`etapa_pipeline`/`oportunidade`/`oportunidade_movimentacao`/
+ * `regra_atribuicao_pipeline`/`campo_personalizado_oportunidade` (010 —
+ * pipeline de vendas, atribuição automática, SLA/esfriando derivados).
  *
  * Importa `core` (global) e `auth` (infra transversal — guard, `Permissao`,
  * `SujeitoRbacService`). **Nenhum import de `src/clientes/**`** — as FKs de
- * `interacao`/`tag_associacao` para `Pessoa` vivem só no `schema.prisma`
- * compartilhado (mesmo precedente de `Lead.pessoaId`/`Lead.responsavelId`).
+ * `interacao`/`tag_associacao`/`oportunidade` para `Pessoa` vivem só no
+ * `schema.prisma` compartilhado (mesmo precedente de `Lead.pessoaId`/
+ * `Lead.responsavelId`).
  *
- * **Exporta `RegistrarLeadService`** (035) e **`RegistrarInteracaoService`**
- * (011/012) — portas in-process. `CONTEXT_MODULES` segue com 11.
+ * **Exporta `RegistrarLeadService`** (035), **`RegistrarInteracaoService`**
+ * (011/012) e **`PortaObservacaoPagamentoService`** (Financeiro/Workflow,
+ * quando existirem — D-02 da 010, sem gatilho real ainda) — portas
+ * in-process. `CONTEXT_MODULES` segue com 11.
  */
 @Module({
   imports: [AuthModule],
@@ -61,6 +86,9 @@ import { SegmentoService } from './application/segmento/segmento.service';
     PessoaTagController,
     TagController,
     SegmentoController,
+    PipelineController,
+    OportunidadeController,
+    CampoOportunidadeController,
   ],
   providers: [
     // 007
@@ -93,8 +121,29 @@ import { SegmentoService } from './application/segmento/segmento.service';
     RegistrarInteracaoService,
     TagService,
     SegmentoService,
+    // 010
+    PipelineRepository,
+    OportunidadeRepository,
+    MovimentacaoRepository,
+    RegraAtribuicaoRepository,
+    CampoOportunidadeRepository,
+    ValorCampoOportunidadeRepository,
+    CrmPipelineAuditService,
+    PipelineService,
+    AtribuicaoService,
+    OportunidadeService,
+    OportunidadeConsultaService,
+    MoverOportunidadeService,
+    CampoOportunidadeService,
+    ValorCampoOportunidadeService,
+    MetricasService,
+    PortaObservacaoPagamentoService,
   ],
-  exports: [RegistrarLeadService, RegistrarInteracaoService],
+  exports: [
+    RegistrarLeadService,
+    RegistrarInteracaoService,
+    PortaObservacaoPagamentoService,
+  ],
 })
 export class CrmModule implements OnModuleInit {
   private readonly logger = new Logger('CrmModule');
@@ -104,8 +153,11 @@ export class CrmModule implements OnModuleInit {
     const lead = PERMISSOES.filter((p) => p.recurso === 'lead').map((p) => p.id);
     const interacao = PERMISSOES.filter((p) => p.recurso === 'interacao').map((p) => p.id);
     const segmento = PERMISSOES.filter((p) => p.recurso === 'segmento').map((p) => p.id);
+    const oportunidade = PERMISSOES.filter((p) => p.recurso === 'oportunidade').map(
+      (p) => p.id,
+    );
     this.logger.log(
-      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length}`,
+      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length}`,
     );
   }
 }
