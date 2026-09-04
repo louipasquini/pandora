@@ -18,7 +18,9 @@ export const criarInteracaoSchema = z
     tipo: interacaoTipoSchema,
     direcao: interacaoDirecaoSchema.optional(),
     conteudo: z.string().trim().min(1).max(10_000),
-    notaNps: z.number().int().min(0).max(10).optional(),
+    // Faixa 0-10 é checada no domínio (`validarCamposPorTipo`), não aqui — fora de
+    // faixa deve responder 422 (semântico), não 400 (estrutural). Só valida "é inteiro".
+    notaNps: z.number().int().optional(),
     ocorridoEm: z.string().datetime({ offset: true }).or(z.string().datetime()).optional(),
     canalOrigem: z.string().trim().max(60).optional(),
     idExterno: z.string().trim().max(200).optional(),

@@ -73,7 +73,7 @@ CREATE TABLE "segmento" (
     "alvo" "SegmentoAlvo" NOT NULL,
     "filtro" JSONB NOT NULL,
     "ativo" BOOLEAN NOT NULL DEFAULT true,
-    "criado_por" UUID NOT NULL,
+    "criado_por" UUID,
     "criado_em" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "atualizado_em" TIMESTAMPTZ(6) NOT NULL,
 

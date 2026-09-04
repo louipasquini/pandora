@@ -7,7 +7,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { agoraUtc } from '../../../core/core.module';
+import { EntidadeId, agoraUtc } from '../../../core/core.module';
 import type { AuthContext } from '../../../auth/guards/jwt-auth.guard';
 import { SujeitoRbacService } from '../../../auth/rbac/sujeito-rbac.service';
 import { validarAncora, validarCamposPorTipo, podeEditar } from '../../domain/interacao';
@@ -23,6 +23,24 @@ import { CrmInteracaoAuditService } from './crm-interacao-audit.service';
 
 function sub(req: Request): string | undefined {
   return (req as Request & { auth?: AuthContext }).auth?.sub;
+}
+
+/**
+ * `sub` do JWT é o id de um `Usuario` **ou** a credencial de serviço (não é
+ * linha de `usuario`, nem necessariamente um UUID) — `autor_id`/`criado_por`
+ * são FK `@db.Uuid`, então só um `Usuario` real pode ser gravado ali; a
+ * credencial de serviço vira `null` (mesmo sentido de "sem autor interno" já
+ * previsto para canal externo). `EntidadeId.isValido` filtra o formato antes
+ * de tocar o banco — evita erro de cast de UUID no Postgres para um `sub`
+ * que não é UUID (ex.: `SERVICE_CLIENT_ID` arbitrário).
+ */
+async function resolverAutorUsuario(
+  req: Request,
+  leads: LeadRepository,
+): Promise<string | null> {
+  const s = sub(req);
+  if (!s || !EntidadeId.isValido(s)) return null;
+  return (await leads.usuarioExiste(s)) ? s : null;
 }
 
 export function projetarInteracao(i: InteracaoRow) {
@@ -102,7 +120,8 @@ export class InteracaoService {
       }
     }
 
-    const autorId = sub(req);
+    const autorSub = sub(req);
+    const autorId = await resolverAutorUsuario(req, this.leads);
     const ocorridoEm = dto.ocorridoEm ? new Date(dto.ocorridoEm) : agoraUtc();
     const row = await this.repo.criar({
       pessoaId: ancora.tipo === 'pessoa' ? ancora.id : null,
@@ -111,14 +130,14 @@ export class InteracaoService {
       direcao: dto.direcao ?? null,
       conteudo: dto.conteudo,
       notaNps: dto.notaNps ?? null,
-      autorId: autorId ?? null,
+      autorId,
       canalOrigem: dto.canalOrigem ?? null,
       idExterno: dto.idExterno ?? null,
       ocorridoEm,
     });
 
     await this.audit.registrar({
-      autor: autorId ?? 'desconhecido',
+      autor: autorSub ?? 'desconhecido',
       entidade: 'interacao',
       entidadeId: row.id,
       campo: 'criado',
