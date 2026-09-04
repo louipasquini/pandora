@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import { usePodeUsar } from '../auth/usePermissoes';
+import { TagPicker } from '../interacoes/TagPicker';
+import { TimelineInteracoes } from '../interacoes/TimelineInteracoes';
+import { tagsApi } from '../interacoes/interacoes-api';
 import { mensagemErro, pessoasApi, type Contato } from './pessoas-api';
 import { MergeDialog } from './MergeDialog';
 
@@ -30,16 +33,23 @@ function ContatoLinha({ c }: { c: Contato }) {
   );
 }
 
-/** Detalhe de uma pessoa (spec 005). */
+/** Detalhe de uma pessoa (spec 005 + 009: tags e timeline unificada). */
 export function PessoaDetailPage() {
   const { id = '' } = useParams();
   const qc = useQueryClient();
   const [mergeAberto, setMergeAberto] = useState(false);
   const { pode: podeMerge } = usePodeUsar('pessoa:merge');
+  const { pode: podePessoaEditar } = usePodeUsar('pessoa:editar');
+  const { pode: podeInteracaoRegistrar } = usePodeUsar('interacao:registrar');
+  const { pode: podeInteracaoGerir } = usePodeUsar('interacao:gerir');
 
   const pessoa = useQuery({
     queryKey: ['pessoa', id],
     queryFn: () => pessoasApi.detalhe(id),
+  });
+  const tags = useQuery({
+    queryKey: ['pessoa-tags', id],
+    queryFn: () => tagsApi.listarDe({ tipo: 'pessoa', id }),
   });
 
   const desfazer = useMutation({
@@ -167,6 +177,26 @@ export function PessoaDetailPage() {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-slate-700">Tags</h2>
+        <div className="mt-1">
+          <TagPicker
+            ancora={{ tipo: 'pessoa', id }}
+            tags={tags.data?.tags ?? []}
+            podeEditar={podePessoaEditar}
+            onChange={() => void qc.invalidateQueries({ queryKey: ['pessoa-tags', id] })}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <TimelineInteracoes
+          ancora={{ pessoaId: id }}
+          podeRegistrar={podeInteracaoRegistrar}
+          podeGerir={podeInteracaoGerir}
+        />
       </div>
 
       {mergeAberto && (

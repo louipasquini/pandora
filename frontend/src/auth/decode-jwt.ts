@@ -24,3 +24,20 @@ export function expirado(token: string, margemSegundos = 5): boolean {
   if (exp === null) return true;
   return exp * 1000 <= Date.now() + margemSegundos * 1000;
 }
+
+/**
+ * Lê `sub` do payload de um JWT (mesma ressalva de `lerExp`: sem verificar
+ * assinatura). Uso: UX apenas (ex.: mostrar editar/remover só na própria
+ * nota — spec 009); a autorização real é sempre do backend.
+ */
+export function lerSub(token: string): string | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const obj = JSON.parse(json) as { sub?: unknown };
+    return typeof obj.sub === 'string' ? obj.sub : null;
+  } catch {
+    return null;
+  }
+}

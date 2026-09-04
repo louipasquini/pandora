@@ -100,6 +100,13 @@ export class InteracaoController {
     return this.interacoes.removerNota(id, req);
   }
 
+  @AutenticadoBasta()
+  @Get('interacoes/:id/tags')
+  async listarTags(@Param('id') id: string, @Req() req: Request) {
+    await this.interacoes.obterPorId(id, req);
+    return { tags: await this.tags.listarDe({ tipo: 'interacao', id }) };
+  }
+
   @RequerPermissao('interacao:registrar')
   @Post('interacoes/:id/tags')
   async addTag(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
