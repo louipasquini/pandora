@@ -39,6 +39,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/crm/leads',
     requerPermissao: ['lead:ver_todos', 'lead:ver_proprios'],
   },
+  {
+    label: 'CRM · Segmentos',
+    to: '/crm/segmentos',
+    requerPermissao: 'segmento:ver',
+  },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },

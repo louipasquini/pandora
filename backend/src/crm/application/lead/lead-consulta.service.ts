@@ -26,7 +26,9 @@ export function projetarLead(l: LeadRow, campos?: Record<string, string>) {
     estagio: l.estagio,
     status: l.status,
     responsavelId: l.responsavelId,
-    tags: l.tags,
+    // spec 009 (CL-04): `tags` é projetada de `tag_associacao`/`tag`, não mais
+    // uma coluna própria — `LeadRepository` sempre inclui `tagAssociacoes.tag`.
+    tags: l.tagAssociacoes.map((a) => a.tag.slug),
     score: l.score,
     scoreAtualizadoEm: l.scoreAtualizadoEm,
     pessoaId: l.pessoaId,

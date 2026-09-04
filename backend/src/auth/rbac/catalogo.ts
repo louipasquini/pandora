@@ -97,6 +97,32 @@ export const PERMISSOES = Object.freeze([
     recurso: 'crm_admin',
     rotulo: 'Gerir campos personalizados de lead',
   },
+  // --- Timeline de interação, tag e segmento (spec 009) ---
+  {
+    id: 'interacao:registrar',
+    recurso: 'interacao',
+    rotulo: 'Registrar interações (WhatsApp, e-mail, ligação, ticket, nota, NPS)',
+  },
+  {
+    id: 'interacao:gerir',
+    recurso: 'interacao',
+    rotulo: 'Editar e remover notas de outros autores',
+  },
+  {
+    id: 'segmento:ver',
+    recurso: 'segmento',
+    rotulo: 'Ver segmentos e seus membros',
+  },
+  {
+    id: 'segmento:gerir',
+    recurso: 'segmento',
+    rotulo: 'Criar, editar e excluir segmentos',
+  },
+  {
+    id: 'crm_admin:gerir_tags',
+    recurso: 'crm_admin',
+    rotulo: 'Gerir o catálogo de tags (renomear, cor, ativar/desativar)',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { projetarLead } from './lead-consulta.service';
 import { LeadRepository } from '../../infra/lead/lead.repository';
+import { TagService } from '../tag/tag.service';
 import { LeadScoreService } from './lead-score.service';
 import { CrmLeadAuditService } from './crm-lead-audit.service';
 import {
@@ -27,6 +28,7 @@ export class RegistrarLeadService {
     private readonly repo: LeadRepository,
     private readonly score: LeadScoreService,
     private readonly audit: CrmLeadAuditService,
+    private readonly tags: TagService,
   ) {}
 
   async registrar(
@@ -68,20 +70,25 @@ export class RegistrarLeadService {
       utmContent: entrada.utmContent ?? null,
       estagio: entrada.estagio ?? 'NOVO',
       responsavelId: entrada.responsavelId ?? null,
-      tags,
     });
-    await this.score.recalcular(lead, chave.origem);
+    // spec 009 (CL-04): tags iniciais viram `tag_associacao` — sem auditoria
+    // própria (embutidas no "criado" abaixo, mesmo padrão do LeadService.criar).
+    for (const t of tags) {
+      await this.tags.resolverEAssociarSemAuditoria({ tipo: 'lead', id: lead.id }, t, null);
+    }
+    const atual = (await this.repo.porId(lead.id)) ?? lead;
+    await this.score.recalcular(atual, chave.origem);
     await this.audit.registrar({
       autor: chave.origem,
       entidade: 'lead',
       entidadeId: lead.id,
       campo: 'criado',
       valorAnterior: null,
-      valorNovo: { origem: lead.origem, idExterno: lead.idExterno, nome: lead.nome },
+      valorNovo: { origem: lead.origem, idExterno: lead.idExterno, nome: lead.nome, tags },
       motivo: 'registrar_integracao',
     });
     this.logger.log(`lead.registrado origem=${chave.origem} id_externo=${chave.idExterno}`);
-    const atual = (await this.repo.porId(lead.id)) ?? lead;
-    return { leadId: lead.id, criado: true, lead: projetarLead(atual) };
+    const final = (await this.repo.porId(lead.id)) ?? atual;
+    return { leadId: lead.id, criado: true, lead: projetarLead(final) };
   }
 }

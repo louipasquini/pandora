@@ -11,12 +11,12 @@ import {
   normalizarEmail,
   normalizarNome,
   normalizarOrigem,
-  normalizarTag,
   normalizarTags,
   normalizarTelefone,
 } from '../../domain/lead/normalizar-lead';
 import type { CriarLeadEntrada } from '../../domain/lead/tipos';
 import { LeadRepository, type LeadRow } from '../../infra/lead/lead.repository';
+import { TagService } from '../tag/tag.service';
 import { CrmLeadAuditService } from './crm-lead-audit.service';
 import { LeadConsultaService, projetarLead } from './lead-consulta.service';
 import { LeadScoreService } from './lead-score.service';
@@ -90,6 +90,7 @@ export class LeadService {
     private readonly audit: CrmLeadAuditService,
     private readonly score: LeadScoreService,
     private readonly consulta: LeadConsultaService,
+    private readonly tags: TagService,
   ) {}
 
   async criar(entrada: CriarLeadEntrada & { idExterno?: string | null }, autor: string) {
@@ -103,7 +104,7 @@ export class LeadService {
     const tagsR = normalizarTags(entrada.tags);
     if (tagsR.erro !== undefined) throw new UnprocessableEntityException(`tags: ${tagsR.erro}`);
 
-    const lead = await this.repo.criar({
+    let lead = await this.repo.criar({
       nome: n.nome,
       email: n.email,
       telefone: n.telefone,
@@ -117,8 +118,16 @@ export class LeadService {
       utmContent: entrada.utmContent ?? null,
       estagio: entrada.estagio ?? 'NOVO',
       responsavelId: entrada.responsavelId ?? null,
-      tags: tagsR.valor,
     });
+    // spec 009 (CL-04): tags iniciais viram `tag_associacao` — sem auditoria própria
+    // aqui, para manter **1** registro de auditoria de "criado" (com o delta
+    // completo, tags incluídas), como no contrato original da spec 008.
+    for (const t of tagsR.valor) {
+      await this.tags.resolverEAssociarSemAuditoria({ tipo: 'lead', id: lead.id }, t, null);
+    }
+    if (tagsR.valor.length > 0) {
+      lead = (await this.repo.porId(lead.id)) ?? lead;
+    }
     const scoreFinal = await this.score.recalcular(lead, autor);
     const semelhantes = await this.repo.semelhantesAtivos(n.email, n.telefone, lead.id);
 
@@ -136,7 +145,7 @@ export class LeadService {
         origem: lead.origem,
         estagio: lead.estagio,
         responsavelId: lead.responsavelId,
-        tags: lead.tags,
+        tags: lead.tagAssociacoes.map((a) => a.tag.slug),
       },
       motivo: 'criar',
     });
@@ -205,24 +214,18 @@ export class LeadService {
     return projetarLead(atualizado);
   }
 
+  /**
+   * spec 009 (CL-04): delega ao `TagService` compartilhado (lead\|pessoa\|
+   * interacao) — mesmo contrato HTTP/auditoria (`crm_lead_audit`) da spec 008.
+   */
   async addTag(id: string, tagBruta: string, autor: string, req: Request) {
     const lead = await this.consulta.exigirNoEscopo(id, req);
-    const r = normalizarTag(tagBruta);
-    if (r.erro !== undefined) throw new UnprocessableEntityException(`tag: ${r.erro}`);
-    if (lead.tags.includes(r.valor)) return projetarLead(lead);
+    const tinhaTags = lead.tagAssociacoes.length > 0;
+    const r = await this.tags.associar({ tipo: 'lead', id }, tagBruta, null, autor);
+    if (!r.associada) return projetarLead(lead);
 
-    const tags = [...lead.tags, r.valor];
-    let atualizado = await this.repo.atualizar(id, { tags });
-    await this.audit.registrar({
-      autor,
-      entidade: 'lead',
-      entidadeId: id,
-      campo: 'tags',
-      valorAnterior: lead.tags,
-      valorNovo: tags,
-      motivo: 'tag',
-    });
-    if (lead.tags.length === 0) {
+    let atualizado = (await this.repo.porId(id)) ?? lead;
+    if (!tinhaTags) {
       const s = await this.score.recalcular(atualizado, autor);
       atualizado = { ...atualizado, score: s };
     }
@@ -231,22 +234,11 @@ export class LeadService {
 
   async removerTag(id: string, tagBruta: string, autor: string, req: Request) {
     const lead = await this.consulta.exigirNoEscopo(id, req);
-    const alvo = normalizarTag(tagBruta);
-    const valor = alvo.erro !== undefined ? tagBruta : alvo.valor;
-    if (!lead.tags.includes(valor)) return projetarLead(lead);
+    const r = await this.tags.desassociar({ tipo: 'lead', id }, tagBruta, autor);
+    if (!r.removida) return projetarLead(lead);
 
-    const tags = lead.tags.filter((t) => t !== valor);
-    let atualizado = await this.repo.atualizar(id, { tags });
-    await this.audit.registrar({
-      autor,
-      entidade: 'lead',
-      entidadeId: id,
-      campo: 'tags',
-      valorAnterior: lead.tags,
-      valorNovo: tags,
-      motivo: 'tag',
-    });
-    if (tags.length === 0) {
+    let atualizado = (await this.repo.porId(id)) ?? lead;
+    if (r.tags.length === 0) {
       const s = await this.score.recalcular(atualizado, autor);
       atualizado = { ...atualizado, score: s };
     }
