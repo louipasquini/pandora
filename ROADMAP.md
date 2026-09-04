@@ -280,10 +280,42 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   resolvidas com o dono do produto em 2026-09-04. Detalhe:
   [`specs/008-crm-lead/`](specs/008-crm-lead/) e [`docs/008-crm-lead.md`](docs/008-crm-lead.md).
 
-- [ ] **009 — crm-interacao-timeline**
-  `interacao` (WhatsApp, nota, ligação, ticket, NPS) — timeline unificada por `pessoa`/
-  `lead`. Notas internas, tags/categorização, `tag`/`segmento` (por query salva).
-  Frontend: timeline unificada.
+- [x] **009 — crm-interacao-timeline** — ✅ implementada (2026-09-04; migração/e2e pendentes
+  de ambiente com Postgres — ver nota abaixo)
+  Fecha o esboço 5.2‑E: **`interacao`** (WhatsApp, e-mail, ligação, ticket, nota, NPS) com
+  **âncora polimórfica** `pessoa` XOR `lead` (`CHECK` no banco + validação de borda); a
+  timeline de uma pessoa é a **união**, resolvida na leitura (`OR`/`JOIN` numa query só, sem
+  N+1), das interações próprias **e** das de todo lead convertido nela (CL-01) — nenhuma
+  linha é copiada ou re-apontada. Leitura sem permissão nova (deriva da âncora: `pessoa:ver`
+  ou o escopo `lead:ver_*` da 008). **Mutabilidade híbrida** (CL-05): só `tipo = NOTA` é
+  editável/removível (_soft-delete_, autor ou `interacao:gerir`); canal é **append-only**
+  (reforçado por `CHECK` no banco). **`tag`** promovida a entidade de 1ª classe compartilhada
+  lead\|pessoa\|interacao (CL-04) — migra `lead.tags: String[]` da 008 (coluna removida,
+  **contrato REST preservado**: `POST`/`DELETE .../tags` seguem o mesmo formato de corpo nas
+  3 âncoras); catálogo com _upsert_ por slug, contagem de uso, admin sob
+  `crm_admin:gerir_tags`. **`segmento`** — query salva declarativa (CL-03): `filtro` jsonb
+  validado por esquema **fechado** por `alvo` (`LEAD`\|`PESSOA`); membros **sempre
+  derivados** na leitura (`construirWhere` puro + escopo de visão do sujeito combinados —
+  nunca amplia o que ele já vê). **Nenhum contrato novo no `core`** (diferente da 008): as
+  FKs de `interacao`/`tag_associacao` para `Pessoa` vivem só no `schema.prisma`
+  compartilhado, mesmo precedente de `Lead.pessoaId`/`Lead.responsavelId` — a fronteira do
+  Princípio VI é sobre import de módulo TS, não sobre o schema. **7ª migração Prisma**
+  (`20260904150000_crm_interacao`) escrita à mão (sem acesso a Postgres nesta sessão — ver
+  nota); 5 tabelas + 3 enums + 2 `CHECK`s + 4 índices únicos parciais. **RBAC 004
+  estendido**: +5 permissões (`interacao:{registrar,gerir}`, `segmento:{ver,gerir}`,
+  `crm_admin:gerir_tags`). **~19 endpoints** novos. Frontend: `TimelineInteracoes` +
+  `TagPicker` (compartilhados, plugados em Pessoa e Lead) e **CRM · Segmentos** (nova, lista
+  + detalhe + membros). **0 dep nova**, **0 porta nova**, **0 chave `.env` nova**.
+  Clarificações CL-01 (âncora polimórfica+união), CL-02 (nota = tipo de interação), CL-03
+  (segmento on-read), CL-04 (tag entidade 1ª classe), CL-05 (mutabilidade híbrida) —
+  resolvidas com o dono do produto em 2026-09-04. 362 testes unitários backend + 66
+  frontend verdes (typecheck/lint/build limpos nos dois workspaces). **Nota de ambiente**:
+  este sandbox não teve acesso a Docker/Postgres (`docker compose up -d db` falhou por
+  permissão) — a migração Prisma e a suíte e2e (`crm-interacao.e2e-spec.ts`, escrita e
+  type-checada) precisam rodar num ambiente com banco antes do merge:
+  `npm run db:up && npm run prisma:migrate:dev --workspace backend && npm run test:e2e`.
+  Detalhe: [`specs/009-crm-interacao-timeline/`](specs/009-crm-interacao-timeline/) e
+  [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md).
 
 - [ ] **010 — crm-pipeline**
   `pipeline` / `oportunidade` (etapas configuráveis, `valor_estimado: Dinheiro`,
