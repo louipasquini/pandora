@@ -249,8 +249,8 @@ por tipo; remover a tag do lead não afeta a associação na pessoa.
 3. **Given** `interacao:registrar`, **When** `POST /crm/interacoes/{id}/tags` com uma tag
    nova, **Then** ela é criada e associada à interação.
 4. **Given** uma tag associada a um lead e a uma pessoa, **When**
-   `DELETE /crm/leads/{id}/tags/{slug}`, **Then** só a associação do lead some; a da pessoa
-   permanece.
+   `DELETE /crm/leads/{id}/tags` com `{ tag: "<mesmo texto>" }`, **Then** só a associação do
+   lead some; a da pessoa permanece.
 5. **Given** `crm_admin:gerir_tags`, **When** `PATCH /crm/admin/tags/{id}` muda `rotulo`/
    `cor`, **Then** o rótulo/cor mudam em toda associação existente (é o mesmo registro), e
    há **1** `crm_admin_audit`.

@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { agoraUtc } from '../../../core/core.module';
 import { calcularScore } from '../../domain/lead/scoring';
 import type { EstadoScoreLead } from '../../domain/lead/tipos';
-import { LeadRepository, type LeadRow } from '../../infra/lead/lead.repository';
+import { INCLUDE_TAGS, LeadRepository, type LeadRow } from '../../infra/lead/lead.repository';
 import { CrmLeadAuditService } from './crm-lead-audit.service';
 
 export function montarEstadoScore(l: LeadRow): EstadoScoreLead {
@@ -15,9 +15,9 @@ export function montarEstadoScore(l: LeadRow): EstadoScoreLead {
     origem: l.origem,
     estagio: l.estagio,
     criadoEm: l.criadoEm.toISOString(),
-    qtdInteracoes: 0, // spec 009
+    qtdInteracoes: 0, // TODO: ligar à contagem real de `interacao` (spec 010+)
     ultimaInteracaoEm: null,
-    qtdTags: l.tags.length,
+    qtdTags: l.tagAssociacoes.length,
   };
 }
 
@@ -76,6 +76,7 @@ export class LeadScoreService {
       where: cursor ? { id: { gt: cursor } } : {},
       orderBy: { id: 'asc' },
       take: tamanho,
+      include: INCLUDE_TAGS,
     });
     let alterados = 0;
     for (const lead of rows) {
