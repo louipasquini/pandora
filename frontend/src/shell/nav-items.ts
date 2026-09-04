@@ -49,6 +49,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/crm/pipelines',
     requerPermissao: ['oportunidade:ver_todas', 'oportunidade:ver_proprias'],
   },
+  {
+    label: 'CRM · WhatsApp',
+    to: '/crm/whatsapp',
+    requerPermissao: ['crm_admin:ver', 'whatsapp:ver'],
+  },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },

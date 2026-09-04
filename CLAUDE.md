@@ -375,8 +375,10 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   Pipelines** (010, `oportunidade:ver_todas`\|`ver_proprias`, board Kanban com
   drag-and-drop **HTML5 nativo** — 0 dep — + modal de motivo em etapa `PERDIDA`;
   administração de pipeline/etapa/atribuição/campos personalizados atrás de
-  `crm_admin:gerir_pipelines`). `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`).
-  Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
+  `crm_admin:gerir_pipelines`); **CRM · WhatsApp** (011, `crm_admin:ver`\|`whatsapp:ver`,
+  conectar canal com segredos só-escrita + templates por canal com badge de status e
+  "sincronizar agora" atrás de `crm_admin:gerir_whatsapp`). `vite.config.ts` lê o `.env` da
+  raiz (`envDir: '..'`). Tokens da marca num ponto único: `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
   nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`. Scripts
   `backend` `prisma:migrate:{dev,deploy,status}`/`prisma:seed`/`prisma:reset` carregam o
@@ -412,7 +414,73 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/010-crm-pipeline/plan.md`](specs/010-crm-pipeline/plan.md)
+Plano ativo: [`specs/011-crm-whatsapp-integracao/plan.md`](specs/011-crm-whatsapp-integracao/plan.md)
+(Fase 1 · spec 011 — **CRM · Integração com WhatsApp**: conecta o WhatsApp Business — **Cloud
+API oficial da Meta**, decisão do dono do produto 2026-09-04, não BSP — como canal de 1ª
+classe do CRM (visão Parte 8.5/8.12). Mora no _bounded context_ **`crm`** (já não-vazio desde
+007/008/009/010; `CONTEXT_MODULES` segue **11**). **`canal_whatsapp`** (conexão — número,
+`wabaId`, `phoneNumberId`; 3 segredos — access token, app secret, webhook verify token —
+cifrados com a **mesma** `CRM_INTEGRACAO_CIFRA_KEY` já obrigatória desde a 007, reusando
+`cifrar`/`mascararSegredo`/`ultimos4De`; **0 chave `.env` nova**). **`template_whatsapp`**
+(catálogo espelhado da Meta — nome, categoria, corpo, `statusAprovacao`; sincronizado **só
+sob demanda**, `POST .../templates/sincronizar` — Princípio VIII é explícito: "nenhuma
+sincronização automática com API externa", **nunca** um job periódico). **`mensagem_whatsapp`**
+— detalhe **1:1** de uma `interacao` (009) tipo `WHATSAPP` já existente desde aquela spec
+(`wa_message_id`, `statusEntrega`, `templateId?`, `tipoConteudo`, `midiaIdExterno?`) — mantém
+`interacao` agnóstica de canal, mesmo racional de `oportunidade_movimentacao` (010) não ser o
+audit genérico. **`evento_webhook_whatsapp`** — evento cru **imutável** do webhook, dedupado
+por `hash` do payload; **não** reaproveita `evento_origem`/`PlataformaOrigem` da `ingestao`
+(006) — essa é uma dimensão **fechada** das 7 contas financeiras de origem, e o pipeline de 7
+etapas daquela spec (classificar venda, resolver vínculo Asaas↔Guru, resolver oferta) não se
+aplica a uma mensagem (Princípio I, ver `research.md`). **`opt_out_whatsapp`** — histórico de
+pedidos de não-contato (LGPD): cada ciclo optar/reverter é uma **nova linha** (nunca `UPDATE`
+que apague o pedido original); bloqueia só envios **iniciados pela empresa**, nunca o
+recebimento. **Retenção de conversas indefinida** — pseudonimização só na exclusão da `pessoa`
+(spec 047), decisão do dono do produto, sem TTL automático nesta spec. **Webhook de entrada**
+(`GET`/`POST /webhooks/whatsapp`, público — as **primeiras** rotas `/webhooks/*` do projeto,
+cobertas pelo prefixo já reservado desde a 003) autenticado por **HMAC-SHA256**
+(`X-Hub-Signature-256` sobre o corpo bruto via `rawBody: true` nativo do `NestFactory.create`
+— 0 dep nova) — **não** pelo `WebhookAuthenticator` da 003, que é tipado para
+`PlataformaOrigem` e reservado às specs 019–022; função pura própria em
+`crm/domain/whatsapp/assinatura.ts`. Canal resolvido por `metadata.phone_number_id` do
+próprio payload (fiel ao modelo real da Meta — 1 callback URL por App, N números). Resolve
+pessoa/lead pelo telefone normalizado (`normalizarTelefone`, reusada de `crm/domain/lead` da
+008) ou cria `Lead` novo (`origem: 'whatsapp'`, via `RegistrarLeadService` da 008 — idempotente
+por `(origem, telefone)`) e registra via **`RegistrarInteracaoService`** (009 — porta
+exportada **especificamente** para esta spec e para a 012 injetarem), dedupado por
+`(canalOrigem: "whatsapp:<canalId>", idExterno: <wamid>)`. **Janela de 24h** —
+`estaDentroDaJanela24h(ultimaMensagemRecebidaEm, agora)` **sempre derivada** (Princípio V,
+nunca coluna). **Envio** (`POST /crm/whatsapp/mensagens`, livre dentro da janela ou por
+template `APROVADO` fora dela) é **síncrono** — sem fila (disparo em massa é escopo da 015);
+chama a Graph API via **`fetch` nativo do Node 24** atrás da interface `GraphApiClient`
+(0 dep nova, dublê nos testes). **Nenhuma tabela de auditoria nova** — canal/template/opt-out
+reaproveitam `crm_admin_audit` (007), perfil de baixo volume igual a `equipe`/`integracao`.
+**9ª migração Prisma** (`20260904165949_crm_whatsapp`): 5 tabelas + 6 enums + 1 índice único
+parcial (`mensagem_whatsapp.wa_message_id`) via SQL bruto. **RBAC 004 estendido**: **+4**
+permissões — `whatsapp:{ver,enviar,gerir_optout}` + `crm_admin:gerir_whatsapp`;
+`administrador`/credencial de serviço de graça, **0 migração de dados/seed**. **~14
+endpoints** autenticados (`/crm/admin/whatsapp/**` — canal/templates/eventos;
+`/crm/whatsapp/**` — janela/mensagens/optout) **+ 2 públicos** de webhook. **Frontend**
+`frontend/src/whatsapp/`: **CRM · WhatsApp** (`WhatsappAdminPage.tsx`, atrás de
+`crm_admin:ver`\|`whatsapp:ver`) — conectar canal (campos de segredo só-escrita, nunca
+preenchidos de volta), lista de canais com segredo mascarado, templates por canal com badge
+de status e "sincronizar agora" (`crm_admin:gerir_whatsapp`); hooks TanStack Query **inline**
+no componente, mesmo padrão de `crm-admin/IntegracoesTab.tsx` (007) — sem arquivo de hooks à
+parte. Indicador de janela de 24h e ação de opt-out **dentro de uma conversa** foram
+**adiados deliberadamente para a spec 012** (Chat ao Vivo) — não existe hoje nenhuma tela de
+conversa para hospedá-los, e o ROADMAP já escopa o frontend desta spec como só "configuração
+de canal e templates"; os endpoints de backend já existem e estão testados. **0 dep nova**
+(backend e frontend), **1 migração**, **nenhuma porta nova**, **nenhuma chave `.env` nova**.
+`CONTEXT_MODULES` segue 11. As 2 decisões que bloqueavam esta spec no ROADMAP (⚠ clarify) —
+provedor WhatsApp e retenção/anonimização — foram resolvidas com o dono do produto **antes**
+da escrita do `spec.md`, 2026-09-04. 423 testes unitários backend (32 novos, todos de domínio
+puro — sem banco) + 222 e2e (23 novos, Postgres real, suíte 003–011 completa) + 76 frontend
+(4 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces.
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+<details><summary>Spec 010 — Pipeline de Vendas do CRM (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/010-crm-pipeline/plan.md`](specs/010-crm-pipeline/plan.md)
 (Fase 1 · spec 010 — **Pipeline de Vendas do CRM**: pipelines de vendas configuráveis
 (visão Parte 8.7) — `pipeline`/`etapa_pipeline` (etapas ordenadas, `tipo ABERTA|GANHA|
 PERDIDA`, `slaHoras?`), `oportunidade` (âncora polimórfica `pessoa` XOR `lead`, mesma
@@ -466,6 +534,8 @@ build limpos nos dois workspaces. Um bug real pego pelo e2e e corrigido: `REGRA.
 não resolvia a `origem` do lead (`OportunidadeService` passava `origem: null` fixo) —
 corrigido com `OportunidadeRepository.origemDoLead`.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+</details>
 
 <details><summary>Spec 009 — Timeline de Interações do CRM (implementada, resumo arquivado)</summary>
 

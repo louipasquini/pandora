@@ -18,6 +18,7 @@ import { SegmentosPage } from '../segmentos/SegmentosPage';
 import { SegmentoDetalhePage } from '../segmentos/SegmentoDetalhePage';
 import { PipelinesPage } from '../pipelines/PipelinesPage';
 import { PipelineAdminPage } from '../pipelines/PipelineAdminPage';
+import { WhatsappAdminPage } from '../whatsapp/WhatsappAdminPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -144,6 +145,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="crm_admin:gerir_pipelines">
                 <PipelineAdminPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/whatsapp',
+            element: (
+              <RequirePermissao anyOf={['crm_admin:ver', 'whatsapp:ver']}>
+                <WhatsappAdminPage />
               </RequirePermissao>
             ),
           },
