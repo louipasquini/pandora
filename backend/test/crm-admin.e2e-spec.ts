@@ -341,12 +341,12 @@ describe('crm — Administração do CRM (e2e)', () => {
         .expect(403);
     });
 
-    it('catálogo expõe o recurso crm_admin (4 da 007 + gerir_campos_lead da 008 + gerir_tags da 009)', async () => {
+    it('catálogo expõe o recurso crm_admin (4 da 007 + gerir_campos_lead da 008 + gerir_tags da 009 + gerir_pipelines da 010)', async () => {
       const res = await http().get('/admin/rbac/permissoes').set(ADMIN);
       const grupo = res.body.recursos.find(
         (r: { recurso: string }) => r.recurso === 'crm_admin',
       );
-      expect(grupo.permissoes).toHaveLength(6);
+      expect(grupo.permissoes).toHaveLength(7);
 
       const efetivas = await http().get('/auth/permissoes-efetivas').set(ADMIN);
       expect(efetivas.body.permissoes).toEqual(

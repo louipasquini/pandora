@@ -315,13 +315,41 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/009-crm-interacao-timeline/`](specs/009-crm-interacao-timeline/) e
   [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md).
 
-- [ ] **010 — crm-pipeline**
-  `pipeline` / `oportunidade` (etapas configuráveis, `valor_estimado: Dinheiro`,
-  responsável, motivo de ganho/perda). Presença em múltiplos pipelines, atribuição
-  automática (round robin / regra), SLA por etapa + alerta de estouro, histórico/auditoria
-  de mudança de etapa, alerta de lead esfriando. **Observa** status de pagamento do
-  Financeiro (evento), nunca escreve; "ganho" nunca cria/antecipa Contrato.
-  Frontend: board Kanban.
+- [x] **010 — crm-pipeline** — ✅ implementada e validada (2026-09-04)
+  Quarta fatia da Fase 1 (CRM), visão Parte 8.7. **`pipeline`** (funil configurável,
+  `modoAtribuicao MANUAL|RODIZIO|REGRA`, `diasEsfriando?`) + **`etapa_pipeline`** (ordenada,
+  `tipo ABERTA|GANHA|PERDIDA`, `slaHoras?`). **`oportunidade`** — mesma âncora polimórfica
+  `pessoa` XOR `lead` da `interacao` (009, D-01), **1ª persistência de `Dinheiro` do core**
+  no schema (`valor_estimado_int bigint` ×10000 + `valor_estimado_moeda char(3)`).
+  **`oportunidade_movimentacao`** — histórico de 1ª classe (não é o audit genérico) de toda
+  mudança de etapa: motivo obrigatório só ao **entrar** em etapa `PERDIDA`; mover para a
+  etapa atual é no-op; reabrir `GANHA`/`PERDIDA` para `ABERTA` não exige motivo. **Atribuição
+  automática** (D-03): `RODIZIO` reusa `equipe`/`equipe_membro` da 007 (round robin
+  determinístico via cursor `pipeline.ultimoAtribuidoUsuarioId` persistido); `REGRA` — lista
+  ordenada de condições simples (`ORIGEM`, `VALOR_ESTIMADO_MINIMO`) com *fallback* opcional
+  para `RODIZIO`; `responsavelId` explícito sempre vence. **SLA e "esfriando"** — campos
+  **derivados** em toda leitura (Princípio V, nunca coluna persistida), reusando a
+  `interacao` da 009 para o cálculo de esfriamento (busca em lote, sem N+1). **Campos
+  personalizados de oportunidade** — mesmo padrão da 008. **Métricas** (`GET
+  /crm/pipelines/{id}/metricas`) — funil por etapa, valor por etapa/moeda (nunca soma entre
+  moedas), tempo médio na etapa, taxa de conversão — sempre recalculado. **Porta
+  `PortaObservacaoPagamentoCrm`** (D-02, regra 8.2.3 da visão) — exportada do `CrmModule`,
+  entrega só o **efeito** (mover oportunidade `ABERTA` para a 1ª etapa `GANHA`); o
+  Financeiro (018–030) ainda não existe, então **sem gatilho real** nesta spec — nunca cria/
+  edita/lê Contrato. **8ª migração Prisma** (`20260904154451_crm_pipeline`): 8 tabelas + 3
+  enums + 1 `CHECK` de âncora. **RBAC 004 estendido**: +6 permissões
+  (`oportunidade:{criar,editar,mover,ver_todas,ver_proprias}`, `crm_admin:gerir_pipelines`).
+  **~26 endpoints** novos. Frontend `frontend/src/pipelines/`: **CRM · Pipelines** — board
+  Kanban com drag-and-drop **HTML5 nativo** (`@hello-pangea/dnd` avaliada e rejeitada — 0 dep
+  nova), modal de motivo ao soltar em etapa `PERDIDA`; `PipelineAdminPage` (etapas,
+  atribuição, campos personalizados) atrás de `crm_admin:gerir_pipelines`. **0 dep nova**,
+  **0 porta nova**, **0 chave `.env` nova**. Decisões D-01..D-06 resolvidas como defaults
+  documentados na própria spec (não marcada `⚠ clarify`). 391 testes unitários backend + 199
+  e2e (Postgres real) + 72 frontend, todos verdes — e2e rodado contra um Postgres isolado
+  (porta 55433, container próprio) para não tocar o ambiente compartilhado (3001/5174/55432
+  já em uso por outra sessão neste ambiente).
+  Detalhe: [`specs/010-crm-pipeline/`](specs/010-crm-pipeline/) e
+  [`docs/010-crm-pipeline.md`](docs/010-crm-pipeline.md).
 
 - [ ] **011 — crm-whatsapp-integracao**
   Provedor WhatsApp Business API, conexão, `template_whatsapp` (nome Meta, categoria,
