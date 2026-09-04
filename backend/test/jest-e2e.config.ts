@@ -8,7 +8,11 @@ import type { Config } from 'jest';
  * paralelo faz um apagar as linhas do outro no meio do teste (visto na CI). Daí
  * `maxWorkers: 1` — serializa os arquivos e cada `afterEach` fica isolado no
  * tempo. O custo é ~12 s; a alternativa (schema por worker) mudaria o harness da
- * spec 004.
+ * spec 004. Mantido em 1 propositalmente — não subir, mesmo por performance.
+ *
+ * `workerIdleMemoryLimit`: como cada spec faz bootstrap completo do Nest,
+ * reinicia o único worker se ele crescer demais entre arquivos — nativo do
+ * Jest, cross-platform, não interfere na serialização acima.
  */
 const config: Config = {
   moduleFileExtensions: ['js', 'json', 'ts'],
@@ -22,6 +26,7 @@ const config: Config = {
   globalTeardown: '<rootDir>/test/teardown-db.ts',
   testTimeout: 30000,
   maxWorkers: 1,
+  workerIdleMemoryLimit: '768MB',
 };
 
 export default config;
