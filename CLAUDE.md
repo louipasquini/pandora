@@ -335,18 +335,34 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   (união global+equipe), CL-02 (rejeitar janela que cruza meia-noite), CL-03 (escala por
   atendente fora de escopo — vai junto do 012), CL-04 (feriado 29/02 não desloca) — dono do
   produto, 2026-09-03. Ver [`docs/007-crm-administracao.md`](docs/007-crm-administracao.md).
+- **crm (spec 008 — lead; spec 009 — interação/tag/segmento):** 008 é a **1ª entidade
+  compartilhada** do projeto (`lead` — CRM **e** Marketing, acesso por RBAC 004, não por
+  fronteira; conversão Lead→Pessoa reusa a engine da 005 via **`PortaIdentidade`** no `core`
+  — inversão de dependência, `crm` nunca importa `clientes`; scoring puro/derivado; campos
+  personalizados com esquema administrável; **6ª migração**). 009 fecha o esboço 5.2‑E:
+  `interacao` (âncora `pessoa` XOR `lead`, timeline unida na leitura sem re-apontar linha —
+  CL-01; só `NOTA` edita/remove, canal é append-only — CL-05), `tag` (entidade de 1ª classe
+  compartilhada lead\|pessoa\|interacao, migrando `lead.tags` da 008 sem quebrar o contrato
+  REST — CL-04), `segmento` (query salva, membros sempre derivados na leitura — CL-03);
+  **nenhum contrato novo no `core`** (FK direta no schema, mesmo precedente da 008); **7ª
+  migração**; **+5 permissões** RBAC. Resumo completo de cada uma em
+  [`docs/008-crm-lead.md`](docs/008-crm-lead.md) e
+  [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md) (o histórico
+  detalhado de plano/decisões vive arquivado na seção `SPECKIT` abaixo).
 - **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind v4 (config CSS-first, `@theme`),
   TanStack Query, React Router 7. Um único nível de acesso; login = credenciais de serviço
   (tela `/login` + `AuthProvider`/`useAuth` + `apiFetch` central que injeta `Authorization`
-  e trata 401 num ponto único; token em `localStorage`). RBAC (spec 004): item de navegação
-  **Administração** (abas Perfis/Usuários) atrás de `perfil:administrar`; `RequirePermissao`
-  + `usePermissoesEfetivas` (consome `/auth/permissoes-efetivas`, zero permissão
-  _hardcoded_); `apiFetch` trata **403** num ponto único (banner, **não** desloga).
-  Spec 005: itens **Pessoas** (`pessoa:ver`) e **Contas** (`conta:ver`) —
-  `frontend/src/{pessoas,contas}/` (lista+busca+paginação, detalhe com primário/secundário/
-  `curado`, refs de origem, linha do tempo de merges + Desfazer; formulários e Unificar só
-  com `*:editar`/`*:merge`). `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`). Tokens
-  da marca num ponto único: `frontend/src/theme/tokens.css`.
+  e trata 401/403 em pontos únicos; token em `localStorage`). RBAC (spec 004): item de
+  navegação **Administração** (abas Perfis/Usuários) atrás de `perfil:administrar`;
+  `RequirePermissao` (`perm`/`anyOf`) + `usePermissoesEfetivas` (zero permissão
+  _hardcoded_). Módulos por spec: **Pessoas**/**Contas** (005, `pessoa:ver`/`conta:ver`,
+  merge+desfazer); **Eventos** (006, `evento:ver`, timeline de etapas + reprocessar);
+  **CRM · Administração** (007, `crm_admin:ver`, abas Equipes/Expediente/Integrações);
+  **CRM · Leads** (008, `lead:ver_todos`\|`ver_proprios`, score/campos personalizados/
+  converter); **CRM · Segmentos** (009, `segmento:ver`, lista+detalhe+membros) +
+  `TimelineInteracoes`/`TagPicker` compartilhados plugados em Pessoas e Leads.
+  `vite.config.ts` lê o `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
+  `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
   nenhuma fixa): backend `3001`, frontend `5174`, Postgres dev host `55432`.
 - **Testes:** unitários sem banco; e2e do backend contra Postgres real, schema isolado por
@@ -378,7 +394,80 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/008-crm-lead/plan.md`](specs/008-crm-lead/plan.md)
+Plano ativo: [`specs/009-crm-interacao-timeline/plan.md`](specs/009-crm-interacao-timeline/plan.md)
+(Fase 1 · spec 009 — **Timeline de Interações do CRM**: fecha o esboço 5.2‑E que ainda
+faltava — `interacao` (timeline unificada), `tag` (categorização compartilhada) e
+`segmento` (lista dinâmica por query salva). Mora no _bounded context_ **`crm`** (já
+não-vazio desde a 007/008; `CONTEXT_MODULES` segue **11**). **`interacao`** — âncora
+**polimórfica** `pessoa_id` **XOR** `lead_id` (exatamente um, `CHECK` no banco + validação
+de borda `validarAncora` — CL-01); `tipo` (`WHATSAPP|EMAIL|LIGACAO|TICKET|NOTA|NPS`),
+`direcao` (obrigatória p/ tipos de canal exceto `NPS`, proibida em `NOTA`), `conteudo`,
+`nota_nps` (0–10, só `NPS`), `autor_id?`, `canal_origem?`/`id_externo?` (idempotência de
+integração). **Timeline unificada de uma `pessoa`** = interações ancoradas nela **∪**
+interações de todo `lead` cujo `pessoa_id` aponta para ela — resolvida numa **única query**
+(`OR`/`JOIN` Prisma, sem N+1) a cada leitura; nenhuma linha é copiada/re-apontada na
+conversão de lead (008). Leitura **sem permissão nova**: por pessoa exige `pessoa:ver`
+(005); por lead segue o escopo `lead:ver_todos`/`ver_proprios` da 008
+(`LeadConsultaService.exigirNoEscopo`, reusado por composição de serviço dentro do próprio
+`crm` — **não** por import de `clientes`). **Mutabilidade híbrida** (**CL-02**/CL-05): nota
+interna é `tipo = NOTA` dentro de `interacao` (não uma tabela própria) e é a **única**
+editável/removível (_soft-delete_ — `removido_em`), pelo autor (`interacao:registrar`) ou
+por quem tem `interacao:gerir`; qualquer canal é **append-only** (reforçado por `CHECK
+("tipo" = 'NOTA' OR ("editado_em" IS NULL AND "removido_em" IS NULL))` no banco) — 405/409
+em qualquer tentativa. **`tag`** promovida a entidade de 1ª classe compartilhada
+lead\|pessoa\|interacao (**CL-04**): `tag` (`slug` único, `rotulo`, `cor?`, `ativo`) +
+`tag_associacao` (uma de `lead_id`\|`pessoa_id`\|`interacao_id` — `CHECK` + 3 índices únicos
+parciais); associar por texto faz _upsert_ por slug (idempotente, FR-016). **Migra o
+`lead.tags: String[]` da spec 008** — a coluna é removida (sem _backfill_: sem dado de
+produção nesta fase do projeto) e o `LeadService` passa a delegar ao `TagService`
+compartilhado, **preservando o contrato REST** (`POST`/`DELETE /crm/leads/:id/tags`
+idênticos, auditando como antes em `crm_lead_audit`); as novas `POST`/`DELETE
+/crm/{pessoas,interacoes}/:id/tags` usam o mesmo formato de corpo (`{tag}`, sem `:slug` no
+path), auditando em `crm_interacao_audit`. Catálogo (`GET /crm/tags`, sem PII,
+`@AutenticadoBasta()`) com contagem de uso por âncora; admin (renomear/cor/ativar) sob
+**permissão nova** `crm_admin:gerir_tags` (recurso `crm_admin` da 007), auditado em
+`crm_admin_audit`. **`segmento`** — query salva declarativa (**CL-03**): `alvo`
+(`LEAD`\|`PESSOA`) + `filtro` jsonb validado contra um esquema **fechado por `alvo`**
+(`validarFiltro`/`construirWhere` em `domain/segmento/filtro-segmento.ts`, puros, sem
+banco); `GET /crm/segmentos/:id/membros` combina o `where` do filtro com o `where` de
+escopo de visão do sujeito (`LeadConsultaService.escopoDe` p/ `LEAD`; `pessoa:ver` p/
+`PESSOA`) — **nunca** amplia o que o sujeito já vê; membros **sempre derivados** na
+leitura, nunca materializados (regra 8.2.2). **Nenhum contrato novo no `core`** (diferente
+da 008): as FKs de `interacao`/`tag_associacao` para `Pessoa` vivem só no `schema.prisma`
+compartilhado — mesmo precedente de `Lead.pessoaId`/`Lead.responsavelId` (008/004); a
+fronteira do Princípio VI é sobre import de módulo TypeScript, não sobre o schema. **RBAC
+004 estendido**: **+5** permissões — `interacao:{registrar,gerir}` (recurso novo
+`interacao`), `segmento:{ver,gerir}` (recurso novo `segmento`), `crm_admin:gerir_tags`
+(recurso `crm_admin`); `administrador`/credencial de serviço de graça, **0 migração de
+dados/seed**. **7ª migração Prisma** (`20260904150000_crm_interacao`): `interacao`, `tag`,
+`tag_associacao`, `segmento`, `crm_interacao_audit` (forma canônica do core, append-only,
+só delta real) + enums `InteracaoTipo`/`InteracaoDirecao`/`SegmentoAlvo`; `ALTER TABLE lead
+DROP COLUMN tags`; 2 `CHECK`s + 4 índices únicos parciais via SQL bruto (Prisma não modela
+`CHECK`/índice parcial). **Porta in-process** `RegistrarInteracaoService` (idempotente por
+`(canal_origem, id_externo)`, exportada do `CrmModule`) para as specs 011/012 injetarem;
+**sem** `/webhooks/*` aqui. **~19 endpoints** novos `/crm/interacoes/**`,
+`/crm/{pessoas,leads}/:id/interacoes`, `/crm/{pessoas,interacoes}/:id/tags`, `/crm/tags`,
+`/crm/admin/tags/**`, `/crm/segmentos/**`. **Frontend**: `frontend/src/interacoes/`
+(`TimelineInteracoes` — composer + lista + editar/remover nota condicionado a
+autor/`interacao:gerir`; `TagPicker` — chip picker compartilhado), plugados em
+`PessoaDetailPage` e `LeadDetalhePage` (troca o input de tag livre da 008 pelo picker
+compartilhado); `frontend/src/segmentos/` (nova — **CRM · Segmentos**, atrás de
+`segmento:ver`: lista + criar + detalhe com filtro salvo e membros paginados). **0 dep
+nova**, **1 migração**, **nenhuma porta nova**, **nenhuma chave `.env` nova**.
+`CONTEXT_MODULES` segue 11. Clarificações CL-01 (âncora polimórfica + timeline unida na
+leitura), CL-02 (nota = `tipo` de interação, não tabela própria), CL-03 (segmento como
+query salva _on-read_), CL-04 (tag entidade de 1ª classe, migrando a 008), CL-05
+(mutabilidade híbrida — só `NOTA` edita/remove) — resolvidas com o dono do produto em
+2026-09-04. 362 testes unitários backend + 66 frontend verdes (typecheck/lint/build limpos
+nos dois workspaces); migração Prisma e suíte e2e escritas e type-checadas, mas **não
+executadas** por falta de acesso a Postgres/Docker no ambiente da sessão que as gerou —
+rodar antes do merge: `npm run db:up && npm run prisma:migrate:dev --workspace backend &&
+npm run test:e2e`.
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+<details><summary>Spec 008 — Lead do CRM (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/008-crm-lead/plan.md`](specs/008-crm-lead/plan.md)
 (Fase 1 · spec 008 — **Lead do CRM**: a 1ª entidade **compartilhada** do projeto — uma
 única tabela `lead` para CRM **e** Marketing (visão Parte 8.2.1), acesso resolvido por
 **RBAC 004** (`lead:{criar,editar,ver_todos,ver_proprios}` já no catálogo desde a 004),
@@ -387,7 +476,8 @@ não por fronteira arquitetural. Mora no _bounded context_ **`crm`** (já não-v
 obrigatório, `documento?` com DV), `origem`/`id_externo` + UTM (`utm_source/medium/campaign/
 term/content`), `estagio` (enum de funil `NOVO|CONTATO_FEITO|QUALIFICADO|NUTRICAO|
 DESQUALIFICADO`), `status` (`ATIVO|DESCARTADO|CONVERTIDO`), `responsavel_id?` (FK `usuario`
-da 004), `tags[]`. **Lead scoring** — `calcularScore(EstadoScoreLead) → Int [0,100]` em
+da 004), `tags[]` (spec 009 promove a `tag`/`tag_associacao` compartilhados — a coluna
+`String[]` foi removida). **Lead scoring** — `calcularScore(EstadoScoreLead) → Int [0,100]` em
 `src/crm/domain/lead/scoring.ts`: função **pura, determinística, livre de locale**
 (`agoraUtc()`/matriz `TZ` na CI), tabela de pesos **congelada** `PESOS_SCORE_LEAD`
 (completude de contato, origem rastreável, estágio, engajamento, recência, decaímento por
@@ -420,7 +510,7 @@ e-mail/telefone é **permitido** (`POST` devolve `leadsSemelhantes: [...]`; dedu
 conversão). **Sem `DELETE` físico de lead** (só `status = DESCARTADO`). Auditoria:
 `crm_lead_audit` na forma canônica do core (`montarRegistroAuditoria`, `AJUSTE_MANUAL`,
 **append-only**, só delta real — `PATCH` no-op → 0 linha); definições de campo auditam em
-`crm_admin_audit` (tabela da 007). **6ª migração Prisma** (`<ts>_crm_lead`): `lead`,
+`crm_admin_audit` (tabela da 007). **6ª migração Prisma** (`20260904122426_crm_lead`): `lead`,
 `campo_personalizado_lead`, `valor_campo_lead`, `crm_lead_audit` + enums `LeadEstagio`/
 `LeadStatus`/`CampoPersonalizadoTipo`; PK UUID v7 na app, `@db.Timestamptz`. **~14
 endpoints** `/crm/leads/**` + `/crm/admin/campos-lead/**`. **Frontend** `frontend/src/leads/`:
@@ -434,6 +524,8 @@ nova**, **1 migração**, **nenhuma porta nova**, **nenhuma chave `.env` nova**.
 no `core`), CL-03 (esquema administrável de campos personalizados) — resolvidas com o dono
 do produto em 2026-09-04.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+</details>
 
 <details><summary>Spec 007 — Administração do CRM (implementada, resumo arquivado)</summary>
 
