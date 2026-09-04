@@ -131,6 +131,20 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
+  it('inclui o recurso whatsapp e crm_admin:gerir_whatsapp (spec 011)', () => {
+    for (const id of [
+      'whatsapp:ver',
+      'whatsapp:enviar',
+      'whatsapp:gerir_optout',
+      'crm_admin:gerir_whatsapp',
+    ]) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+    for (const p of PERMISSOES.filter((x) => x.recurso === 'whatsapp')) {
+      expect(p.id.startsWith('whatsapp:')).toBe(true);
+    }
+  });
+
   it('agruparPorRecurso preserva a ordem de 1ª aparição', () => {
     const grupos = agruparPorRecurso();
     expect(grupos.map((g) => g.recurso)).toEqual([
@@ -143,6 +157,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'interacao',
       'segmento',
       'oportunidade',
+      'whatsapp',
     ]);
     expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
       'crm_admin:ver',
@@ -152,6 +167,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin:gerir_campos_lead',
       'crm_admin:gerir_tags',
       'crm_admin:gerir_pipelines',
+      'crm_admin:gerir_whatsapp',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',

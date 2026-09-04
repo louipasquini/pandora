@@ -54,27 +54,52 @@ import { CampoOportunidadeService } from './application/pipeline/campo-oportunid
 import { ValorCampoOportunidadeService } from './application/pipeline/valor-campo-oportunidade.service';
 import { MetricasService } from './application/pipeline/metricas.service';
 import { PortaObservacaoPagamentoService } from './application/pipeline/porta-observacao-pagamento.service';
+import { WhatsappAdminController } from './whatsapp-admin.controller';
+import { WhatsappController } from './whatsapp.controller';
+import { WhatsappWebhookController } from './whatsapp-webhook.controller';
+import {
+  CanalWhatsappRepository,
+  EventoWebhookWhatsappRepository,
+  MensagemWhatsappRepository,
+  OptOutWhatsappRepository,
+  TemplateWhatsappRepository,
+} from './infra/whatsapp';
+import {
+  CanalWhatsappService,
+  EnvioWhatsappService,
+  GRAPH_API_CLIENT,
+  JanelaWhatsappService,
+  MetaGraphApiClient,
+  OptOutWhatsappService,
+  TemplateWhatsappService,
+  WebhookWhatsappService,
+} from './application/whatsapp';
 
 /**
- * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010). Dono de
- * `equipe`, `janela_atendimento`, `feriado`, `integracao` (007); `lead` (008
- * — a 1ª entidade compartilhada do projeto; acesso por RBAC 004);
+ * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010 + 011). Dono
+ * de `equipe`, `janela_atendimento`, `feriado`, `integracao` (007); `lead`
+ * (008 — a 1ª entidade compartilhada do projeto; acesso por RBAC 004);
  * `interacao`, `tag`/`tag_associacao`, `segmento` (009 — timeline unificada,
  * catálogo de tag compartilhado lead\|pessoa\|interacao, query salva);
  * `pipeline`/`etapa_pipeline`/`oportunidade`/`oportunidade_movimentacao`/
  * `regra_atribuicao_pipeline`/`campo_personalizado_oportunidade` (010 —
- * pipeline de vendas, atribuição automática, SLA/esfriando derivados).
+ * pipeline de vendas, atribuição automática, SLA/esfriando derivados);
+ * `canal_whatsapp`/`template_whatsapp`/`mensagem_whatsapp`/
+ * `evento_webhook_whatsapp`/`opt_out_whatsapp` (011 — integração com a Cloud
+ * API oficial da Meta, janela de 24h, webhook de entrada autenticado por HMAC
+ * — não pelo `WebhookAuthenticator` da 003, que é escopado a `PlataformaOrigem`).
  *
  * Importa `core` (global) e `auth` (infra transversal — guard, `Permissao`,
  * `SujeitoRbacService`). **Nenhum import de `src/clientes/**`** — as FKs de
- * `interacao`/`tag_associacao`/`oportunidade` para `Pessoa` vivem só no
- * `schema.prisma` compartilhado (mesmo precedente de `Lead.pessoaId`/
- * `Lead.responsavelId`).
+ * `interacao`/`tag_associacao`/`oportunidade`/`opt_out_whatsapp` para `Pessoa`
+ * vivem só no `schema.prisma` compartilhado (mesmo precedente de
+ * `Lead.pessoaId`/`Lead.responsavelId`).
  *
- * **Exporta `RegistrarLeadService`** (035), **`RegistrarInteracaoService`**
- * (011/012) e **`PortaObservacaoPagamentoService`** (Financeiro/Workflow,
- * quando existirem — D-02 da 010, sem gatilho real ainda) — portas
- * in-process. `CONTEXT_MODULES` segue com 11.
+ * **Exporta `RegistrarLeadService`** (035) e **`PortaObservacaoPagamentoService`**
+ * (Financeiro/Workflow, quando existirem — D-02 da 010, sem gatilho real
+ * ainda) — portas in-process. `RegistrarInteracaoService` (009) é reaproveitado
+ * **internamente** pela 011 (webhook + envio), sem precisar de novo consumidor
+ * externo. `CONTEXT_MODULES` segue com 11.
  */
 @Module({
   imports: [AuthModule],
@@ -89,6 +114,9 @@ import { PortaObservacaoPagamentoService } from './application/pipeline/porta-ob
     PipelineController,
     OportunidadeController,
     CampoOportunidadeController,
+    WhatsappAdminController,
+    WhatsappController,
+    WhatsappWebhookController,
   ],
   providers: [
     // 007
@@ -138,6 +166,19 @@ import { PortaObservacaoPagamentoService } from './application/pipeline/porta-ob
     ValorCampoOportunidadeService,
     MetricasService,
     PortaObservacaoPagamentoService,
+    // 011
+    CanalWhatsappRepository,
+    TemplateWhatsappRepository,
+    MensagemWhatsappRepository,
+    EventoWebhookWhatsappRepository,
+    OptOutWhatsappRepository,
+    CanalWhatsappService,
+    TemplateWhatsappService,
+    WebhookWhatsappService,
+    EnvioWhatsappService,
+    JanelaWhatsappService,
+    OptOutWhatsappService,
+    { provide: GRAPH_API_CLIENT, useClass: MetaGraphApiClient },
   ],
   exports: [
     RegistrarLeadService,
@@ -156,8 +197,9 @@ export class CrmModule implements OnModuleInit {
     const oportunidade = PERMISSOES.filter((p) => p.recurso === 'oportunidade').map(
       (p) => p.id,
     );
+    const whatsapp = PERMISSOES.filter((p) => p.recurso === 'whatsapp').map((p) => p.id);
     this.logger.log(
-      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length}`,
+      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length} whatsapp=${whatsapp.length}`,
     );
   }
 }

@@ -63,6 +63,10 @@ const TODAS_PERMISSOES = [
   'oportunidade:ver_todas',
   'oportunidade:ver_proprias',
   'crm_admin:gerir_pipelines',
+  'whatsapp:ver',
+  'whatsapp:enviar',
+  'whatsapp:gerir_optout',
+  'crm_admin:gerir_whatsapp',
 ];
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = typeof input === 'string' ? input : input.toString();

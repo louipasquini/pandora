@@ -55,7 +55,12 @@ export interface EntradaAuditoriaCrm {
     | 'campo_personalizado_lead'
     // spec 009 — o catálogo de `tag` (criar/renomear/desativar) é config administrativa;
     // a *associação* de uma tag a lead/pessoa/interação não passa por aqui.
-    | 'tag';
+    | 'tag'
+    // spec 011 — canal/template de WhatsApp e opt-out são config de baixo volume,
+    // mesmo perfil de `equipe`/`integracao` (reuso deliberado, ver research.md da 011).
+    | 'canal_whatsapp'
+    | 'template_whatsapp'
+    | 'opt_out_whatsapp';
   entidadeId: string;
   campo: string;
   valorAnterior: unknown;
