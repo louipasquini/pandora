@@ -8,7 +8,10 @@ import type { AppConfig } from './config/env.schema';
 async function bootstrap(): Promise<void> {
   // Se envSchema.parse falhar (validate do ConfigModule), NestFactory.create
   // rejeita aqui com o caminho da variável — o processo aborta (FR-008).
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // `rawBody: true` expõe `req.rawBody` (Buffer) sem alterar o parsing JSON
+  // das demais rotas — necessário para verificar a assinatura HMAC-SHA256 do
+  // webhook do WhatsApp (spec 011) sobre os bytes exatos do corpo.
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
   const config = app.get(ConfigService<AppConfig, true>);
   const port = config.get('PORT', { infer: true });
 

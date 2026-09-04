@@ -105,14 +105,15 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
                  timeline unificada, tag compartilhada, query salva (spec 009) + Pipeline/
                  Oportunidade: etapas, atribuição automática, SLA/esfriando derivados,
-                 métricas (spec 010 — domain/ application/ infra/, subpastas lead/
-                 interacao/ tag/ segmento/ pipeline/)
+                 métricas (spec 010) + WhatsApp: canal, template, webhook autenticado por
+                 HMAC, janela de 24h, envio, opt-out (spec 011 — domain/ application/
+                 infra/, subpastas lead/ interacao/ tag/ segmento/ pipeline/ whatsapp/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
-                 007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010)
-                 + migrações + seed.ts
+                 007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
+                 whatsapp 011) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -130,6 +131,7 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     segmentos/   CRM · Segmentos — lista, detalhe, membros derivados na leitura (spec 009)
     pipelines/   CRM · Pipelines — board Kanban (drag-and-drop nativo), administração de
                  pipeline/etapa/atribuição/campos personalizados (spec 010)
+    whatsapp/    CRM · WhatsApp — conectar canal, sincronizar e ver templates (spec 011)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -165,7 +167,9 @@ npm run db:up
 #    evento_origem/evento_etapa na 4ª; spec 007 acrescenta equipe/expediente/
 #    integracao na 5ª; spec 008 acrescenta lead/campos-personalizados na 6ª;
 #    spec 009 acrescenta interacao/tag/segmento na 7ª (e remove lead.tags);
-#    spec 010 acrescenta pipeline/oportunidade na 8ª — todas sem seed de negócio)
+#    spec 010 acrescenta pipeline/oportunidade na 8ª; spec 011 acrescenta
+#    canal_whatsapp/template_whatsapp/mensagem_whatsapp/evento_webhook_whatsapp/
+#    opt_out_whatsapp na 9ª — todas sem seed de negócio)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
@@ -233,7 +237,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
-(CRM) em andamento** (specs 007–009 entregues; próxima 010).
+(CRM) em andamento** (specs 007–011 entregues; próxima 012).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -366,7 +370,52 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   Painel: `TimelineInteracoes`/`TagPicker` compartilhados (Pessoa e Lead) + **CRM ·
   Segmentos** (nova). **0 dep nova, 1 migração, 0 porta nova, 0 chave `.env` nova.**
   Ver [`docs/009-crm-interacao-timeline.md`](docs/009-crm-interacao-timeline.md).
-- ⏭️ Próxima: **010 — crm-pipeline** (Fase 1 — CRM).
+- ✅ **010 — crm-pipeline**: pipeline de vendas de alto ticket (visão 8.7). **`pipeline`**
+  (funil configurável, `modoAtribuicao MANUAL|RODIZIO|REGRA`) + **`etapa_pipeline`**
+  (ordenada, `tipo ABERTA|GANHA|PERDIDA`, `slaHoras?`). **`oportunidade`** — mesma âncora
+  polimórfica `pessoa` XOR `lead` da `interacao` (009); **1ª persistência de `Dinheiro` do
+  core** no schema (`bigint` ×10000 + `moeda` `char(3)`). **`oportunidade_movimentacao`** —
+  histórico de **1ª classe** (não o audit genérico): motivo obrigatório só ao **entrar** em
+  etapa `PERDIDA`; mover para a etapa atual é no-op; reabrir não exige motivo. **Atribuição
+  automática**: `RODIZIO` reusa `equipe`/`equipe_membro` da 007 (round robin
+  **determinístico** via cursor persistido); `REGRA` — condições ordenadas com *fallback*.
+  **SLA/"esfriando"** sempre **derivados** na leitura (nunca coluna), "esfriando" reusa a
+  última `interacao` da 009 (busca em lote, sem N+1). Campos personalizados (mesmo padrão da
+  008) + métricas por etapa/moeda (`groupBy`, nunca soma entre moedas). Porta
+  `PortaObservacaoPagamentoCrm` (exportada, sem gatilho real — Financeiro ainda não existe).
+  **8ª migração Prisma** (8 tabelas + 3 enums + `CHECK` de âncora XOR). Catálogo RBAC ganha
+  `oportunidade:{criar,editar,mover,ver_todas,ver_proprias}` + `crm_admin:gerir_pipelines`
+  (+6). ~26 endpoints. Painel: **CRM · Pipelines** — board Kanban com drag-and-drop **HTML5
+  nativo** (0 dep nova), modal de motivo em etapa `PERDIDA`, painel de métricas;
+  administração de pipeline/etapas/atribuição/campos atrás de `crm_admin:gerir_pipelines`.
+  **0 dep nova, 1 migração, 0 porta nova, 0 chave `.env` nova.**
+  Ver [`docs/010-crm-pipeline.md`](docs/010-crm-pipeline.md).
+- ✅ **011 — crm-whatsapp-integracao**: conecta o WhatsApp Business (**Cloud API oficial da
+  Meta** — decisão do dono do produto, não BSP) como canal de 1ª classe do CRM (visão
+  8.5/8.12). **`canal_whatsapp`** (conexão — segredos cifrados com a mesma
+  `CRM_INTEGRACAO_CIFRA_KEY` da 007), **`template_whatsapp`** (catálogo espelhado da Meta,
+  sincronizado **só sob demanda** — Princípio VIII, nunca automático), **`mensagem_whatsapp`**
+  (detalhe 1:1 de uma `interacao` tipo `WHATSAPP` já existente desde a 009 — mantém
+  `interacao` agnóstica de canal), **`evento_webhook_whatsapp`** (evento cru imutável do
+  webhook, dedupado por hash — **não** reaproveita `evento_origem`/`PlataformaOrigem` da
+  `ingestao`, que é uma dimensão fechada das 7 contas financeiras) e **`opt_out_whatsapp`**
+  (histórico de pedidos de não-contato, LGPD; retenção de conversas **indefinida** —
+  pseudonimização só na exclusão da `pessoa`, decisão do dono do produto). Webhook de
+  entrada (`/webhooks/whatsapp`, público) autenticado por **HMAC-SHA256** — não pelo
+  `WebhookAuthenticator` da 003, que é escopado às 7 contas financeiras — resolve
+  pessoa/lead pelo telefone (cria `Lead` novo se desconhecido) e registra via
+  `RegistrarInteracaoService` (009, porta exportada especificamente para esta spec).
+  **Janela de 24h** e "está em opt-out" são sempre **derivados** na leitura (Princípio V).
+  Envio (livre dentro da janela, ou por template aprovado fora dela) é **síncrono** — sem
+  fila (disparo em massa é escopo da 015). **9ª migração Prisma** (5 tabelas + 6 enums;
+  nenhuma tabela de auditoria nova — canal/template/opt-out reaproveitam `crm_admin_audit`
+  da 007). Catálogo RBAC ganha `whatsapp:{ver,enviar,gerir_optout}` +
+  `crm_admin:gerir_whatsapp` (+4). ~14 endpoints autenticados + 2 públicos de webhook.
+  Painel: **CRM · WhatsApp** — conectar canal (segredos só-escrita, nunca preenchidos de
+  volta), templates por canal com badge de status e "sincronizar agora". **0 dep nova**
+  (`fetch` nativo do Node 24 + `rawBody: true` nativo do Nest), **1 migração, 0 chave `.env`
+  nova**. Ver [`docs/011-crm-whatsapp-integracao.md`](docs/011-crm-whatsapp-integracao.md).
+- ⏭️ Próxima: **012 — crm-chat-ao-vivo** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

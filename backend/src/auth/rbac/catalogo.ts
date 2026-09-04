@@ -152,6 +152,27 @@ export const PERMISSOES = Object.freeze([
     rotulo:
       'Gerir pipelines, etapas, atribuição automática e campos personalizados de oportunidade',
   },
+  // --- Integração com WhatsApp (spec 011) ---
+  {
+    id: 'whatsapp:ver',
+    recurso: 'whatsapp',
+    rotulo: 'Ver canais, templates, janela de atendimento e status de opt-out de WhatsApp',
+  },
+  {
+    id: 'whatsapp:enviar',
+    recurso: 'whatsapp',
+    rotulo: 'Enviar mensagens de WhatsApp em nome da empresa',
+  },
+  {
+    id: 'whatsapp:gerir_optout',
+    recurso: 'whatsapp',
+    rotulo: 'Registrar e reverter opt-out de WhatsApp',
+  },
+  {
+    id: 'crm_admin:gerir_whatsapp',
+    recurso: 'crm_admin',
+    rotulo: 'Configurar canal de WhatsApp e sincronizar templates',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */
