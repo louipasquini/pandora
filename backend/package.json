@@ -18,11 +18,11 @@
     "test": "jest --config jest.config.ts",
     "test:e2e": "jest --config test/jest-e2e.config.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate:status": "set -a && . ../.env && set +a && prisma migrate status",
-    "prisma:migrate:dev": "set -a && . ../.env && set +a && prisma migrate dev",
-    "prisma:migrate:deploy": "set -a && . ../.env && set +a && prisma migrate deploy",
-    "prisma:seed": "set -a && . ../.env && set +a && prisma db seed",
-    "prisma:reset": "set -a && . ../.env && set +a && prisma migrate reset --force"
+    "prisma:migrate:status": "[ -f ../.env ] && set -a && . ../.env && set +a; prisma migrate status",
+    "prisma:migrate:dev": "[ -f ../.env ] && set -a && . ../.env && set +a; prisma migrate dev",
+    "prisma:migrate:deploy": "[ -f ../.env ] && set -a && . ../.env && set +a; prisma migrate deploy",
+    "prisma:seed": "[ -f ../.env ] && set -a && . ../.env && set +a; prisma db seed",
+    "prisma:reset": "[ -f ../.env ] && set -a && . ../.env && set +a; prisma migrate reset --force"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
