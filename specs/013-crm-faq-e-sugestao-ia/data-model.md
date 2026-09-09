@@ -29,12 +29,12 @@ sugestão para a mesma mensagem de origem (D-05) — nunca uma decisão humana, 
 | `pergunta` | string | espelha sempre a versão mais recente (denormalizado para leitura rápida) |
 | `resposta` | string | idem |
 | `ativo` | boolean | default `true` — só itens ativos entram na busca da IA (FR-001/FR-006) |
-| `criadoPorId` | uuid? | FK `Usuario`, `onDelete: Restrict` |
 | `criadoEm`/`atualizadoEm` | datetime | — |
 
 - `@@index([ativo])` — filtro da busca da IA e do catálogo `GET /crm/faq`.
 - Sem `DELETE` físico — desativar é a única forma de "remover" (FR-001, cenário 3); histórico
   de versões permanece íntegro mesmo depois de desativado.
+- Sem coluna "quem criou" — a 1ª `FaqItemVersao` já guarda isso, sem duplicar o dado.
 
 ## `FaqItemVersao`
 
@@ -47,7 +47,7 @@ Histórico **append-only** de 1ª classe — 1 linha por criação/edição, sna
 | `faqItemId` | uuid | FK `FaqItem`, `onDelete: Cascade` |
 | `pergunta` | string | snapshot no momento desta versão |
 | `resposta` | string | idem |
-| `autorId` | uuid? | FK `Usuario`, `onDelete: Restrict` — quem criou esta versão |
+| `autor` | string? | **string livre, não FK** — mesmo padrão de `crm_admin_audit.autor` (007): quem edita FAQ pode ser a credencial de serviço, cujo `sub` não é um `Usuario.id` real |
 | `criadoEm` | datetime | quando |
 
 - `@@index([faqItemId, criadoEm])` — histórico em ordem.

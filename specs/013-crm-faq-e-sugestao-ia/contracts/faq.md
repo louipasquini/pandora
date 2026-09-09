@@ -25,7 +25,6 @@ Lista administrativa — todos os itens por padrão; `?ativo=true|false` filtra.
       "pergunta": "...",
       "resposta": "...",
       "ativo": true,
-      "criadoPorId": "...",
       "criadoEm": "...",
       "atualizadoEm": "..."
     }
@@ -40,7 +39,7 @@ Histórico completo, mais recente primeiro.
 ```json
 {
   "itens": [
-    { "id": "...", "pergunta": "...", "resposta": "...", "autorId": "...", "criadoEm": "..." }
+    { "id": "...", "pergunta": "...", "resposta": "...", "autor": "...", "criadoEm": "..." }
   ]
 }
 ```

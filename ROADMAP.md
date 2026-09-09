@@ -427,13 +427,43 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/012-crm-chat-ao-vivo/`](specs/012-crm-chat-ao-vivo/) e
   [`docs/012-crm-chat-ao-vivo.md`](docs/012-crm-chat-ao-vivo.md).
 
-- [ ] **013 — crm-faq-e-sugestao-ia**
-  `faq_item` (produto FK nullable OU campanha FK nullable — exatamente um), FAQ por produto
-  (persiste) e por lançamento (condições exclusivas), versionamento (quem/quando).
-  `sugestao_ia` (resposta sugerida, campo personalizado sugerido — nunca envia/grava
-  sozinha; ciclo de governança de 3 etapas da Parte 10.6). IA identifica múltiplas
-  perguntas numa mensagem; gera campos personalizados (reaproveita projeto Noctua).
-  Feedback loop (útil / não útil). Frontend: editor de FAQ + painel de sugestões.
+- [x] **013 — crm-faq-e-sugestao-ia** — ✅ implementada e validada (2026-09-09)
+  Sétima fatia da Fase 1 (CRM), visão Parte 8.3/8.5/10.6. `faq_item`/`faq_item_versao` —
+  base de FAQ versionada (histórico append-only, snapshot completo por edição) **sem**
+  vínculo com produto ou campanha nesta versão — nenhuma das duas entidades existe ainda
+  neste ponto do roadmap (`produto` nasce na 023, `campanha` na 032). `sugestao_ia` —
+  proposta não-autoritativa da IA, sempre síncrona e sempre dentro de um atendimento (012)
+  já existente, sobre uma `Interacao` de entrada já registrada; **nunca** envia mensagem
+  nem grava campo sozinha (governança 10.6, etapa 1): `RESPOSTA` só marca a decisão
+  (`aceitar` ≠ enviar — o envio segue exigindo `POST .../responder`, agora com `sugestaoId`
+  opcional que liga a resposta enviada à sugestão); `CAMPO_PERSONALIZADO` já grava o valor
+  ao aceitar. IA identifica múltiplas perguntas numa mensagem e propõe uma sugestão por
+  pergunta; pedir de novo para a mesma mensagem substitui a pendente anterior (nunca
+  duplicata). Feedback (útil/não útil) só depois de decidida. Sugestão de campo
+  personalizado vale tanto para `lead` (008) quanto para `pessoa` já convertida — esta spec
+  estende `clientes` com `campo_personalizado_pessoa`/`valor_campo_pessoa` (espelha a
+  estrutura de lead campo a campo), exposta ao `crm` por uma **2ª porta de inversão de
+  dependência** (`PortaCampoPersonalizadoPessoa`, mesmo padrão de `PortaIdentidade`, 008;
+  `identidade-wiring.module.ts` renomeado para `clientes-wiring.module.ts`/
+  `ClientesWiringModule`, agora expondo as duas portas). Provedor de IA = API da Anthropic
+  (Claude) via `fetch` nativo, atrás de uma porta própria (`SugestaoIaClient`) — **nunca
+  lança**, falha do provedor nunca bloqueia o atendimento. Credencial reaproveita a tabela
+  `integracao` já existente e ociosa desde a 007 (`tipo=CONEXAO_INTERNA`, `alvo=EXTERNO`) —
+  **0 tabela nova de credencial, 0 chave `.env` nova**. **11ª migração Prisma**
+  (`20260909120000_crm_faq_sugestao_ia`): 5 tabelas + 2 enums + 1 coluna
+  (`resposta_atendimento.sugestao_ia_id`). **RBAC 004 estendido**: +2 permissões
+  (`crm_admin:gerir_faq`, `pessoa:gerir_campos_personalizados`); gerar/decidir/avaliar
+  sugestão reaproveita `atendimento:atender`; decidir campo personalizado verifica
+  `lead:editar`/`pessoa:editar` **dinamicamente** (a mesma rota atende os dois casos).
+  **~24 endpoints** autenticados, **0 endpoint público novo**, **0 dep nova**. Frontend:
+  aba **FAQ** em CRM · Administração (007) + painel de sugestões dentro da conversa do Chat
+  ao Vivo (012). Decisões do dono do produto resolvidas em 2026-09-09 **antes** da escrita
+  do `spec.md`: FAQ sem vínculo de produto/campanha; campo personalizado sugerido vale para
+  lead e pessoa; provedor de IA = Anthropic. 469 testes unitários backend (16 novos, todos
+  de domínio puro — sem banco) + 258 e2e (13 novos, Postgres real, suíte 003–013 completa) +
+  90 frontend (7 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces.
+  Detalhe: [`specs/013-crm-faq-e-sugestao-ia/`](specs/013-crm-faq-e-sugestao-ia/) e
+  [`docs/013-crm-faq-e-sugestao-ia.md`](docs/013-crm-faq-e-sugestao-ia.md).
 
 - [ ] **014 — crm-workflow**
   `fluxo_automacao` (versão, gatilho, blocos jsonb, `publicado_em`) + `execucao_fluxo`

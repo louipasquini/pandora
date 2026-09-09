@@ -159,12 +159,12 @@ utilidade).
 
 ## Fase 8 — Documentação
 
-- [ ] T041 `docs/013-crm-faq-e-sugestao-ia.md` — novo, mesma profundidade de
+- [x] T041 `docs/013-crm-faq-e-sugestao-ia.md` — novo, mesma profundidade de
       `docs/012-crm-chat-ao-vivo.md`.
-- [ ] T042 `ROADMAP.md` — marcar `013` concluído, parágrafo-resumo completo.
-- [ ] T043 `README.md` — bullet `✅ 013 — crm-faq-e-sugestao-ia`, status "em andamento" →
+- [x] T042 `ROADMAP.md` — marcar `013` concluído, parágrafo-resumo completo.
+- [x] T043 `README.md` — bullet `✅ 013 — crm-faq-e-sugestao-ia`, status "em andamento" →
       próxima spec.
-- [ ] T044 `speckit-agent-context-update` — regenerar a seção `SPECKIT` do `CLAUDE.md` (move
+- [x] T044 `speckit-agent-context-update` — regenerar a seção `SPECKIT` do `CLAUDE.md` (move
       o resumo da 012 para dentro de `<details>`, escreve o resumo definitivo da 013,
       atualiza "Plano ativo").
 
