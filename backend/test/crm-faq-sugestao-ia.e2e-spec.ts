@@ -59,6 +59,21 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
     await prisma.clientesAudit.deleteMany({});
   });
 
+  /**
+   * Telefone único **desta spec** — DDD `31` (nunca usado pelo contador
+   * próprio de `crm-atendimento.ts`, DDD `21`, nem de `crm-whatsapp.ts`, DDD
+   * `11`). O schema Postgres é isolado por **execução** (não por arquivo —
+   * ver `test/jest-e2e.config.ts`), e nenhum arquivo limpa `pessoa`/
+   * `pessoaTelefone` no `afterEach`, então dois arquivos gerando o mesmo
+   * telefone colidem (`409 contato já pertence a outra pessoa`) mesmo sem
+   * rodar ao mesmo tempo — um DDD próprio, com contador próprio, evita isso.
+   */
+  let contadorTelefone = 0;
+  function numeroUnico(): string {
+    contadorTelefone += 1;
+    return `+5531${String(contadorTelefone).padStart(8, '0')}`;
+  }
+
   async function tokenAtender() {
     return h.tokenComPermissoes(['atendimento:atender', 'atendimento:ver_proprios']);
   }
@@ -146,7 +161,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
         .send({ pergunta: 'Posso parcelar?', resposta: 'Em até 12x.' });
       const faqItemId = faq.body.id as string;
 
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -193,7 +208,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
     });
 
     it('sem correspondência na FAQ → nenhuma sugestão de baixa confiança (FR-006)', async () => {
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -209,7 +224,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
     });
 
     it('múltiplas perguntas numa mensagem geram sugestões separadas, decidíveis independentemente (US3)', async () => {
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -249,7 +264,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
     });
 
     it('nova sugestão para a mesma mensagem substitui a pendente anterior (D-05)', async () => {
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -277,7 +292,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
     });
 
     it('falha do provedor de IA nunca bloqueia o atendimento (FR-014/SC-006)', async () => {
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -300,7 +315,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
     });
 
     it('interacao inválida (de outro atendimento, ou SAIDA) → 422', async () => {
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -319,7 +334,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
     });
 
     it('sugestaoId inválido (pendente, rejeitada, ou de outro atendimento) no responder → 409', async () => {
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -353,7 +368,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
         .send({ chave: 'anos_experiencia', rotulo: 'Anos de experiência', tipo: 'NUMERO' });
       expect(campo.status).toBe(201);
 
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await h.tokenComPermissoes(['atendimento:atender', 'pessoa:editar']);
       await assumir(atendimentoId, token);
@@ -395,7 +410,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
         .set(ADMIN)
         .send({ chave: 'anos_experiencia2', rotulo: 'Anos de experiência', tipo: 'NUMERO' });
 
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
@@ -467,7 +482,7 @@ describe('crm — FAQ e Sugestão de IA (e2e)', () => {
 
   describe('feedback de utilidade (US5)', () => {
     it('só aceita depois de decidida; idempotente', async () => {
-      const pessoaId = await h.criarPessoaComTelefone(h.numeroUnico());
+      const pessoaId = await h.criarPessoaComTelefone(numeroUnico());
       const atendimentoId = await criarAtendimentoPessoa(pessoaId);
       const { token } = await tokenAtender();
       await assumir(atendimentoId, token);
