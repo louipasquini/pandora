@@ -419,7 +419,14 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/012-crm-chat-ao-vivo/plan.md`](specs/012-crm-chat-ao-vivo/plan.md)
+Plano ativo: [`specs/013-crm-faq-e-sugestao-ia/plan.md`](specs/013-crm-faq-e-sugestao-ia/plan.md)
+(Fase 1 · spec 013 — **CRM · FAQ e Sugestão de IA** — em implementação; ver `plan.md`/
+`research.md`/`data-model.md` da spec para o desenho completo. Resumo definitivo entra aqui
+ao final da implementação, mesmo padrão das specs anteriores.)
+
+<details><summary>Spec 012 — CRM · Chat ao Vivo (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/012-crm-chat-ao-vivo/plan.md`](specs/012-crm-chat-ao-vivo/plan.md)
 (Fase 1 · spec 012 — **CRM · Chat ao Vivo**: inbox de atendimento ao vivo (visão Parte
 8.5/8.12), construída **sobre** a timeline de `interacao` unificada (009) e o canal
 WhatsApp já conectado (011) — não uma 2ª tabela de mensagens. Mora no _bounded context_
@@ -479,6 +486,8 @@ da escrita do `spec.md`, 2026-09-04. 454 testes unitários backend (31 novos, to
 domínio puro — sem banco) + 245 e2e (23 novos, Postgres real, suíte 003–012 completa) + 83
 frontend (7 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+</details>
 
 <details><summary>Spec 011 — CRM · Integração com WhatsApp (implementada, resumo arquivado)</summary>
 
