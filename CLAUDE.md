@@ -381,7 +381,10 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   `atendimento:ver_todos`\|`ver_proprios`, fila com indicador de SLA + conversa
   reaproveitando `TimelineInteracoes` em modo leitura, assumir/responder/transferir/
   encerrar/CSAT condicionados à permissão; administração de SLA/mensagem fora do
-  expediente por equipe atrás de `crm_admin:gerir_atendimento`). `vite.config.ts` lê o
+  expediente por equipe atrás de `crm_admin:gerir_atendimento`); **CRM · Disparos** (015,
+  `disparo:ver`, visão geral/histórico + construtor inline canal/template[s]/segmento
+  e/ou CSV/teste A/B/agendamento atrás de `disparo:criar`, detalhe com métricas por
+  status/variante, export e quality rating sob demanda). `vite.config.ts` lê o
   `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
   `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
@@ -419,7 +422,82 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/014-crm-workflow/plan.md`](specs/014-crm-workflow/plan.md)
+Plano ativo: [`specs/015-crm-disparos/plan.md`](specs/015-crm-disparos/plan.md)
+(Fase 1 · spec 015 — **CRM · Disparos (WhatsApp)**: nona fatia da Fase 1 (CRM), visão Parte
+8.6. Mora no _bounded context_ **`crm`** (já não-vazio desde 007–014), construído **sobre**
+a infraestrutura de canal/template/mensagem já existente da spec 011
+(`CanalWhatsapp`/`TemplateWhatsapp`/`MensagemWhatsapp`/`OptOutWhatsapp`, `GraphApiClient`) e
+sobre `Segmento` da spec 009 — nenhuma tabela paralela. **`ExecucaoDisparo`** (campanha —
+template[s], canal, segmento e/ou lista importada, agendamento, status) +
+**`DisparoContatoImportado`** (linhas de CSV aceitas, com a escolha de virar Lead feita na
+importação — FR-007a) + **`MensagemDisparo`** (1 linha por destinatário resolvido —
+enviado/entregue/lido/falhou/pulado, variante de teste A/B; `mensagemWhatsappId` FK opcional
+`@unique`, preenchida só depois que o envio de fato acontece — research.md D-R3:
+destinatário pulado/pendente nunca gera interação, a timeline só registra o que realmente
+saiu; status de entrega/leitura é lido por `JOIN` em `mensagem_whatsapp.status_entrega`,
+nunca duplicado). Lista de destinatários (segmento ∪ CSV, deduplicada por telefone,
+opt-out excluído) é resolvida **na criação** para envio imediato, ou **pelo worker no
+horário** para envio agendado — a composição do **segmento** é sempre recalculada nesse
+momento (FR-006), nunca travada antes; a resolução de membros **ignora o escopo de visão
+por sujeito** (`ver_todos`/`ver_proprios` de Lead, spec 008) — autorização já foi resolvida
+em `disparo:criar`, e o worker roda sem sujeito HTTP em curso (research.md D-R2). Worker
+in-house (mesmo padrão `setInterval` de `ingestao`/006 e `workflow`/014; volume confirmado
+com o dono do produto: **até poucos milhares por disparo**, revalidando a suposição herdada
+da spec 012) — o próprio ritmo `intervalo × lote` **É** o throttling (FR-008, research.md
+D-R4), sem fila/broker externo. **`EnviarMensagemDisparoService`** reaproveita
+**exatamente** os 3 pontos de integração já existentes da 011 (`GraphApiClient.
+enviarMensagem` → `RegistrarInteracaoService.registrar` → `MensagemWhatsappRepository.
+criar`), numa orquestração própria — sem janela de 24h (disparo é sempre por template
+aprovado) e sem lançar exceção HTTP (research.md D-R1: `EnvioWhatsappService` da 011 não é
+reusado como está, é orientado a requisição HTTP síncrona). Falha do provedor tenta de novo
+até `CRM_DISPAROS_WORKER_MAX_TENTATIVAS` vezes antes de virar `FALHOU` terminal (D-R5,
+decisão do dono do produto); falha que não faz sentido reter (opt-out, telefone inválido,
+template não aprovado) já nasce terminal, sem consumir tentativa. Quality rating —
+`GraphApiClient.consultarQualityRating` (método novo na mesma interface da 011, não uma 2ª
+borda, D-R7) — é **sempre sob demanda**, nenhuma sincronização automática (Princípio VIII).
+Teste A/B (`atribuirVariante`, hash determinístico do telefone) divide 100% do público
+configurado entre duas variantes e encerra — **sem** promoção automática de vencedora
+(decisão do dono do produto). CSV trafega como **texto simples no corpo JSON** de `POST
+/crm/disparos` (`FileReader.readAsText()` no navegador) — **0 dependência nova** de upload
+binário (`multer`/`@types/multer` não instalados, research.md D-R6); a criação de um Lead a
+partir de um contato de CSV novo é **opcional por importação** (`criarLead`, FR-007a),
+reaproveitando `RegistrarLeadService` (008, `origem: 'csv-disparo'`, idempotente por
+telefone). `preferencia_comunicacao` (dona: Central de Clientes, ainda não existe) **não é
+lida** — disparo respeita só `opt_out_whatsapp`, já a fonte de verdade de consentimento
+vigente; lacuna documentada nas Assumptions do spec, não assumida em silêncio. **13ª
+migração Prisma** (`20260909171024_crm_disparos`): 3 tabelas + 3 enums
+(`ExecucaoDisparoStatus`/`MensagemDisparoStatus`/`DisparoVariante`); `CHECK` do par
+`templateBId`/`percentualVarianteB` via SQL bruto (Prisma não modela `CHECK`). **RBAC 004
+estendido**: **+3** permissões (`disparo:{criar,ver,cancelar}`; `administrador`/credencial
+de serviço de graça, **0 migração de dados**); quality rating reaproveita `crm_admin:ver`
+já existente (011) — **0** permissão nova para essa parte. **~10 endpoints**
+`/crm/disparos/**` (criar ~1, listar/detalhe/destinatários/export ~4, cancelar 1, processar
+1) + `GET /crm/admin/whatsapp/canais/{id}/quality-rating`, **0 endpoint público novo**. **4
+variáveis `.env` novas, sem segredo** (`CRM_DISPAROS_WORKER_{ENABLED,INTERVALO_MS,LOTE,
+MAX_TENTATIVAS}`, mesmo padrão de `INGESTAO_WORKER_*`/`CRM_WORKFLOW_WORKER_*`) — **0 chave
+`.env` de segredo nova**. Frontend: `frontend/src/disparos/` — item **CRM · Disparos**
+atrás de `disparo:ver` — `DisparosPage.tsx` (visão geral/histórico com contagem por status
++ construtor inline: canal → templates aprovados daquele canal, segmento e/ou CSV com
+toggle de criar Lead, teste A/B opcional, agendamento opcional; atrás de `disparo:criar`),
+`DisparoDetalhePage.tsx` (métricas por status e por variante quando há A/B, lista de
+destinatários com motivo, exportar CSV via `Blob` — sem link direto ao backend, cancelar
+atrás de `disparo:cancelar`, consultar quality rating do canal). Hooks TanStack Query
+inline, mesmo padrão de `whatsapp/WhatsappAdminPage.tsx`. **0 dep nova** (backend e
+frontend), **1 migração**, **0 porta nova no `core`**. `CONTEXT_MODULES` segue 11. As 4
+decisões que bloqueavam esta spec — volume esperado por disparo, escopo de criação de Lead
+a partir de CSV, mecânica do teste A/B, retry de falha de envio — foram resolvidas com o
+dono do produto **antes** da escrita do `plan.md`, 2026-09-09 (spec.md, seção
+Clarifications). 515 testes unitários backend (16 novos, domínio puro — sem banco) + 286
+e2e (14 novos, Postgres real, suíte 003–015 completa) + 106 frontend (4 novos), todos
+verdes; lint/typecheck/build limpos nos dois workspaces; validado também manualmente no
+navegador de ponta a ponta (conectar canal/template pela API, criar disparo pelo formulário
+do painel apontando para um segmento real, ver o disparo concluído na lista e o detalhe com
+export e quality rating).
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 014 — CRM · Workflow (Motor de Automação) (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/014-crm-workflow/plan.md`](specs/014-crm-workflow/plan.md)
 (Fase 1 · spec 014 — **CRM · Workflow (Motor de Automação)**: oitava fatia da Fase 1 (CRM),
 visão Parte 8.8. Mora no _bounded context_ **`crm`** (já não-vazio desde 007–013).
 **`fluxo_automacao`** (metadado estável — nome/descrição) + **`fluxo_automacao_versao`**
@@ -478,6 +556,8 @@ lint/typecheck/build limpos nos dois workspaces; validado também manualmente no
 de ponta a ponta (publicar → disparar o gatilho → tag aplicada pelo worker de fundo →
 execução no histórico → clonar modelo).
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 013 — CRM · FAQ e Sugestão de IA (implementada, resumo arquivado)</summary>
 

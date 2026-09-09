@@ -114,6 +114,21 @@ import {
   WorkerScheduler as WorkflowWorkerScheduler,
   WorkerService as WorkflowWorkerService,
 } from './application/workflow';
+import { DisparoController } from './disparo.controller';
+import {
+  ContatoImportadoRepository,
+  ExecucaoDisparoRepository,
+  MensagemDisparoRepository,
+} from './infra/disparos';
+import {
+  DisparoService,
+  EnviarMensagemDisparoService,
+  ImportarCsvService,
+  MaterializarDestinatariosService,
+  QualityRatingService,
+  WorkerScheduler as DisparosWorkerScheduler,
+  WorkerService as DisparosWorkerService,
+} from './application/disparos';
 
 /**
  * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010 + 011 +
@@ -170,6 +185,7 @@ import {
     CrmAdminAtendimentoController,
     FaqController,
     WorkflowController,
+    DisparoController,
   ],
   providers: [
     // 007
@@ -265,6 +281,17 @@ import {
     SimulacaoService,
     ModeloService,
     ExecucaoConsultaService,
+    // 015
+    ExecucaoDisparoRepository,
+    ContatoImportadoRepository,
+    MensagemDisparoRepository,
+    DisparoService,
+    ImportarCsvService,
+    MaterializarDestinatariosService,
+    EnviarMensagemDisparoService,
+    QualityRatingService,
+    DisparosWorkerService,
+    DisparosWorkerScheduler,
   ],
   exports: [
     RegistrarLeadService,
@@ -285,8 +312,9 @@ export class CrmModule implements OnModuleInit {
     );
     const whatsapp = PERMISSOES.filter((p) => p.recurso === 'whatsapp').map((p) => p.id);
     const atendimento = PERMISSOES.filter((p) => p.recurso === 'atendimento').map((p) => p.id);
+    const disparo = PERMISSOES.filter((p) => p.recurso === 'disparo').map((p) => p.id);
     this.logger.log(
-      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length} whatsapp=${whatsapp.length} atendimento=${atendimento.length}`,
+      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length} whatsapp=${whatsapp.length} atendimento=${atendimento.length} disparo=${disparo.length}`,
     );
   }
 }
