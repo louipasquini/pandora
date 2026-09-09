@@ -86,6 +86,16 @@ import {
   RespostaService,
   TransferenciaService,
 } from './application/atendimento';
+import { FaqController } from './faq.controller';
+import { FaqRepository, FaqVersaoRepository } from './infra/faq';
+import { FaqService } from './application/faq/faq.service';
+import { SugestaoIaRepository } from './infra/sugestao-ia';
+import {
+  AnthropicSugestaoIaClient,
+  DecidirSugestaoService,
+  GerarSugestaoService,
+  SUGESTAO_IA_CLIENT,
+} from './application/sugestao-ia';
 
 /**
  * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010 + 011 +
@@ -140,6 +150,7 @@ import {
     WhatsappWebhookController,
     AtendimentoController,
     CrmAdminAtendimentoController,
+    FaqController,
   ],
   providers: [
     // 007
@@ -213,6 +224,14 @@ import {
     CsatService,
     AtendimentoConsultaService,
     CrmAtendimentoEquipeService,
+    // 013
+    FaqRepository,
+    FaqVersaoRepository,
+    FaqService,
+    SugestaoIaRepository,
+    { provide: SUGESTAO_IA_CLIENT, useClass: AnthropicSugestaoIaClient },
+    GerarSugestaoService,
+    DecidirSugestaoService,
   ],
   exports: [
     RegistrarLeadService,

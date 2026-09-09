@@ -32,6 +32,9 @@ export const responderAtendimentoSchema = z
   .object({
     conteudo: z.string().trim().min(1).max(4096),
     viaIa: z.boolean().default(false),
+    // spec 013 — quando presente, deve apontar para uma SugestaoIa ACEITA/
+    // tipo=RESPOSTA deste mesmo atendimento; força viaIa=true (FR-012).
+    sugestaoId: z.string().uuid().optional(),
   })
   .strict();
 export type ResponderAtendimentoDto = z.infer<typeof responderAtendimentoSchema>;

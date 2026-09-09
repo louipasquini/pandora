@@ -40,6 +40,11 @@ export const PERMISSOES = Object.freeze([
     rotulo: 'Unificar pessoas e desfazer unificação',
   },
   {
+    id: 'pessoa:gerir_campos_personalizados',
+    recurso: 'pessoa',
+    rotulo: 'Administrar definições de campo personalizado de pessoa (spec 013)',
+  },
+  {
     id: 'conta:ver',
     recurso: 'conta',
     rotulo: 'Ver contas (household / empresa)',
@@ -203,6 +208,12 @@ export const PERMISSOES = Object.freeze([
     id: 'crm_admin:gerir_atendimento',
     recurso: 'crm_admin',
     rotulo: 'Configurar SLA de 1ª resposta e mensagem fora do expediente por equipe',
+  },
+  // --- FAQ e sugestão de IA (spec 013) ---
+  {
+    id: 'crm_admin:gerir_faq',
+    recurso: 'crm_admin',
+    rotulo: 'Criar, editar e desativar itens de FAQ',
   },
 ] as const satisfies readonly PermissaoDef[]);
 

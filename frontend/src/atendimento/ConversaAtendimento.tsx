@@ -4,6 +4,7 @@ import { usePodeUsar } from '../auth/usePermissoes';
 import { TimelineInteracoes } from '../interacoes/TimelineInteracoes';
 import { atendimentoApi, mensagemErro, STATUS_ROTULO, type AtendimentoView } from './atendimento-api';
 import { CsatBadge } from './CsatBadge';
+import { PainelSugestoes } from './PainelSugestoes';
 import { TransferirModal } from './TransferirModal';
 
 /**
@@ -19,6 +20,7 @@ export function ConversaAtendimento({ atendimentoId }: { atendimentoId: string }
   const [erro, setErro] = useState<string | null>(null);
   const [conteudo, setConteudo] = useState('');
   const [viaIa, setViaIa] = useState(false);
+  const [sugestaoId, setSugestaoId] = useState<string | null>(null);
   const [mostrarTransferir, setMostrarTransferir] = useState(false);
   const [nota, setNota] = useState(9);
   const [comentario, setComentario] = useState('');
@@ -55,10 +57,18 @@ export function ConversaAtendimento({ atendimentoId }: { atendimentoId: string }
     onSuccess: invalidar,
   });
   const responder = useMutation({
-    mutationFn: () => comErro(() => atendimentoApi.responder(atendimentoId, { conteudo, viaIa })),
+    mutationFn: () =>
+      comErro(() =>
+        atendimentoApi.responder(atendimentoId, {
+          conteudo,
+          viaIa,
+          sugestaoId: sugestaoId ?? undefined,
+        }),
+      ),
     onSuccess: () => {
       setConteudo('');
       setViaIa(false);
+      setSugestaoId(null);
       invalidar();
     },
   });
@@ -162,6 +172,7 @@ export function ConversaAtendimento({ atendimentoId }: { atendimentoId: string }
             <label className="flex items-center gap-1.5 text-xs text-slate-600">
               <input type="checkbox" checked={viaIa} onChange={(ev) => setViaIa(ev.target.checked)} />
               assistida por IA
+              {sugestaoId && <span className="text-slate-400">(sugestão aceita)</span>}
             </label>
             <button
               type="submit"
@@ -173,6 +184,19 @@ export function ConversaAtendimento({ atendimentoId }: { atendimentoId: string }
             </button>
           </div>
         </form>
+      )}
+
+      {a.status === 'EM_ATENDIMENTO' && (
+        <PainelSugestoes
+          atendimentoId={atendimentoId}
+          timelineItens={timeline.data?.itens}
+          podeAtender={podeAtender}
+          onUsarResposta={(id, texto) => {
+            setConteudo(texto);
+            setViaIa(true);
+            setSugestaoId(id);
+          }}
+        />
       )}
 
       {podeAtender && a.status === 'ENCERRADO' && a.csatSolicitadoEm && !timeline.data?.itens.some((i) => i.tipo === 'NPS') && (

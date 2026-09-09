@@ -48,6 +48,8 @@ model Usuario {
   transferenciasPara          TransferenciaAtendimento[] @relation("TransferenciaParaAtendente")
   transferenciasExecutadas    TransferenciaAtendimento[] @relation("TransferenciaExecutadaPor")
   respostasAtendimento        RespostaAtendimento[]
+  sugestoesDecididas          SugestaoIa[]               @relation("SugestaoIaDecididoPor")
+  sugestoesAvaliadas          SugestaoIa[]               @relation("SugestaoIaUtilRegistradoPor")
 
   @@map("usuario")
 }
@@ -155,20 +157,21 @@ model Pessoa {
   criadoEm         DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  conta           Conta?            @relation(fields: [contaId], references: [id], onDelete: SetNull)
-  sobrevivente    Pessoa?           @relation("PessoaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
-  absorvidas      Pessoa[]          @relation("PessoaMerge")
-  emails          PessoaEmail[]
-  telefones       PessoaTelefone[]
-  documentos      PessoaDocumento[]
-  enderecos       PessoaEndereco[]
-  origemRefs      PessoaOrigemRef[]
-  leads           Lead[]
-  interacoes      Interacao[]
-  tagAssociacoes  TagAssociacao[]
-  oportunidades   Oportunidade[]
-  optOutsWhatsapp OptOutWhatsapp[]
-  atendimentos    Atendimento[]
+  conta                     Conta?             @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  sobrevivente              Pessoa?            @relation("PessoaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
+  absorvidas                Pessoa[]           @relation("PessoaMerge")
+  emails                    PessoaEmail[]
+  telefones                 PessoaTelefone[]
+  documentos                PessoaDocumento[]
+  enderecos                 PessoaEndereco[]
+  origemRefs                PessoaOrigemRef[]
+  leads                     Lead[]
+  interacoes                Interacao[]
+  tagAssociacoes            TagAssociacao[]
+  oportunidades             Oportunidade[]
+  optOutsWhatsapp           OptOutWhatsapp[]
+  atendimentos              Atendimento[]
+  valoresCampoPersonalizado ValorCampoPessoa[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -698,7 +701,8 @@ model CampoPersonalizadoLead {
   criadoEm     DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime               @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  valores ValorCampoLead[]
+  valores   ValorCampoLead[]
+  sugestoes SugestaoIa[]
 
   @@map("campo_personalizado_lead")
 }
@@ -796,6 +800,7 @@ model Interacao {
   tagAssociacoes      TagAssociacao[]
   mensagemWhatsapp    MensagemWhatsapp?
   respostaAtendimento RespostaAtendimento?
+  sugestoesOrigem     SugestaoIa[]
 
   // CHECK (num_nonnulls(pessoa_id, lead_id) = 1) — âncora exclusiva (CL-01),
   // criado no migration.sql (Prisma não modela CHECK). Índice único PARCIAL
@@ -1297,6 +1302,7 @@ model Atendimento {
   interacoes     Interacao[]
   transferencias TransferenciaAtendimento[]
   respostas      RespostaAtendimento[]
+  sugestoes      SugestaoIa[]
 
   // CHECK (num_nonnulls(pessoa_id, lead_id) = 1) — âncora exclusiva (mesma
   // disciplina de Interacao/Oportunidade), criado no migration.sql.
@@ -1337,13 +1343,162 @@ model RespostaAtendimento {
   interacaoId   String   @unique @map("interacao_id") @db.Uuid
   atendenteId   String   @map("atendente_id") @db.Uuid
   viaIa         Boolean  @default(false) @map("via_ia")
+  // spec 013 — liga esta resposta à SugestaoIa (tipo RESPOSTA, ACEITA) que a
+  // originou, quando houve uma (FR-012). @unique: uma sugestão nunca é usada
+  // por 2 respostas diferentes.
+  sugestaoIaId  String?  @unique @map("sugestao_ia_id") @db.Uuid
   criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
 
   atendimento Atendimento @relation(fields: [atendimentoId], references: [id], onDelete: Cascade)
   interacao   Interacao   @relation(fields: [interacaoId], references: [id], onDelete: Cascade)
   atendente   Usuario     @relation(fields: [atendenteId], references: [id], onDelete: Restrict)
+  sugestaoIa  SugestaoIa? @relation(fields: [sugestaoIaId], references: [id], onDelete: SetNull)
 
   // Append-only — sem PATCH/DELETE (histórico de 1ª classe, FR-012/FR-013).
   @@index([atendimentoId, criadoEm])
   @@map("resposta_atendimento")
+}
+
+// ============================================================================
+// crm — FAQ e Sugestão de IA (spec 013) — 7ª fatia da Fase 1 (CRM).
+// `faq_item`/`faq_item_versao`: base de FAQ versionada, SEM vínculo com
+// produto/campanha (CL-01 — nenhum dos dois existe ainda neste ponto do
+// roadmap; produto nasce na 023, campanha na 032). Toda edição de
+// pergunta/resposta gera uma nova `faq_item_versao` (snapshot completo,
+// histórico de 1ª classe — research.md D-R1).
+// `sugestao_ia`: proposta NÃO-AUTORITATIVA da IA, sempre a partir de uma
+// `Interacao` de entrada já registrada dentro de um `Atendimento` (012) —
+// nunca envia mensagem nem grava campo sozinha (governança 10.6, D-01).
+// `tipo=CAMPO_PERSONALIZADO` aponta pra exatamente um de
+// `campoPersonalizadoLeadId` (lead, spec 008)/`campoPersonalizadoPessoaId`
+// (pessoa, spec 013) — CHECK no migration.sql (Prisma não modela CHECK).
+// Ver docs/013-crm-faq-e-sugestao-ia.md.
+// ============================================================================
+
+enum SugestaoIaTipo {
+  RESPOSTA
+  CAMPO_PERSONALIZADO
+}
+
+enum SugestaoIaStatus {
+  PENDENTE
+  ACEITA
+  REJEITADA
+  SUBSTITUIDA
+}
+
+model FaqItem {
+  id           String   @id @db.Uuid
+  pergunta     String
+  resposta     String
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  versoes   FaqItemVersao[]
+  sugestoes SugestaoIa[]
+
+  // Sem DELETE físico — desativar (`ativo=false`) é a única forma de
+  // "remover"; histórico de versões permanece íntegro. "Quem criou" fica só
+  // na 1ª FaqItemVersao — sem coluna própria (evita duplicar o dado).
+  @@index([ativo])
+  @@map("faq_item")
+}
+
+model FaqItemVersao {
+  id        String   @id @db.Uuid
+  faqItemId String   @map("faq_item_id") @db.Uuid
+  pergunta  String
+  resposta  String
+  // `autor` é STRING livre (não FK) — mesmo padrão de `crm_admin_audit.autor`
+  // (007): quem edita FAQ pode ser a credencial de serviço (`sub` não é um
+  // `Usuario.id` real), não só um `Usuario` autenticado.
+  autor     String?
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  faqItem FaqItem @relation(fields: [faqItemId], references: [id], onDelete: Cascade)
+
+  // Append-only — sem PATCH/DELETE (histórico de 1ª classe, FR-002).
+  @@index([faqItemId, criadoEm])
+  @@map("faq_item_versao")
+}
+
+model SugestaoIa {
+  id                         String           @id @db.Uuid
+  atendimentoId              String           @map("atendimento_id") @db.Uuid
+  interacaoOrigemId          String           @map("interacao_origem_id") @db.Uuid
+  tipo                       SugestaoIaTipo
+  perguntaDetectada          String?          @map("pergunta_detectada")
+  faqItemId                  String?          @map("faq_item_id") @db.Uuid
+  campoPersonalizadoLeadId   String?          @map("campo_personalizado_lead_id") @db.Uuid
+  campoPersonalizadoPessoaId String?          @map("campo_personalizado_pessoa_id") @db.Uuid
+  conteudoSugerido           String           @map("conteudo_sugerido")
+  conteudoFinal              String?          @map("conteudo_final")
+  status                     SugestaoIaStatus @default(PENDENTE)
+  decididoPorId              String?          @map("decidido_por_id") @db.Uuid
+  decididoEm                 DateTime?        @map("decidido_em") @db.Timestamptz(6)
+  util                       Boolean?
+  utilRegistradoPorId        String?          @map("util_registrado_por_id") @db.Uuid
+  utilRegistradoEm           DateTime?        @map("util_registrado_em") @db.Timestamptz(6)
+  criadoEm                   DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  atendimento              Atendimento               @relation(fields: [atendimentoId], references: [id], onDelete: Cascade)
+  interacaoOrigem          Interacao                 @relation(fields: [interacaoOrigemId], references: [id], onDelete: Restrict)
+  faqItem                  FaqItem?                  @relation(fields: [faqItemId], references: [id], onDelete: Restrict)
+  campoPersonalizadoLead   CampoPersonalizadoLead?   @relation(fields: [campoPersonalizadoLeadId], references: [id], onDelete: Restrict)
+  campoPersonalizadoPessoa CampoPersonalizadoPessoa? @relation(fields: [campoPersonalizadoPessoaId], references: [id], onDelete: Restrict)
+  decididoPor              Usuario?                  @relation("SugestaoIaDecididoPor", fields: [decididoPorId], references: [id], onDelete: Restrict)
+  utilRegistradoPor        Usuario?                  @relation("SugestaoIaUtilRegistradoPor", fields: [utilRegistradoPorId], references: [id], onDelete: Restrict)
+  respostaAtendimento      RespostaAtendimento?
+
+  // CHECK de exclusividade do alvo (tipo=CAMPO_PERSONALIZADO → exatamente um
+  // de campo_personalizado_lead_id/campo_personalizado_pessoa_id; tipo=RESPOSTA
+  // → nenhum dos dois) via SQL bruto na migração (Prisma não modela CHECK).
+  @@index([atendimentoId, criadoEm])
+  @@index([interacaoOrigemId, status])
+  @@map("sugestao_ia")
+}
+
+// ============================================================================
+// clientes — Campo personalizado de pessoa (spec 013). Espelha
+// CampoPersonalizadoLead/ValorCampoLead (spec 008) campo a campo, namespace de
+// `chave` INDEPENDENTE (sem unificação automática com os campos de lead —
+// ver spec.md §Assumptions). Existe para que a sugestão de campo
+// personalizado do `crm` (013) tenha destino também numa `pessoa` já
+// convertida, sem o `crm` importar `clientes` — a escrita passa pela porta
+// `PortaCampoPersonalizadoPessoa` do `core` (mesmo padrão de `PortaIdentidade`,
+// spec 008). Reaproveita o enum `CampoPersonalizadoTipo` já existente (008).
+// ============================================================================
+
+model CampoPersonalizadoPessoa {
+  id           String                 @id @db.Uuid
+  chave        String                 @unique
+  rotulo       String
+  tipo         CampoPersonalizadoTipo
+  opcoes       String[]               @default([])
+  obrigatorio  Boolean                @default(false)
+  ativo        Boolean                @default(true)
+  criadoEm     DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime               @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  valores   ValorCampoPessoa[]
+  sugestoes SugestaoIa[]
+
+  @@map("campo_personalizado_pessoa")
+}
+
+model ValorCampoPessoa {
+  id           String   @id @db.Uuid
+  pessoaId     String   @map("pessoa_id") @db.Uuid
+  definicaoId  String   @map("definicao_id") @db.Uuid
+  valor        String
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa    Pessoa                   @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+  definicao CampoPersonalizadoPessoa @relation(fields: [definicaoId], references: [id], onDelete: Restrict)
+
+  @@unique([pessoaId, definicaoId])
+  @@index([definicaoId])
+  @@map("valor_campo_pessoa")
 }
