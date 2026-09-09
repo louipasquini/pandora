@@ -127,11 +127,11 @@ utilidade).
 
 ## Fase 6 — Testes backend
 
-- [ ] T030 [P] e2e `backend/test/crm-faq-sugestao-ia.e2e-spec.ts` — cobre todos os cenários
+- [x] T030 [P] e2e `backend/test/crm-faq-sugestao-ia.e2e-spec.ts` — cobre todos os cenários
       de `plan.md §Testing` (FAQ + versionamento, geração de sugestão com dublê, D-05,
       aceitar/rejeitar resposta ligando ao `responder`, aceitar campo personalizado
       lead/pessoa, feedback, guard/escopo, catálogo, regressão 003–012).
-- [ ] T031 Rodar suíte unit + e2e completa; confirmar 0 regressão nas specs 003–012.
+- [x] T031 Rodar suíte unit + e2e completa; confirmar 0 regressão nas specs 003–012.
 
 ## Fase 7 — Frontend
 
