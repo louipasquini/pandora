@@ -41,6 +41,11 @@ export class IntegracaoRepository {
     return this.prisma.integracao.findUnique({ where: { id } });
   }
 
+  /** Usado pelo `AnthropicSugestaoIaClient` (spec 013) para achar a credencial ativa. */
+  porNomeAtiva(nome: string) {
+    return this.prisma.integracao.findFirst({ where: { nome, ativo: true } });
+  }
+
   async atualizar(
     id: string,
     dados: Prisma.IntegracaoUpdateInput,

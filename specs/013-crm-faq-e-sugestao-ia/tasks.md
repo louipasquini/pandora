@@ -40,13 +40,13 @@ utilidade).
 
 ## Fase 3 — Persistência (infra)
 
-- [ ] T008 [P][US1] `backend/src/crm/infra/faq/faq.repository.ts` — CRUD de `FaqItem`
+- [x] T008 [P][US1] `backend/src/crm/infra/faq/faq.repository.ts` — CRUD de `FaqItem`
       (listar com filtro `ativo`, obter, criar, atualizar) + `faq-versao.repository.ts`
       (criar versão, listar por `faqItemId`).
-- [ ] T009 [P][US2] `backend/src/crm/infra/sugestao-ia/sugestao-ia.repository.ts` — criar em
+- [x] T009 [P][US2] `backend/src/crm/infra/sugestao-ia/sugestao-ia.repository.ts` — criar em
       lote, listar por `atendimentoId`/`interacaoOrigemId`, obter, atualizar status/decisão/
       feedback, `substituirPendentesDaInteracao(interacaoOrigemId)` (D-05).
-- [ ] T010 [P] `backend/src/crm/infra/faq/index.ts` + `backend/src/crm/infra/sugestao-ia/
+- [x] T010 [P] `backend/src/crm/infra/faq/index.ts` + `backend/src/crm/infra/sugestao-ia/
       index.ts` — barrels.
 - [x] T011 [P][US4] `backend/src/clientes/infra/campo-personalizado-pessoa.repository.ts` —
       CRUD de definição + valores (mesmo formato de
@@ -55,7 +55,7 @@ utilidade).
 
 ## Fase 4 — Aplicação (serviços)
 
-- [ ] T012 [US1] `backend/src/crm/application/faq/faq.service.ts` — `criar`/`atualizar`
+- [x] T012 [US1] `backend/src/crm/application/faq/faq.service.ts` — `criar`/`atualizar`
       (gera `FaqItemVersao` só quando `pergunta`/`resposta` mudam de valor), `listar`
       (catálogo `ativo=true` e lista administrativa), `obter`, `listarVersoes`.
 - [x] T013 [US4] `backend/src/clientes/application/campo-personalizado-pessoa.service.ts` —
@@ -77,7 +77,7 @@ utilidade).
       `backend/src/clientes/clientes-wiring.module.ts` / `ClientesWiringModule`: mantém o
       provider de `PORTA_IDENTIDADE` (008) e acrescenta o de `PORTA_CAMPO_PERSONALIZADO_
       PESSOA` (T016); editar o import em `backend/src/app.module.ts`.
-- [ ] T018 [US2] `backend/src/crm/application/sugestao-ia/anthropic-sugestao-ia.client.ts` —
+- [x] T018 [US2] `backend/src/crm/application/sugestao-ia/anthropic-sugestao-ia.client.ts` —
       implementação real de `SugestaoIaClient` (porta em
       `backend/src/crm/domain/sugestao-ia/sugestao-ia-client.ts` — interface +
       `SUGESTAO_IA_CLIENT`, mesmo padrão de `GraphApiClient`/`GRAPH_API_CLIENT`, 011): busca
@@ -86,43 +86,43 @@ utilidade).
       `fetch` nativo, devolve o texto bruto para `interpretarRespostaIa` (T005) processar;
       credencial ausente/inativa ou chamada falha → devolve resultado de falha (nunca lança
       para o chamador travar o atendimento — FR-014).
-- [ ] T019 [US2][US3] `backend/src/crm/application/sugestao-ia/gerar-sugestao.service.ts` —
+- [x] T019 [US2][US3] `backend/src/crm/application/sugestao-ia/gerar-sugestao.service.ts` —
       `gerar(atendimentoId, interacaoId, autor)`: valida `interacaoId` pertence ao
       atendimento e `direcao=ENTRADA`; busca FAQ ativa + definições de campo personalizado
       aplicáveis (lead ou pessoa, conforme a âncora); `montarPrompt` → `SugestaoIaClient` →
       `interpretarRespostaIa`; `substituirPendentesDaInteracao` (D-05) antes de inserir as
       novas linhas `PENDENTE`.
-- [ ] T020 [US2][US4][US5] `backend/src/crm/application/sugestao-ia/decidir-sugestao.
+- [x] T020 [US2][US4][US5] `backend/src/crm/application/sugestao-ia/decidir-sugestao.
       service.ts` — `aceitar(sugestaoId, conteudoFinal?, autor)`: `tipo=RESPOSTA` só marca
       `ACEITA`; `tipo=CAMPO_PERSONALIZADO` marca `ACEITA` **e** grava via
       `ValorCampoLeadService` (lead, 008) ou `PortaCampoPersonalizadoPessoa` (pessoa, T015),
       verificando `lead:editar`/`pessoa:editar` via `SujeitoRbacService` antes de gravar;
       `rejeitar(sugestaoId, autor)`; `avaliarUtilidade(sugestaoId, util, autor)` (usa
       `podeAvaliarUtilidade`, T006); todas exigem `podeDecidir`/`status` correto, senão 409.
-- [ ] T021 [US2] Editar `backend/src/crm/application/atendimento/resposta.service.ts` —
+- [x] T021 [US2] Editar `backend/src/crm/application/atendimento/resposta.service.ts` —
       `registrarResposta` aceita `sugestaoId` opcional: valida sugestão `ACEITA`/
       `tipo=RESPOSTA` do mesmo atendimento (senão 409), força `viaIa=true`, passa
       `sugestaoIaId` para `RespostaRepository.criar` (T022).
-- [ ] T022 Editar `backend/src/crm/infra/atendimento/resposta.repository.ts` — `criar`
+- [x] T022 Editar `backend/src/crm/infra/atendimento/resposta.repository.ts` — `criar`
       aceita `sugestaoIaId` opcional.
-- [ ] T023 `backend/src/crm/crm.module.ts`: registrar os novos repositórios/serviços/
+- [x] T023 `backend/src/crm/crm.module.ts`: registrar os novos repositórios/serviços/
       controllers/provider `SUGESTAO_IA_CLIENT`. `backend/src/clientes/clientes.module.ts`:
       registrar `CampoPersonalizadoPessoaService`/repositório/controller.
 
 ## Fase 5 — HTTP (controllers + DTO + RBAC)
 
-- [ ] T024 [P] `backend/src/crm/dto/faq/faq.schema.ts` — zod: criar, atualizar, listar.
-- [ ] T025 [P] `backend/src/crm/dto/sugestao-ia/sugestao-ia.schema.ts` — zod: gerar
+- [x] T024 [P] `backend/src/crm/dto/faq/faq.schema.ts` — zod: criar, atualizar, listar.
+- [x] T025 [P] `backend/src/crm/dto/sugestao-ia/sugestao-ia.schema.ts` — zod: gerar
       (`interacaoId`), aceitar (`conteudoFinal?`), feedback (`util`).
-- [ ] T026 [P] `backend/src/clientes/dto/campo-personalizado-pessoa.schema.ts` — zod: criar/
+- [x] T026 [P] `backend/src/clientes/dto/campo-personalizado-pessoa.schema.ts` — zod: criar/
       atualizar definição, substituir valores (mesma validação por `tipo` da 008).
-- [ ] T027 [US1] `backend/src/crm/faq.controller.ts` — `/crm/faq`, `/crm/admin/faq/**` (ver
+- [x] T027 [US1] `backend/src/crm/faq.controller.ts` — `/crm/faq`, `/crm/admin/faq/**` (ver
       `contracts/faq.md`).
-- [ ] T028 [US2][US3][US4][US5] Editar `backend/src/crm/atendimento.controller.ts` — `/crm/
+- [x] T028 [US2][US3][US4][US5] Editar `backend/src/crm/atendimento.controller.ts` — `/crm/
       atendimentos/:id/sugestoes/**` (gerar, listar, aceitar, rejeitar, feedback — ver
       `contracts/sugestao-ia.md`); editar a rota `responder` já existente para aceitar
       `sugestaoId` (T021).
-- [ ] T029 `backend/src/auth/rbac/catalogo.ts`: +2 permissões — `crm_admin:gerir_faq`,
+- [x] T029 `backend/src/auth/rbac/catalogo.ts`: +2 permissões — `crm_admin:gerir_faq`,
       `pessoa:gerir_campos_personalizados`.
 
 ## Fase 6 — Testes backend
