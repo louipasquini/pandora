@@ -16,8 +16,47 @@ import {
   PERFIL_ADMIN_NOME,
   PERFIL_ADMIN_NOME_NORMALIZADO,
 } from '../src/auth/auth.constants';
+import { condicaoVaziaPadrao, type AcaoFluxo, type CondicaoNo } from '../src/crm/domain/workflow';
 
 const prisma = new PrismaClient();
+
+/**
+ * Biblioteca de automações prontas (spec 014, CL-02) — semeada, somente
+ * leitura para o usuário; IDs fixos para o `upsert` ser idempotente.
+ */
+const FLUXOS_MODELO: {
+  id: string;
+  nome: string;
+  descricao: string;
+  gatilhoTipo: 'LEAD_CRIADO' | 'INTERACAO_REGISTRADA';
+  condicoes: CondicaoNo;
+  acoes: AcaoFluxo[];
+}[] = [
+  {
+    id: '00000000-0000-7000-8000-000000000101',
+    nome: 'Boas-vindas a lead novo',
+    descricao: 'Registra uma nota de boas-vindas assim que um lead é criado.',
+    gatilhoTipo: 'LEAD_CRIADO',
+    condicoes: condicaoVaziaPadrao(),
+    acoes: [{ tipo: 'REGISTRAR_NOTA', conteudo: 'Lead novo — dar as boas-vindas.' }],
+  },
+  {
+    id: '00000000-0000-7000-8000-000000000102',
+    nome: 'Tag por origem do site',
+    descricao: 'Aplica a tag "site" a todo lead novo vindo da origem "site".',
+    gatilhoTipo: 'LEAD_CRIADO',
+    condicoes: { tipo: 'folha', campo: 'origem', operador: 'igual', valor: 'site' },
+    acoes: [{ tipo: 'APLICAR_TAG', tag: 'site' }],
+  },
+  {
+    id: '00000000-0000-7000-8000-000000000103',
+    nome: 'Marcar interesse em reengajamento',
+    descricao: 'Aplica a tag "reengajar" a todo lead que registrar uma nova interação.',
+    gatilhoTipo: 'INTERACAO_REGISTRADA',
+    condicoes: condicaoVaziaPadrao(),
+    acoes: [{ tipo: 'APLICAR_TAG', tag: 'reengajar' }],
+  },
+];
 
 async function main(): Promise<void> {
   await prisma.perfil.upsert({
@@ -60,6 +99,29 @@ async function main(): Promise<void> {
   console.log(
     `rbac.seed ok perfil=${PERFIL_ADMIN_NOME_NORMALIZADO} permissoes=${doCatalogo.size} (+${adicionar.length} -${remover.length})`,
   );
+
+  for (const modelo of FLUXOS_MODELO) {
+    await prisma.fluxoModelo.upsert({
+      where: { id: modelo.id },
+      create: {
+        id: modelo.id,
+        nome: modelo.nome,
+        descricao: modelo.descricao,
+        gatilhoTipo: modelo.gatilhoTipo,
+        condicoes: modelo.condicoes as never,
+        acoes: modelo.acoes as never,
+      },
+      update: {
+        nome: modelo.nome,
+        descricao: modelo.descricao,
+        gatilhoTipo: modelo.gatilhoTipo,
+        condicoes: modelo.condicoes as never,
+        acoes: modelo.acoes as never,
+      },
+    });
+  }
+  // eslint-disable-next-line no-console
+  console.log(`crm.workflow.seed ok modelos=${FLUXOS_MODELO.length}`);
 }
 
 main()

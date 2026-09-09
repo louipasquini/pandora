@@ -215,6 +215,13 @@ export const PERMISSOES = Object.freeze([
     recurso: 'crm_admin',
     rotulo: 'Criar, editar e desativar itens de FAQ',
   },
+  // --- Workflow / motor de automação (spec 014) ---
+  {
+    id: 'crm_admin:gerir_workflow',
+    recurso: 'crm_admin',
+    rotulo:
+      'Criar, editar, publicar, arquivar e simular fluxos de automação; rodar o worker manualmente',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

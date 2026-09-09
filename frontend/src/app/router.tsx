@@ -21,6 +21,9 @@ import { PipelineAdminPage } from '../pipelines/PipelineAdminPage';
 import { WhatsappAdminPage } from '../whatsapp/WhatsappAdminPage';
 import { AtendimentoInboxPage } from '../atendimento/AtendimentoInboxPage';
 import { AtendimentoAdminPage } from '../atendimento/AtendimentoAdminPage';
+import { FluxosPage } from '../workflow/FluxosPage';
+import { FluxoDetalhePage } from '../workflow/FluxoDetalhePage';
+import { ModelosPage } from '../workflow/ModelosPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -171,6 +174,30 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="crm_admin:gerir_atendimento">
                 <AtendimentoAdminPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/workflow',
+            element: (
+              <RequirePermissao perm="crm_admin:ver">
+                <FluxosPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/workflow/modelos',
+            element: (
+              <RequirePermissao perm="crm_admin:ver">
+                <ModelosPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/workflow/:id',
+            element: (
+              <RequirePermissao perm="crm_admin:ver">
+                <FluxoDetalhePage />
               </RequirePermissao>
             ),
           },

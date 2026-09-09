@@ -59,6 +59,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/crm/atendimentos',
     requerPermissao: ['atendimento:ver_todos', 'atendimento:ver_proprios'],
   },
+  {
+    label: 'CRM · Workflow',
+    to: '/crm/workflow',
+    requerPermissao: 'crm_admin:ver',
+  },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },
