@@ -109,6 +109,17 @@ export const envSchema = z
         { message: 'deve ser base64 de exatamente 32 bytes (AES-256)' },
       ),
 
+    // --- Worker do Workflow do CRM (spec 014) ---
+    /** Liga o laço de fundo do worker. Desligado em teste (setup-db.ts força `false`). */
+    CRM_WORKFLOW_WORKER_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    /** Intervalo entre passadas do worker, em ms. */
+    CRM_WORKFLOW_WORKER_INTERVALO_MS: z.coerce.number().int().min(250).default(15_000),
+    /** Máximo de linhas processadas por fonte, por passada. */
+    CRM_WORKFLOW_WORKER_LOTE: z.coerce.number().int().min(1).default(50),
+
     // --- Contas de origem (7 blocos, 21 chaves, todas opcionais na 001) ---
     ...accountsShape,
   })

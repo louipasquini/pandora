@@ -31,6 +31,9 @@ export default function setupDb(): void {
   // Worker de ingestão (spec 006): nunca roda o laço de fundo nos e2e — os testes
   // disparam passadas explícitas por `POST /ingestao/eventos/processar`.
   process.env.INGESTAO_WORKER_ENABLED = 'false';
+  // Worker do Workflow do CRM (spec 014): mesma disciplina — os e2e disparam
+  // passadas explícitas por `POST /crm/workflow/processar`.
+  process.env.CRM_WORKFLOW_WORKER_ENABLED = 'false';
   // Administração do CRM (spec 007): fixture da chave de cifra de segredo de
   // integração (base64 de 32 bytes) — obrigatória no boot; usa a do .env se houver.
   if (!process.env.CRM_INTEGRACAO_CIFRA_KEY) {

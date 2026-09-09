@@ -96,6 +96,24 @@ import {
   GerarSugestaoService,
   SUGESTAO_IA_CLIENT,
 } from './application/sugestao-ia';
+import { WorkflowController } from './workflow.controller';
+import {
+  CursorRepository,
+  ExecucaoRepository,
+  FluxoRepository,
+  FontesRepository,
+  ModeloRepository,
+} from './infra/workflow';
+import {
+  ContextoRegistroService,
+  ExecucaoConsultaService,
+  ExecutarAcaoService,
+  FluxoService,
+  ModeloService,
+  SimulacaoService,
+  WorkerScheduler as WorkflowWorkerScheduler,
+  WorkerService as WorkflowWorkerService,
+} from './application/workflow';
 
 /**
  * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010 + 011 +
@@ -151,6 +169,7 @@ import {
     AtendimentoController,
     CrmAdminAtendimentoController,
     FaqController,
+    WorkflowController,
   ],
   providers: [
     // 007
@@ -232,6 +251,20 @@ import {
     { provide: SUGESTAO_IA_CLIENT, useClass: AnthropicSugestaoIaClient },
     GerarSugestaoService,
     DecidirSugestaoService,
+    // 014
+    FluxoRepository,
+    ExecucaoRepository,
+    ModeloRepository,
+    CursorRepository,
+    FontesRepository,
+    ContextoRegistroService,
+    ExecutarAcaoService,
+    WorkflowWorkerService,
+    WorkflowWorkerScheduler,
+    FluxoService,
+    SimulacaoService,
+    ModeloService,
+    ExecucaoConsultaService,
   ],
   exports: [
     RegistrarLeadService,
