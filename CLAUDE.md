@@ -419,7 +419,69 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/013-crm-faq-e-sugestao-ia/plan.md`](specs/013-crm-faq-e-sugestao-ia/plan.md)
+Plano ativo: [`specs/014-crm-workflow/plan.md`](specs/014-crm-workflow/plan.md)
+(Fase 1 · spec 014 — **CRM · Workflow (Motor de Automação)**: oitava fatia da Fase 1 (CRM),
+visão Parte 8.8. Mora no _bounded context_ **`crm`** (já não-vazio desde 007–013).
+**`fluxo_automacao`** (metadado estável — nome/descrição) + **`fluxo_automacao_versao`**
+(snapshot **imutável** de gatilho + condições E/OU + ações; no máximo **1** `PUBLICADA` por
+fluxo — índice único parcial no migration.sql, D-01; editar sempre cria/atualiza um
+`RASCUNHO` próprio, nunca a publicada) + **`execucao_fluxo`** (histórico append-only de
+toda tentativa, idempotente por `(fluxo_versao_id, fonte, fonte_registro_id)` — reprocessar
+nunca duplica efeito, D-06) + **`fluxo_modelo`** (biblioteca de automações prontas, CL-01
+resolvida com o dono do produto: semeada via `prisma/seed.ts`, somente leitura, "usar como
+base" clona para um fluxo novo em rascunho) + **`fluxo_cursor_fonte`** (estado técnico do
+worker, 1 linha por fonte). Gatilhos internos (`LEAD_CRIADO`, `LEAD_ESTAGIO_MUDOU`,
+`OPORTUNIDADE_ETAPA_MUDOU`, `INTERACAO_REGISTRADA`, `TAG_APLICADA`) são detectados por um
+**`WorkerScheduler` in-house** (cópia estrutural do padrão da `ingestao`, spec 006 —
+`setInterval`, mutex de passada única, endpoint `POST /crm/workflow/processar`
+determinístico p/ e2e) sobre trilhas **já append-only do próprio `crm`**
+(`crm_lead_audit`/`oportunidade_movimentacao`/`interacao`/`tag_associacao`) — nunca
+*polling* de outro bounded context. Gatilho por evento externo (`EVENTO_EXTERNO` —
+"pagamento aprovado", "inscrição em lançamento") fica **só modelado**, sem execução real
+nesta versão — mesmo padrão de deferimento de `PortaObservacaoPagamentoCrm` (spec 010),
+já que Financeiro (018+) e Catálogo (023+) não existem ainda (CL-02 resolvida com o dono do
+produto). Descoberta **durante a implementação**: um cursor novo nunca varre o histórico
+anterior à sua criação — a 1ª passada de cada fonte só estabelece a linha de partida em
+"agora" (research.md D-R9); publicar um fluxo nunca reage retroativamente a leads/
+interações/tags já existentes, só a eventos daqui pra frente. Catálogo fechado de **ações**
+do MVP reaproveita **exatamente** os serviços já existentes — `MOVER_LEAD_ESTAGIO`
+(`LeadRepository`+`CrmLeadAuditService`+`LeadScoreService`, 008), `APLICAR_TAG`/
+`REMOVER_TAG` (`TagService.associar`/`desassociar`, 009, já idempotente), `REGISTRAR_NOTA`
+(`RegistrarInteracaoService`, 009), `MOVER_OPORTUNIDADE_ETAPA` (`MovimentacaoRepository`+
+`validarMovimento`, 010, incl. motivo obrigatório em etapa `PERDIDA`, validado já ao
+publicar) — **nenhum caminho de escrita paralelo**, mesma trilha de auditoria de uma ação
+manual equivalente (D-05), **nenhuma porta nova no `core`** (diferente de 008/013 — toda
+entidade tocada por uma ação já vive dentro do próprio `crm`). Simulação (`POST
+/crm/workflow/fluxos/:id/simular`) reaproveita o mesmo `ContextoRegistroService` do worker
+para nunca divergir do que uma condição "vê" — mas **nunca escreve** (D-03). **12ª
+migração Prisma** (`20260909140116_crm_workflow`): 5 tabelas + 4 enums
+(`FluxoGatilhoTipo`/`FluxoVersaoStatus`/`FluxoRegistroTipo`/`FluxoExecucaoResultado`) +
+1 índice único parcial via SQL bruto. **RBAC 004 estendido**: **+1** permissão
+(`crm_admin:gerir_workflow`; leitura reaproveita `crm_admin:ver` já existente);
+`administrador`/credencial de serviço de graça, **0 migração de dados**. **~16 endpoints**
+autenticados (ciclo de vida do fluxo ~7, simulação 1, execuções 2, modelos 2, processar 1),
+**0 endpoint público novo**. **3 variáveis `.env` novas, sem segredo**
+(`CRM_WORKFLOW_WORKER_{ENABLED,INTERVALO_MS,LOTE}`, mesmo padrão de `INGESTAO_WORKER_*`) —
+**0 chave `.env` de segredo nova**. Frontend: `frontend/src/workflow/` — item **CRM ·
+Workflow** atrás de `crm_admin:ver` — `FluxosPage.tsx` (lista + criar), `FluxoDetalhePage.tsx`
+(editor de gatilho/condições E-OU/ações — **formulário guiado, não um canvas de nós
+livres**, research.md D-R1 — + Salvar rascunho/Publicar/Arquivar sob
+`crm_admin:gerir_workflow` + aba Execuções), `SimulacaoPanel.tsx`, `ModelosPage.tsx`
+(biblioteca + "usar como base"). Hooks TanStack Query inline, mesmo padrão de
+`whatsapp/WhatsappAdminPage.tsx`. **0 dep nova** (backend e frontend), **1 migração**, **0
+porta nova no `core`**. `CONTEXT_MODULES` segue 11. As 2 decisões que bloqueavam esta spec
+— gatilho por evento externo sem Financeiro/Catálogo, formato da biblioteca de automações
+prontas — foram resolvidas com o dono do produto **antes** da escrita do `spec.md`,
+2026-09-09. 499 testes unitários backend (30 novos, domínio puro — sem banco) + 272 e2e (14
+novos, Postgres real, suíte 003–014 completa) + 102 frontend (12 novos), todos verdes;
+lint/typecheck/build limpos nos dois workspaces; validado também manualmente no navegador
+de ponta a ponta (publicar → disparar o gatilho → tag aplicada pelo worker de fundo →
+execução no histórico → clonar modelo).
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 013 — CRM · FAQ e Sugestão de IA (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/013-crm-faq-e-sugestao-ia/plan.md`](specs/013-crm-faq-e-sugestao-ia/plan.md)
 (Fase 1 · spec 013 — **CRM · FAQ e Sugestão de IA**: sétima fatia da Fase 1 (CRM), visão
 Parte 8.3/8.5/10.6. Mora no _bounded context_ **`crm`** (já não-vazio desde 007–012);
 estende também **`clientes`** (005) com campo personalizado de `pessoa`. **`faq_item`**/
@@ -497,6 +559,8 @@ de IA — foram resolvidas com o dono do produto **antes** da escrita do `spec.m
 258 e2e (13 novos, Postgres real, suíte 003–013 completa) + 90 frontend (7 novos), todos
 verdes; lint/typecheck/build limpos nos dois workspaces.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 012 — CRM · Chat ao Vivo (implementada, resumo arquivado)</summary>
 
