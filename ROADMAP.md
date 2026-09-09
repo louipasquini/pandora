@@ -465,13 +465,39 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/013-crm-faq-e-sugestao-ia/`](specs/013-crm-faq-e-sugestao-ia/) e
   [`docs/013-crm-faq-e-sugestao-ia.md`](docs/013-crm-faq-e-sugestao-ia.md).
 
-- [ ] **014 — crm-workflow**
-  `fluxo_automacao` (versão, gatilho, blocos jsonb, `publicado_em`) + `execucao_fluxo`
-  (`trigger_evento`, status, `log_passos`). Blocos gatilho → condição → ação, condições
-  compostas E/OU, biblioteca de automações prontas, ambiente de teste/simulação antes de
-  publicar, versionamento imutável (editar = nova versão), triggers por eventos externos
-  (pagamento aprovado, inscrição em lançamento) via projeção de `evento_origem` — nunca
-  polling. Idempotente (reprocessar não duplica envio). Frontend: editor visual de fluxo.
+- [x] **014 — crm-workflow** — ✅ implementada e validada (2026-09-09)
+  Motor de automação (visão Parte 8.8). `fluxo_automacao` (metadado estável) +
+  `fluxo_automacao_versao` (snapshot imutável de gatilho + condições E/OU + ações; no máximo
+  1 `PUBLICADA` por fluxo — índice único parcial, D-01) + `execucao_fluxo` (histórico
+  append-only, idempotente por `(fluxo_versao_id, fonte, fonte_registro_id)`, D-06) +
+  `fluxo_modelo` (biblioteca de automações prontas semeada via seed, CL-02) +
+  `fluxo_cursor_fonte` (cursor técnico do worker). Gatilhos internos (lead criado/mudou de
+  estágio, oportunidade mudou de etapa, interação registrada, tag aplicada) são detectados
+  por um `WorkerScheduler` in-house (mesmo padrão `setInterval` da 006) sobre trilhas
+  **já append-only do próprio `crm`** — nunca *polling* de outro contexto; um cursor novo
+  nunca varre o histórico anterior à ativação (só estabelece a linha de partida em "agora",
+  descoberto durante a implementação — D-R9). Ações do MVP (mover lead de estágio,
+  aplicar/remover tag, registrar nota, mover oportunidade de etapa) reaproveitam
+  **exatamente** os serviços já existentes das specs 008/009/010 — nenhum caminho de escrita
+  paralelo, mesma trilha de auditoria de uma ação manual (D-05). Gatilho por evento externo
+  ("pagamento aprovado", "inscrição em lançamento") fica só modelado (`EVENTO_EXTERNO`) —
+  sem execução real, já que Financeiro/Catálogo não existem ainda (mesmo padrão de
+  deferimento de `PortaObservacaoPagamentoCrm`, spec 010; CL-01). Simulação nunca escreve
+  (D-03). **12ª migração Prisma** (`20260909140116_crm_workflow`): 5 tabelas + 4 enums.
+  **RBAC 004 estendido**: +1 permissão (`crm_admin:gerir_workflow`; leitura reaproveita
+  `crm_admin:ver`). **~16 endpoints**, **0 endpoint público novo**, **0 dep nova**, **0 chave
+  `.env` de segredo nova** (só 3 variáveis de config do worker, sem segredo). Frontend:
+  editor de fluxo (formulário guiado — gatilho, condições E/OU, ações; não um canvas de nós
+  livres, D-R1), biblioteca de modelos com "usar como base", histórico de execuções por
+  fluxo. As 2 decisões que bloqueavam esta spec (gatilho por evento externo, formato da
+  biblioteca de modelos) foram resolvidas com o dono do produto **antes** da escrita do
+  `spec.md`, 2026-09-09. 499 testes unitários backend (30 novos, domínio puro — sem banco) +
+  272 e2e (14 novos, Postgres real, suíte 003–014 completa) + 102 frontend (12 novos), todos
+  verdes; lint/typecheck/build limpos nos dois workspaces; validado também manualmente no
+  navegador de ponta a ponta (publicar → disparar o gatilho → tag aplicada pelo worker de
+  fundo → execução no histórico).
+  Detalhe: [`specs/014-crm-workflow/`](specs/014-crm-workflow/) e
+  [`docs/014-crm-workflow.md`](docs/014-crm-workflow.md).
 
 - [ ] **015 — crm-disparos**
   `execucao_disparo` (template FK, segmento/lista, `agendado_para`, status) +

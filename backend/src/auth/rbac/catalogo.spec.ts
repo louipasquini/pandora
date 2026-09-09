@@ -152,6 +152,10 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
+  it('inclui crm_admin:gerir_workflow (spec 014)', () => {
+    expect(PERMISSAO_IDS.has('crm_admin:gerir_workflow')).toBe(true);
+  });
+
   it('agruparPorRecurso preserva a ordem de 1ª aparição', () => {
     const grupos = agruparPorRecurso();
     expect(grupos.map((g) => g.recurso)).toEqual([
@@ -178,6 +182,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin:gerir_whatsapp',
       'crm_admin:gerir_atendimento',
       'crm_admin:gerir_faq',
+      'crm_admin:gerir_workflow',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',
