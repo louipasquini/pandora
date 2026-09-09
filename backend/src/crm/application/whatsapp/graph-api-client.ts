@@ -38,6 +38,11 @@ export interface TemplateMeta {
   motivoRejeicao: string | null;
 }
 
+export interface QualityRatingResultado {
+  qualityRating: string;
+  statusExibicao: string | null;
+}
+
 /**
  * Porta para a Graph API da Meta (spec 011) — injetada por DI para permitir um
  * dublê nos testes (0 chamada de rede real). Implementação padrão via `fetch`
@@ -46,4 +51,12 @@ export interface TemplateMeta {
 export interface GraphApiClient {
   enviarMensagem(params: EnviarMensagemParams): Promise<EnviarMensagemResultado>;
   buscarTemplates(params: { wabaId: string; accessToken: string }): Promise<TemplateMeta[]>;
+  /**
+   * Quality rating vigente do número (spec 015, FR-009) — sempre uma chamada
+   * síncrona sob demanda, nunca persistida (Princípio VIII).
+   */
+  consultarQualityRating(params: {
+    phoneNumberId: string;
+    accessToken: string;
+  }): Promise<QualityRatingResultado>;
 }

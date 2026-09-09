@@ -117,14 +117,16 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  faq/ sugestao-ia/) + Workflow: fluxo em blocos gatilho→condição→ação,
                  versionamento imutável, worker in-house sobre trilhas append-only do
                  próprio crm, biblioteca de modelos, simulação sem efeito colateral
-                 (spec 014 — subpasta workflow/)
+                 (spec 014 — subpasta workflow/) + Disparos: envio em massa de WhatsApp por
+                 segmento e/ou CSV, dedup + opt-out, worker in-house, teste A/B, quality
+                 rating sob demanda (spec 015 — subpasta disparos/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
                  007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
                  whatsapp 011 + atendimento 012 + faq/sugestao_ia/campo_personalizado_pessoa
-                 013 + workflow 014) + migrações + seed.ts
+                 013 + workflow 014 + disparos 015) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -152,6 +154,9 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
                  de versões (spec 013)
     workflow/    CRM · Workflow — lista de fluxos, editor de gatilho/condições/ações,
                  simulação, histórico de execuções, biblioteca de modelos (spec 014)
+    disparos/    CRM · Disparos — visão geral/histórico, construtor (canal, template[s],
+                 segmento e/ou CSV, teste A/B, agendamento), detalhe com métricas, export e
+                 quality rating sob demanda (spec 015)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -193,8 +198,9 @@ npm run db:up
 #    transferencia_atendimento/resposta_atendimento na 10ª; spec 013 acrescenta
 #    faq_item/faq_item_versao/sugestao_ia/campo_personalizado_pessoa/valor_campo_pessoa
 #    na 11ª; spec 014 acrescenta fluxo_automacao/fluxo_automacao_versao/execucao_fluxo/
-#    fluxo_modelo/fluxo_cursor_fonte na 12ª — todas sem seed de negócio, exceto a 014,
-#    que semeia 3 fluxo_modelo de partida)
+#    fluxo_modelo/fluxo_cursor_fonte na 12ª; spec 015 acrescenta execucao_disparo/
+#    disparo_contato_importado/mensagem_disparo na 13ª — todas sem seed de negócio,
+#    exceto a 014, que semeia 3 fluxo_modelo de partida)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" + a biblioteca de modelos de fluxo (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
@@ -262,7 +268,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
-(CRM) em andamento** (specs 007–014 entregues; próxima 015).
+(CRM) em andamento** (specs 007–015 entregues; próxima 016).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -510,7 +516,35 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   simulação, histórico de execuções, biblioteca de modelos. **0 dep nova**, **1 migração**,
   **0 chave `.env` de segredo nova** (só 3 variáveis de config do worker). Ver
   [`docs/014-crm-workflow.md`](docs/014-crm-workflow.md).
-- ⏭️ Próxima: **015 — crm-disparos** (Fase 1 — CRM).
+- ✅ **015 — crm-disparos**: envio em massa de WhatsApp (visão 8.6), construído **sobre** a
+  infraestrutura de canal/template/mensagem já existente da 011 e sobre `Segmento` da 009 —
+  nenhuma tabela paralela. **`execucao_disparo`** (campanha — template[s], canal, segmento
+  e/ou CSV, agendamento, status) + **`disparo_contato_importado`** (linhas de CSV aceitas,
+  escolha de virar Lead feita na importação) + **`mensagem_disparo`** (1 linha por
+  destinatário resolvido — enviado/entregue/lido/falhou/pulado, variante de teste A/B; FK
+  opcional a `mensagem_whatsapp`, preenchida só após o envio de fato). Lista de
+  destinatários (segmento ∪ CSV, deduplicada, opt-out excluído) é resolvida na criação para
+  envio imediato, ou pelo worker no horário para envio agendado — sempre recalculando a
+  composição do segmento nesse momento, nunca travada antes. Worker in-house (mesmo padrão
+  `setInterval` da 006/014, volume assumido: até poucos milhares por disparo) processa em
+  lotes pequenos — o próprio ritmo é o throttling. Envio reaproveita **exatamente** os 3
+  pontos de integração já existentes da 011 (`GraphApiClient` → `RegistrarInteracaoService`
+  → `MensagemWhatsappRepository`), numa orquestração própria (sem janela de 24h, sem
+  exceção HTTP). Falha do provedor tenta de novo um número limitado de vezes antes de virar
+  terminal; falha que não faz sentido reter (opt-out/telefone inválido/template não
+  aprovado) já nasce terminal. Quality rating consultado **sob demanda** direto na Graph
+  API (`GraphApiClient.consultarQualityRating`, 0 sincronização automática). Teste A/B
+  divide 100% do público entre duas variantes, sem promoção automática de vencedora. CSV
+  trafega como texto simples no corpo JSON (`FileReader` no navegador) — **0 dependência
+  nova** de upload binário (`multer`). **13ª migração Prisma** (3 tabelas + 3 enums).
+  Catálogo RBAC ganha `disparo:{criar,ver,cancelar}` (+3); quality rating reaproveita
+  `crm_admin:ver` já existente. ~10 endpoints autenticados, 0 endpoint público novo. Painel:
+  **CRM · Disparos** — visão geral/histórico + construtor (canal, template[s], segmento
+  e/ou CSV com escolha de criar Lead, teste A/B, agendamento) + detalhe com métricas por
+  status/variante, export e quality rating. **0 dep nova**, **1 migração**, **0 chave
+  `.env` de segredo nova** (4 variáveis de config do worker). Ver
+  [`docs/015-crm-disparos.md`](docs/015-crm-disparos.md).
+- ⏭️ Próxima: **016 — crm-tarefas** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

@@ -6,6 +6,7 @@ export {
   type EnviarMensagemResultado,
   type TemplateMeta,
   type CorpoMensagemGraphApi,
+  type QualityRatingResultado,
 } from './graph-api-client';
 export { MetaGraphApiClient } from './meta-graph-api.client';
 export { CanalWhatsappService, type CanalWhatsappView } from './canal-whatsapp.service';

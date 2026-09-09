@@ -222,6 +222,22 @@ export const PERMISSOES = Object.freeze([
     rotulo:
       'Criar, editar, publicar, arquivar e simular fluxos de automação; rodar o worker manualmente',
   },
+  // --- Disparos em massa de WhatsApp (spec 015) ---
+  {
+    id: 'disparo:criar',
+    recurso: 'disparo',
+    rotulo: 'Criar e agendar disparos em massa de WhatsApp (incl. importar CSV)',
+  },
+  {
+    id: 'disparo:ver',
+    recurso: 'disparo',
+    rotulo: 'Ver disparos, seus resultados e exportar',
+  },
+  {
+    id: 'disparo:cancelar',
+    recurso: 'disparo',
+    rotulo: 'Cancelar um disparo agendado',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

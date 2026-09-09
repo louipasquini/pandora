@@ -170,6 +170,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'oportunidade',
       'whatsapp',
       'atendimento',
+      'disparo',
     ]);
     expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
       'crm_admin:ver',

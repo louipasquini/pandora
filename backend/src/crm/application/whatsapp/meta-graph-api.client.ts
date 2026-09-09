@@ -5,6 +5,7 @@ import {
   type EnviarMensagemParams,
   type EnviarMensagemResultado,
   type GraphApiClient,
+  type QualityRatingResultado,
   type TemplateMeta,
 } from './graph-api-client';
 
@@ -120,5 +121,30 @@ export class MetaGraphApiClient implements GraphApiClient {
       statusAprovacao: String(t.status ?? ''),
       motivoRejeicao: t.rejected_reason != null ? String(t.rejected_reason) : null,
     }));
+  }
+
+  async consultarQualityRating(params: {
+    phoneNumberId: string;
+    accessToken: string;
+  }): Promise<QualityRatingResultado> {
+    const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSAO}/${params.phoneNumberId}?fields=quality_rating,name_status`;
+    let resp: Response;
+    try {
+      resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${params.accessToken}` },
+      });
+    } catch (err) {
+      throw new GraphApiError('falha de rede ao chamar a Graph API', err);
+    }
+
+    const json: unknown = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      throw new GraphApiError(`Graph API respondeu ${resp.status}`, json);
+    }
+    const dados = json as { quality_rating?: string; name_status?: string } | null;
+    return {
+      qualityRating: dados?.quality_rating ?? 'DESCONHECIDO',
+      statusExibicao: dados?.name_status ?? null,
+    };
   }
 }

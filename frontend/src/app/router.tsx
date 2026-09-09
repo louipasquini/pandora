@@ -24,6 +24,8 @@ import { AtendimentoAdminPage } from '../atendimento/AtendimentoAdminPage';
 import { FluxosPage } from '../workflow/FluxosPage';
 import { FluxoDetalhePage } from '../workflow/FluxoDetalhePage';
 import { ModelosPage } from '../workflow/ModelosPage';
+import { DisparosPage } from '../disparos/DisparosPage';
+import { DisparoDetalhePage } from '../disparos/DisparoDetalhePage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -198,6 +200,22 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="crm_admin:ver">
                 <FluxoDetalhePage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/disparos',
+            element: (
+              <RequirePermissao perm="disparo:ver">
+                <DisparosPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/disparos/:id',
+            element: (
+              <RequirePermissao perm="disparo:ver">
+                <DisparoDetalhePage />
               </RequirePermissao>
             ),
           },

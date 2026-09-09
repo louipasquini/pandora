@@ -499,13 +499,73 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/014-crm-workflow/`](specs/014-crm-workflow/) e
   [`docs/014-crm-workflow.md`](docs/014-crm-workflow.md).
 
-- [ ] **015 — crm-disparos**
-  `execucao_disparo` (template FK, segmento/lista, `agendado_para`, status) +
-  `mensagem_enviada` (status de entrega). Segmentação minuciosa (filtro na plataforma ou
-  import CSV), agendamento, throttling p/ preservar quality rating, quality rating visível,
-  testes A/B, dedup de contatos antes do envio, respeito automático a opt-out +
-  `preferencia_comunicacao`, export de resultados, log de erros. Frontend: construtor de
-  disparo + visão geral.
+- [x] **015 — crm-disparos** — ✅ implementada e validada (2026-09-09)
+  Nona fatia da Fase 1 (CRM), visão Parte 8.6. Envio em massa de WhatsApp construído
+  **sobre** a infraestrutura já existente da spec 011 (`CanalWhatsapp`/`TemplateWhatsapp`/
+  `MensagemWhatsapp`/`OptOutWhatsapp`, `GraphApiClient`) e da spec 009 (`Segmento`) —
+  nenhuma tabela paralela de canal/template/mensagem. **`ExecucaoDisparo`** (campanha —
+  template[s], canal, segmento e/ou lista importada, agendamento, status),
+  **`DisparoContatoImportado`** (linhas de CSV aceitas, com a escolha de virar Lead feita
+  na importação — FR-007a) e **`MensagemDisparo`** (1 linha por destinatário resolvido —
+  enviado/entregue/lido/falhou/pulado, variante de teste A/B; `mensagemWhatsappId` FK
+  opcional `@unique`, preenchida só depois que o envio de fato acontece — research.md
+  D-R3: destinatário pulado/pendente nunca gera interação, a timeline só registra o que
+  realmente saiu). Lista de destinatários (segmento ∪ CSV, deduplicada por telefone,
+  opt-out excluído) é resolvida na criação para envio imediato, ou pelo worker no horário
+  para envio agendado — a composição do **segmento** é sempre recalculada nesse momento
+  (FR-006), nunca travada antes; a resolução de membros ignora o escopo de visão por
+  sujeito (`ver_todos`/`ver_proprios` de Lead, 008) — autorização já foi resolvida em
+  `disparo:criar`, e o worker roda sem sujeito HTTP em curso (research.md D-R2). Worker
+  in-house (mesmo padrão `setInterval` de 006/014; volume confirmado com o dono do
+  produto: até poucos milhares por disparo, revalidando a suposição herdada da 012) — o
+  próprio ritmo intervalo×lote É o throttling (FR-008, D-R4). `EnviarMensagemDisparoService`
+  reaproveita **exatamente** os 3 pontos de integração já existentes da 011
+  (`GraphApiClient.enviarMensagem` → `RegistrarInteracaoService.registrar` →
+  `MensagemWhatsappRepository.criar`), numa orquestração própria — sem janela de 24h (um
+  disparo é sempre por template aprovado) e sem lançar exceção HTTP (research.md D-R1).
+  Falha do provedor tenta de novo até `CRM_DISPAROS_WORKER_MAX_TENTATIVAS` vezes antes de
+  virar `FALHOU` terminal (D-R5); falha que não faz sentido reter (opt-out, telefone
+  inválido, template não aprovado) já nasce terminal, sem consumir tentativa. Quality
+  rating (`GraphApiClient.consultarQualityRating`, nova) é **sempre sob demanda** — nenhuma
+  sincronização automática (Princípio VIII, D-R7). Teste A/B (`atribuirVariante`,
+  determinístico por hash do telefone) divide 100% do público entre duas variantes e
+  encerra — **sem** promoção automática de vencedora (decisão do dono do produto). CSV
+  trafega como texto simples no corpo JSON de `POST /crm/disparos` (`FileReader` no
+  navegador) — **0 dependência nova** de upload binário (`multer`/`@types/multer` não
+  instalados, D-R6); a criação de um Lead a partir de um contato de CSV novo é opcional
+  por importação (`criarLead`), reaproveitando `RegistrarLeadService` (008,
+  `origem: 'csv-disparo'`). `preferencia_comunicacao` (Central de Clientes) ainda não
+  existe — disparo respeita só `opt_out_whatsapp`, já a fonte de verdade de consentimento
+  vigente; lacuna documentada, não assumida. **13ª migração Prisma**
+  (`20260909171024_crm_disparos`): 3 tabelas + 3 enums (`ExecucaoDisparoStatus`,
+  `MensagemDisparoStatus`, `DisparoVariante`); `CHECK` do par `templateBId`/
+  `percentualVarianteB` via SQL bruto (Prisma não modela `CHECK`). **RBAC 004 estendido**:
+  `disparo:{criar,ver,cancelar}` (+3; `administrador`/credencial de serviço de graça, 0
+  migração de dados); quality rating reaproveita `crm_admin:ver` já existente (011) — 0
+  permissão nova para essa parte. **~10 endpoints** `/crm/disparos/**` (criar/listar/
+  detalhe/destinatários/export/cancelar/processar) + `GET /crm/admin/whatsapp/canais/{id}/
+  quality-rating`, **0 endpoint público novo**. **Frontend** `frontend/src/disparos/`:
+  item **CRM · Disparos** atrás de `disparo:ver`, `DisparosPage.tsx` (visão geral/
+  histórico + construtor inline: canal → templates aprovados daquele canal, segmento e/ou
+  CSV com toggle de criar Lead, teste A/B opcional, agendamento opcional; atrás de
+  `disparo:criar`), `DisparoDetalhePage.tsx` (métricas por status e por variante, lista de
+  destinatários com motivo, exportar CSV via Blob, cancelar atrás de `disparo:cancelar`,
+  consultar quality rating do canal). Hooks TanStack Query inline, mesmo padrão de
+  `whatsapp/WhatsappAdminPage.tsx`. **0 dep nova** (backend e frontend), **1 migração**,
+  **0 chave `.env` de segredo nova** (4 variáveis `CRM_DISPAROS_WORKER_*`, mesmo padrão de
+  `INGESTAO_WORKER_*`/`CRM_WORKFLOW_WORKER_*`). `CONTEXT_MODULES` segue 11. As 4 decisões
+  que bloqueavam esta spec — volume esperado por disparo, escopo de criação de Lead a
+  partir de CSV, mecânica do teste A/B, retry de falha de envio — foram resolvidas com o
+  dono do produto **antes** da escrita do `plan.md`, 2026-09-09 (spec.md, seção
+  Clarifications). 515 testes unitários backend (16 novos, domínio puro — sem banco) + 286
+  e2e (14 novos, Postgres real, suíte 003–015 completa) + 106 frontend (4 novos), todos
+  verdes; lint/typecheck/build limpos nos dois workspaces; validado também manualmente no
+  navegador de ponta a ponta (conectar canal/template pela API, criar disparo pelo
+  formulário do painel apontando para um segmento real, ver o disparo concluído na lista e
+  o detalhe com export e quality rating).
+  Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+  Detalhe: [`specs/015-crm-disparos/`](specs/015-crm-disparos/) e
+  [`docs/015-crm-disparos.md`](docs/015-crm-disparos.md).
 
 - [ ] **016 — crm-tarefas**
   `tarefa` / `nota` ligadas a `pessoa` / `oportunidade`. Checklists, agenda, cronômetro por
@@ -831,6 +891,7 @@ financeiro/comercial/identidade — compõe e explica; ações viram comando ao 
 | — | Escopo de `conta` (household) na v1 (afeta 005, 010, 044) — visão Parte 8.12. |
 | ~~—~~ | ✅ resolvida (2026-09-04): retenção/anonimização de conversas de WhatsApp = **indefinida**, pseudonimização só na exclusão da `pessoa` (mesma disciplina do resto do sistema; sem TTL automático) — afetava 011/047/055. |
 | ~~—~~ | ✅ resolvida (2026-09-04): volume esperado de atendimento simultâneo = **baixo** (até ~10 conversas simultâneas) — dimensionou a 012 (sem fila/broker, índices comuns bastam) e é herdado como a mesma suposição de base para a 015, que deve revalidá-la para o caso específico de disparo em massa antes de assumi-la sem revisão. |
+| ~~015~~ | ✅ resolvida (2026-09-09): revalidação para disparo em massa = **confirmado baixo/moderado** (até poucos milhares de destinatários por disparo, não dezenas de milhares ou mais) — dimensionou a 015 (worker in-process `setInterval`, sem fila/broker externo). |
 
 ## Resumo por fase
 
