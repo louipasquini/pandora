@@ -5,6 +5,7 @@ import type {
   EnviarMensagemParams,
   EnviarMensagemResultado,
   GraphApiClient,
+  QualityRatingResultado,
   TemplateMeta,
 } from '../../src/crm/application/whatsapp';
 import { authHeader } from './auth';
@@ -16,6 +17,8 @@ export interface GraphApiDublê extends GraphApiClient {
   falharProximoEnvio: unknown | null;
   falharProximaBusca: unknown | null;
   chamadasEnviar: EnviarMensagemParams[];
+  proximaQualityRating: QualityRatingResultado;
+  falharProximaQualityRating: unknown | null;
 }
 
 export function criarGraphApiDublê(): GraphApiDublê {
@@ -26,6 +29,8 @@ export function criarGraphApiDublê(): GraphApiDublê {
     falharProximoEnvio: null,
     falharProximaBusca: null,
     chamadasEnviar: [],
+    proximaQualityRating: { qualityRating: 'GREEN', statusExibicao: 'APPROVED' },
+    falharProximaQualityRating: null,
     async enviarMensagem(params: EnviarMensagemParams): Promise<EnviarMensagemResultado> {
       dublê.chamadasEnviar.push(params);
       if (dublê.falharProximoEnvio) {
@@ -45,6 +50,14 @@ export function criarGraphApiDublê(): GraphApiDublê {
         throw erro;
       }
       return dublê.proximosTemplates;
+    },
+    async consultarQualityRating(): Promise<QualityRatingResultado> {
+      if (dublê.falharProximaQualityRating) {
+        const erro = dublê.falharProximaQualityRating;
+        dublê.falharProximaQualityRating = null;
+        throw erro;
+      }
+      return dublê.proximaQualityRating;
     },
   };
   return dublê;

@@ -50,6 +50,7 @@ model Usuario {
   respostasAtendimento        RespostaAtendimento[]
   sugestoesDecididas          SugestaoIa[]               @relation("SugestaoIaDecididoPor")
   sugestoesAvaliadas          SugestaoIa[]               @relation("SugestaoIaUtilRegistradoPor")
+  disparosCriados             ExecucaoDisparo[]
 
   @@map("usuario")
 }
@@ -157,9 +158,9 @@ model Pessoa {
   criadoEm         DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  conta                     Conta?             @relation(fields: [contaId], references: [id], onDelete: SetNull)
-  sobrevivente              Pessoa?            @relation("PessoaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
-  absorvidas                Pessoa[]           @relation("PessoaMerge")
+  conta                     Conta?                    @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  sobrevivente              Pessoa?                   @relation("PessoaMerge", fields: [mergedPara], references: [id], onDelete: Restrict)
+  absorvidas                Pessoa[]                  @relation("PessoaMerge")
   emails                    PessoaEmail[]
   telefones                 PessoaTelefone[]
   documentos                PessoaDocumento[]
@@ -172,6 +173,8 @@ model Pessoa {
   optOutsWhatsapp           OptOutWhatsapp[]
   atendimentos              Atendimento[]
   valoresCampoPersonalizado ValorCampoPessoa[]
+  contatosImportadosDisparo DisparoContatoImportado[]
+  mensagensDisparo          MensagemDisparo[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -670,14 +673,16 @@ model Lead {
   criadoEm          DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm      DateTime    @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  responsavel     Usuario?         @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
-  pessoa          Pessoa?          @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
-  valores         ValorCampoLead[]
-  interacoes      Interacao[]
-  tagAssociacoes  TagAssociacao[]
-  oportunidades   Oportunidade[]
-  optOutsWhatsapp OptOutWhatsapp[]
-  atendimentos    Atendimento[]
+  responsavel               Usuario?                  @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
+  pessoa                    Pessoa?                   @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  valores                   ValorCampoLead[]
+  interacoes                Interacao[]
+  tagAssociacoes            TagAssociacao[]
+  oportunidades             Oportunidade[]
+  optOutsWhatsapp           OptOutWhatsapp[]
+  atendimentos              Atendimento[]
+  contatosImportadosDisparo DisparoContatoImportado[]
+  mensagensDisparo          MensagemDisparo[]
 
   // Índice único PARCIAL `(origem, id_externo) WHERE id_externo IS NOT NULL`
   // criado no migration.sql — o Prisma não expressa índice parcial no schema.
@@ -864,7 +869,8 @@ model Segmento {
   criadoEm     DateTime     @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime     @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  autor Usuario? @relation(fields: [criadoPor], references: [id], onDelete: Restrict)
+  autor            Usuario?          @relation(fields: [criadoPor], references: [id], onDelete: Restrict)
+  execucoesDisparo ExecucaoDisparo[]
 
   @@index([alvo])
   @@map("segmento")
@@ -1150,10 +1156,11 @@ model CanalWhatsapp {
   criadoEm                   DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm               DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  templates      TemplateWhatsapp[]
-  mensagens      MensagemWhatsapp[]
-  eventosWebhook EventoWebhookWhatsapp[]
-  atendimentos   Atendimento[]
+  templates        TemplateWhatsapp[]
+  mensagens        MensagemWhatsapp[]
+  eventosWebhook   EventoWebhookWhatsapp[]
+  atendimentos     Atendimento[]
+  execucoesDisparo ExecucaoDisparo[]
 
   @@unique([phoneNumberId])
   @@index([ativo])
@@ -1173,8 +1180,10 @@ model TemplateWhatsapp {
   criadoEm        DateTime                  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm    DateTime                  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  canal     CanalWhatsapp      @relation(fields: [canalId], references: [id], onDelete: Restrict)
-  mensagens MensagemWhatsapp[]
+  canal                  CanalWhatsapp      @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  mensagens              MensagemWhatsapp[]
+  execucoesComoTemplateA ExecucaoDisparo[]  @relation("ExecucaoDisparoTemplateA")
+  execucoesComoTemplateB ExecucaoDisparo[]  @relation("ExecucaoDisparoTemplateB")
 
   @@unique([canalId, nomeMeta, idioma])
   @@index([canalId, statusAprovacao])
@@ -1194,9 +1203,10 @@ model MensagemWhatsapp {
   criadoEm       DateTime                      @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm   DateTime                      @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  interacao Interacao         @relation(fields: [interacaoId], references: [id], onDelete: Cascade)
-  canal     CanalWhatsapp     @relation(fields: [canalId], references: [id], onDelete: Restrict)
-  template  TemplateWhatsapp? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  interacao       Interacao         @relation(fields: [interacaoId], references: [id], onDelete: Cascade)
+  canal           CanalWhatsapp     @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  template        TemplateWhatsapp? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  mensagemDisparo MensagemDisparo?
 
   // Índice único PARCIAL `(wa_message_id) WHERE wa_message_id IS NOT NULL`
   // criado no migration.sql — o Prisma não expressa índice parcial no schema.
@@ -1592,17 +1602,17 @@ model FluxoAutomacaoVersao {
 }
 
 model ExecucaoFluxo {
-  id              String                  @id @db.Uuid
-  fluxoVersaoId   String                  @map("fluxo_versao_id") @db.Uuid
+  id              String                 @id @db.Uuid
+  fluxoVersaoId   String                 @map("fluxo_versao_id") @db.Uuid
   fonte           FluxoGatilhoTipo
-  fonteRegistroId String                  @map("fonte_registro_id") @db.Uuid
-  registroTipo    FluxoRegistroTipo       @map("registro_tipo")
-  registroId      String                  @map("registro_id") @db.Uuid
+  fonteRegistroId String                 @map("fonte_registro_id") @db.Uuid
+  registroTipo    FluxoRegistroTipo      @map("registro_tipo")
+  registroId      String                 @map("registro_id") @db.Uuid
   resultado       FluxoExecucaoResultado
-  acoesAplicadas  Json                    @map("acoes_aplicadas")
-  erroDetalhe     String?                 @map("erro_detalhe")
-  ocorridoEm      DateTime                @map("ocorrido_em") @db.Timestamptz(6)
-  criadoEm        DateTime                @default(now()) @map("criado_em") @db.Timestamptz(6)
+  acoesAplicadas  Json                   @map("acoes_aplicadas")
+  erroDetalhe     String?                @map("erro_detalhe")
+  ocorridoEm      DateTime               @map("ocorrido_em") @db.Timestamptz(6)
+  criadoEm        DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
 
   fluxoVersao FluxoAutomacaoVersao @relation(fields: [fluxoVersaoId], references: [id], onDelete: Cascade)
 
@@ -1635,4 +1645,116 @@ model FluxoCursorFonte {
 
   // Estado técnico do worker — não é dado de negócio (D-R8 do research.md).
   @@map("fluxo_cursor_fonte")
+}
+
+// ============================================================================
+// crm — Disparos (spec 015) — 13ª migração de negócio. Envio em massa de
+// WhatsApp construído SOBRE a infraestrutura de canal/template/mensagem já
+// existente da spec 011 e sobre `Segmento` (009) — nenhuma tabela paralela de
+// canal/template/mensagem. `ExecucaoDisparo` (campanha), `DisparoContatoImportado`
+// (linhas de CSV aceitas, com a escolha de virar Lead feita na importação —
+// FR-007a) e `MensagemDisparo` (resultado por destinatário, 1 linha por
+// telefone já deduplicado — nasce na materialização, não na criação, para
+// disparos agendados com origem em segmento, FR-006). `MensagemDisparo.
+// mensagemWhatsappId` liga à mensagem real só depois que ela é de fato
+// enviada (research.md D-R3) — status de entrega/leitura é lido por JOIN em
+// `mensagem_whatsapp.status_entrega`, nunca duplicado.
+// ============================================================================
+
+enum ExecucaoDisparoStatus {
+  AGENDADO
+  EM_ANDAMENTO
+  CONCLUIDO
+  CANCELADO
+  ERRO
+}
+
+enum MensagemDisparoStatus {
+  PENDENTE
+  ENVIANDO
+  ENVIADA
+  FALHOU
+  PULADA
+}
+
+enum DisparoVariante {
+  A
+  B
+}
+
+model ExecucaoDisparo {
+  id                  String                @id @db.Uuid
+  nome                String
+  canalId             String                @map("canal_id") @db.Uuid
+  templateId          String                @map("template_id") @db.Uuid
+  templateBId         String?               @map("template_b_id") @db.Uuid
+  percentualVarianteB Int?                  @map("percentual_variante_b")
+  segmentoId          String?               @map("segmento_id") @db.Uuid
+  csvCriarLead        Boolean?              @map("csv_criar_lead")
+  agendadoPara        DateTime?             @map("agendado_para") @db.Timestamptz(6)
+  status              ExecucaoDisparoStatus @default(AGENDADO)
+  iniciadoEm          DateTime?             @map("iniciado_em") @db.Timestamptz(6)
+  concluidoEm         DateTime?             @map("concluido_em") @db.Timestamptz(6)
+  canceladoEm         DateTime?             @map("cancelado_em") @db.Timestamptz(6)
+  erroDetalhe         String?               @map("erro_detalhe")
+  criadoPor           String?               @map("criado_por") @db.Uuid
+  criadoEm            DateTime              @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm        DateTime              @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  canal     CanalWhatsapp     @relation(fields: [canalId], references: [id], onDelete: Restrict)
+  templateA TemplateWhatsapp  @relation("ExecucaoDisparoTemplateA", fields: [templateId], references: [id], onDelete: Restrict)
+  templateB TemplateWhatsapp? @relation("ExecucaoDisparoTemplateB", fields: [templateBId], references: [id], onDelete: Restrict)
+  segmento  Segmento?         @relation(fields: [segmentoId], references: [id], onDelete: Restrict)
+  autor     Usuario?          @relation(fields: [criadoPor], references: [id], onDelete: Restrict)
+
+  contatosImportados DisparoContatoImportado[]
+  mensagens          MensagemDisparo[]
+
+  // CHECK `(template_b_id IS NULL) = (percentual_variante_b IS NULL)` no
+  // migration.sql — Prisma não modela CHECK.
+  @@index([status, agendadoPara])
+  @@index([canalId])
+  @@index([segmentoId])
+  @@map("execucao_disparo")
+}
+
+model DisparoContatoImportado {
+  id                String   @id @db.Uuid
+  execucaoDisparoId String   @map("execucao_disparo_id") @db.Uuid
+  telefone          String
+  nome              String?
+  leadId            String?  @map("lead_id") @db.Uuid
+  pessoaId          String?  @map("pessoa_id") @db.Uuid
+  criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  execucaoDisparo ExecucaoDisparo @relation(fields: [execucaoDisparoId], references: [id], onDelete: Cascade)
+  lead            Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  pessoa          Pessoa?         @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
+
+  @@unique([execucaoDisparoId, telefone])
+  @@map("disparo_contato_importado")
+}
+
+model MensagemDisparo {
+  id                 String                @id @db.Uuid
+  execucaoDisparoId  String                @map("execucao_disparo_id") @db.Uuid
+  telefone           String
+  pessoaId           String?               @map("pessoa_id") @db.Uuid
+  leadId             String?               @map("lead_id") @db.Uuid
+  variante           DisparoVariante?
+  status             MensagemDisparoStatus @default(PENDENTE)
+  motivo             String?
+  tentativas         Int                   @default(0)
+  mensagemWhatsappId String?               @unique @map("mensagem_whatsapp_id") @db.Uuid
+  criadoEm           DateTime              @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime              @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  execucaoDisparo  ExecucaoDisparo   @relation(fields: [execucaoDisparoId], references: [id], onDelete: Cascade)
+  pessoa           Pessoa?           @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
+  lead             Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  mensagemWhatsapp MensagemWhatsapp? @relation(fields: [mensagemWhatsappId], references: [id], onDelete: SetNull)
+
+  @@unique([execucaoDisparoId, telefone])
+  @@index([execucaoDisparoId, status])
+  @@map("mensagem_disparo")
 }

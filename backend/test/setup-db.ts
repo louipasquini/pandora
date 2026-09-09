@@ -34,6 +34,9 @@ export default function setupDb(): void {
   // Worker do Workflow do CRM (spec 014): mesma disciplina — os e2e disparam
   // passadas explícitas por `POST /crm/workflow/processar`.
   process.env.CRM_WORKFLOW_WORKER_ENABLED = 'false';
+  // Worker de Disparos do CRM (spec 015): mesma disciplina — os e2e disparam
+  // passadas explícitas por `POST /crm/disparos/processar`.
+  process.env.CRM_DISPAROS_WORKER_ENABLED = 'false';
   // Administração do CRM (spec 007): fixture da chave de cifra de segredo de
   // integração (base64 de 32 bytes) — obrigatória no boot; usa a do .env se houver.
   if (!process.env.CRM_INTEGRACAO_CIFRA_KEY) {
