@@ -99,7 +99,35 @@ export const pessoasApi = {
       method: 'POST',
     });
   },
+  async camposPersonalizados(id: string): Promise<Record<string, string>> {
+    const res = await apiFetch(`/pessoas/${id}/campos-personalizados`);
+    return json<Record<string, string>>(res);
+  },
+  async putCamposPersonalizados(
+    id: string,
+    valores: Record<string, string | number | boolean | null>,
+  ): Promise<Record<string, string>> {
+    const res = await apiFetch(`/pessoas/${id}/campos-personalizados`, {
+      method: 'PUT',
+      body: JSON.stringify(valores),
+    });
+    return json<Record<string, string>>(res);
+  },
+  async listarDefsCamposPersonalizados(): Promise<CampoPersonalizadoDefView[]> {
+    const res = await apiFetch('/clientes/admin/campos-personalizados');
+    return json<CampoPersonalizadoDefView[]>(res);
+  },
 };
+
+export interface CampoPersonalizadoDefView {
+  id: string;
+  chave: string;
+  rotulo: string;
+  tipo: 'TEXTO' | 'NUMERO' | 'BOOLEANO' | 'DATA' | 'SELECAO';
+  opcoes: string[];
+  obrigatorio: boolean;
+  ativo: boolean;
+}
 
 export function mensagemErro(err: unknown): string {
   const body = (err as { body?: unknown })?.body;
