@@ -114,14 +114,17 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  versionada e Sugestão de IA — síncrona, sempre dentro de um atendimento,
                  nunca envia/grava sozinha (spec 013 — domain/ application/ infra/,
                  subpastas lead/ interacao/ tag/ segmento/ pipeline/ whatsapp/ atendimento/
-                 faq/ sugestao-ia/)
+                 faq/ sugestao-ia/) + Workflow: fluxo em blocos gatilho→condição→ação,
+                 versionamento imutável, worker in-house sobre trilhas append-only do
+                 próprio crm, biblioteca de modelos, simulação sem efeito colateral
+                 (spec 014 — subpasta workflow/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
                  007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
                  whatsapp 011 + atendimento 012 + faq/sugestao_ia/campo_personalizado_pessoa
-                 013) + migrações + seed.ts
+                 013 + workflow 014) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -147,6 +150,8 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
                  (spec 013)
     faq/         aba FAQ dentro de CRM · Administração — lista, criar/editar, histórico
                  de versões (spec 013)
+    workflow/    CRM · Workflow — lista de fluxos, editor de gatilho/condições/ações,
+                 simulação, histórico de execuções, biblioteca de modelos (spec 014)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -187,9 +192,11 @@ npm run db:up
 #    opt_out_whatsapp na 9ª; spec 012 acrescenta atendimento/
 #    transferencia_atendimento/resposta_atendimento na 10ª; spec 013 acrescenta
 #    faq_item/faq_item_versao/sugestao_ia/campo_personalizado_pessoa/valor_campo_pessoa
-#    na 11ª — todas sem seed de negócio)
+#    na 11ª; spec 014 acrescenta fluxo_automacao/fluxo_automacao_versao/execucao_fluxo/
+#    fluxo_modelo/fluxo_cursor_fonte na 12ª — todas sem seed de negócio, exceto a 014,
+#    que semeia 3 fluxo_modelo de partida)
 npm run db:migrate:deploy
-npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
+npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" + a biblioteca de modelos de fluxo (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
 #    os scripts prisma:* do backend (migrate/seed/reset) carregam o `.env` da raiz
 #    sozinhos (`set -a && . ../.env`) — não precisa exportar DATABASE_URL na mão;
@@ -255,7 +262,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
-(CRM) em andamento** (specs 007–013 entregues; próxima 014).
+(CRM) em andamento** (specs 007–014 entregues; próxima 015).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -480,7 +487,30 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   **FAQ** em CRM · Administração + painel de sugestões dentro da conversa do Chat ao Vivo.
   **0 dep nova**, **1 migração, 0 chave `.env` nova**. Ver
   [`docs/013-crm-faq-e-sugestao-ia.md`](docs/013-crm-faq-e-sugestao-ia.md).
-- ⏭️ Próxima: **014 — crm-workflow** (Fase 1 — CRM).
+- ✅ **014 — crm-workflow**: motor de automação (visão 8.8). **`fluxo_automacao`**
+  (metadado estável) + **`fluxo_automacao_versao`** (snapshot imutável de gatilho +
+  condições E/OU + ações; no máximo 1 `PUBLICADA` por fluxo, índice único parcial) +
+  **`execucao_fluxo`** (histórico append-only, idempotente por `(fluxo_versao_id, fonte,
+  fonte_registro_id)`) + **`fluxo_modelo`** (biblioteca de automações prontas, semeada via
+  seed) + **`fluxo_cursor_fonte`** (cursor técnico do worker). Gatilhos internos (lead
+  criado/mudou de estágio, oportunidade mudou de etapa, interação registrada, tag aplicada)
+  detectados por um `WorkerScheduler` in-house (mesmo padrão da 006) sobre trilhas **já
+  append-only do próprio `crm`** — nunca *polling* de outro contexto; um cursor novo nunca
+  varre o histórico anterior à ativação (descoberto durante a implementação — só estabelece
+  a linha de partida em "agora"). Ações reaproveitam **exatamente** os serviços já
+  existentes das specs 008/009/010 (mover lead de estágio, aplicar/remover tag, registrar
+  nota, mover oportunidade de etapa) — nenhum caminho de escrita paralelo, mesma trilha de
+  auditoria de uma ação manual. Gatilho por evento externo ("pagamento aprovado",
+  "inscrição em lançamento") fica só modelado — sem execução real, já que Financeiro/
+  Catálogo não existem ainda (mesmo padrão de `PortaObservacaoPagamentoCrm`, 010).
+  Simulação nunca escreve. **12ª migração Prisma** (5 tabelas + 4 enums). Catálogo RBAC
+  ganha `crm_admin:gerir_workflow` (+1; leitura reaproveita `crm_admin:ver`). ~16 endpoints
+  autenticados, 0 endpoint público novo. Painel: **CRM · Workflow** — lista de fluxos,
+  editor de gatilho/condições/ações (formulário guiado, não um canvas de nós livres),
+  simulação, histórico de execuções, biblioteca de modelos. **0 dep nova**, **1 migração**,
+  **0 chave `.env` de segredo nova** (só 3 variáveis de config do worker). Ver
+  [`docs/014-crm-workflow.md`](docs/014-crm-workflow.md).
+- ⏭️ Próxima: **015 — crm-disparos** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
