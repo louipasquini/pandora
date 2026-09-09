@@ -10,17 +10,17 @@ utilidade).
 
 ## Fase 1 — Schema e migração
 
-- [ ] T001 `backend/prisma/schema.prisma`: + enums `SugestaoIaTipo`, `SugestaoIaStatus`;
+- [x] T001 `backend/prisma/schema.prisma`: + enums `SugestaoIaTipo`, `SugestaoIaStatus`;
       + models `FaqItem`, `FaqItemVersao`, `SugestaoIa` (bounded context `crm`),
       `CampoPersonalizadoPessoa`, `ValorCampoPessoa` (bounded context `clientes`, espelhando
       `CampoPersonalizadoLead`/`ValorCampoLead`); + coluna `sugestaoIaId` (nullable,
       `@unique`) em `RespostaAtendimento`; relações inversas em `Usuario`, `Atendimento`,
       `Interacao`, `Lead`, `Pessoa`.
-- [ ] T002 Gerar a migração (`prisma migrate dev --name crm_faq_sugestao_ia`) e editar o SQL
+- [x] T002 Gerar a migração (`prisma migrate dev --name crm_faq_sugestao_ia`) e editar o SQL
       gerado: `CHECK` de exclusividade do alvo em `sugestao_ia` (`tipo='CAMPO_PERSONALIZADO'`
       → exatamente um de `campo_personalizado_lead_id`/`campo_personalizado_pessoa_id`;
       `tipo='RESPOSTA'` → nenhum dos dois) via SQL bruto (Prisma não modela `CHECK`).
-- [ ] T003 Rodar a migração + regenerar `@prisma/client`; confirmar `test/setup-db.ts` limpo
+- [x] T003 Rodar a migração + regenerar `@prisma/client`; confirmar `test/setup-db.ts` limpo
       num schema novo.
 
 ## Fase 2 — Domínio puro (sem banco) `[P]` entre arquivos diferentes
