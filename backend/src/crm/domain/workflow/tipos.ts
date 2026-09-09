@@ -92,6 +92,7 @@ export const ACAO_TIPOS = [
   'REMOVER_TAG',
   'REGISTRAR_NOTA',
   'MOVER_OPORTUNIDADE_ETAPA',
+  'CRIAR_TAREFA',
 ] as const;
 export type AcaoTipo = (typeof ACAO_TIPOS)[number];
 
@@ -116,13 +117,24 @@ export interface AcaoMoverOportunidadeEtapa {
   etapaDestinoId: string;
   motivo?: string;
 }
+/** Ação `CRIAR_TAREFA` (spec 016) — gera uma `tarefa` a partir do gatilho. */
+export interface AcaoCriarTarefa {
+  tipo: 'CRIAR_TAREFA';
+  titulo: string;
+  descricao?: string;
+  /** Dias relativos à data de execução da ação; ausente = sem prazo. */
+  prazoDias?: number;
+  /** Responsável fixo; ausente = tarefa "geral" (D-07 da spec 016). */
+  responsavelId?: string;
+}
 
 export type AcaoFluxo =
   | AcaoMoverLeadEstagio
   | AcaoAplicarTag
   | AcaoRemoverTag
   | AcaoRegistrarNota
-  | AcaoMoverOportunidadeEtapa;
+  | AcaoMoverOportunidadeEtapa
+  | AcaoCriarTarefa;
 
 export const acaoFluxoSchema: z.ZodType<AcaoFluxo> = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('MOVER_LEAD_ESTAGIO'), estagioDestino: z.enum(LEAD_ESTAGIOS) }),
@@ -133,6 +145,13 @@ export const acaoFluxoSchema: z.ZodType<AcaoFluxo> = z.discriminatedUnion('tipo'
     tipo: z.literal('MOVER_OPORTUNIDADE_ETAPA'),
     etapaDestinoId: z.string().uuid(),
     motivo: z.string().min(1).optional(),
+  }),
+  z.object({
+    tipo: z.literal('CRIAR_TAREFA'),
+    titulo: z.string().min(1),
+    descricao: z.string().min(1).optional(),
+    prazoDias: z.number().int().positive().optional(),
+    responsavelId: z.string().uuid().optional(),
   }),
 ]);
 

@@ -51,6 +51,12 @@ model Usuario {
   sugestoesDecididas          SugestaoIa[]               @relation("SugestaoIaDecididoPor")
   sugestoesAvaliadas          SugestaoIa[]               @relation("SugestaoIaUtilRegistradoPor")
   disparosCriados             ExecucaoDisparo[]
+  tarefasResponsavel          Tarefa[]                   @relation("TarefaResponsavel")
+  tarefasCriadas              Tarefa[]                   @relation("TarefaCriadoPor")
+  tarefaNotasAutor            TarefaNota[]
+  tarefaDelegacoesDe          TarefaDelegacao[]          @relation("TarefaDelegacaoDe")
+  tarefaDelegacoesPara        TarefaDelegacao[]          @relation("TarefaDelegacaoPara")
+  tarefaDelegacoesAutor       TarefaDelegacao[]          @relation("TarefaDelegacaoAutor")
 
   @@map("usuario")
 }
@@ -175,6 +181,7 @@ model Pessoa {
   valoresCampoPersonalizado ValorCampoPessoa[]
   contatosImportadosDisparo DisparoContatoImportado[]
   mensagensDisparo          MensagemDisparo[]
+  tarefas                   Tarefa[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -683,6 +690,7 @@ model Lead {
   atendimentos              Atendimento[]
   contatosImportadosDisparo DisparoContatoImportado[]
   mensagensDisparo          MensagemDisparo[]
+  tarefas                   Tarefa[]
 
   // Índice único PARCIAL `(origem, id_externo) WHERE id_externo IS NOT NULL`
   // criado no migration.sql — o Prisma não expressa índice parcial no schema.
@@ -985,6 +993,7 @@ model Oportunidade {
   responsavel   Usuario?                   @relation(fields: [responsavelId], references: [id], onDelete: Restrict)
   movimentacoes OportunidadeMovimentacao[]
   valoresCampos ValorCampoOportunidade[]
+  tarefas       Tarefa[]
 
   // CHECK (num_nonnulls(pessoa_id, lead_id) = 1) — âncora exclusiva (D-01),
   // criado no migration.sql (Prisma não modela CHECK).
@@ -1757,4 +1766,147 @@ model MensagemDisparo {
   @@unique([execucaoDisparoId, telefone])
   @@index([execucaoDisparoId, status])
   @@map("mensagem_disparo")
+}
+
+// --- crm/tarefa (spec 016) -------------------------------------------------
+
+enum TarefaStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+model Tarefa {
+  id             String       @id @db.Uuid
+  titulo         String
+  descricao      String?
+  status         TarefaStatus @default(PENDENTE)
+  dataVencimento DateTime?    @map("data_vencimento") @db.Timestamptz(6)
+  concluidoEm    DateTime?    @map("concluido_em") @db.Timestamptz(6)
+  pessoaId       String?      @map("pessoa_id") @db.Uuid
+  leadId         String?      @map("lead_id") @db.Uuid
+  oportunidadeId String?      @map("oportunidade_id") @db.Uuid
+  responsavelId  String?      @map("responsavel_id") @db.Uuid
+  criadoPorId    String?      @map("criado_por_id") @db.Uuid
+  origem         String       @default("manual")
+  criadoEm       DateTime     @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime     @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa       Pessoa?       @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  lead         Lead?         @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  oportunidade Oportunidade? @relation(fields: [oportunidadeId], references: [id], onDelete: Restrict)
+  responsavel  Usuario?      @relation("TarefaResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  criadoPor    Usuario?      @relation("TarefaCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  checklist    TarefaChecklistItem[]
+  periodos     TarefaCronometroPeriodo[]
+  notas        TarefaNota[]
+  dependencias TarefaDependencia[]       @relation("TarefaDependente")
+  dependentes  TarefaDependencia[]       @relation("TarefaDependeDe")
+  delegacoes   TarefaDelegacao[]
+
+  // Sem DELETE físico (D-10) — encerramento é status = CANCELADA.
+  @@index([responsavelId, status])
+  @@index([pessoaId])
+  @@index([leadId])
+  @@index([oportunidadeId])
+  @@index([dataVencimento])
+  @@map("tarefa")
+}
+
+model TarefaChecklistItem {
+  id           String   @id @db.Uuid
+  tarefaId     String   @map("tarefa_id") @db.Uuid
+  texto        String
+  concluido    Boolean  @default(false)
+  ordem        Int
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tarefa Tarefa @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+
+  @@unique([tarefaId, ordem])
+  @@map("tarefa_checklist_item")
+}
+
+model TarefaCronometroPeriodo {
+  id       String    @id @db.Uuid
+  tarefaId String    @map("tarefa_id") @db.Uuid
+  inicio   DateTime  @db.Timestamptz(6)
+  fim      DateTime? @db.Timestamptz(6)
+  criadoEm DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tarefa Tarefa @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+
+  // Índice único PARCIAL `(tarefa_id) WHERE fim IS NULL` — no máximo 1
+  // período aberto por tarefa (D-04) — criado no migration.sql (Prisma não
+  // modela índice parcial).
+  @@index([tarefaId])
+  @@map("tarefa_cronometro_periodo")
+}
+
+model TarefaNota {
+  id       String   @id @db.Uuid
+  tarefaId String   @map("tarefa_id") @db.Uuid
+  autorId  String?  @map("autor_id") @db.Uuid
+  conteudo String
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tarefa Tarefa   @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  autor  Usuario? @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  // Append-only (D-02) — sem PATCH/DELETE.
+  @@index([tarefaId, criadoEm])
+  @@map("tarefa_nota")
+}
+
+model TarefaDependencia {
+  id          String   @id @db.Uuid
+  tarefaId    String   @map("tarefa_id") @db.Uuid
+  dependeDeId String   @map("depende_de_id") @db.Uuid
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tarefa    Tarefa @relation("TarefaDependente", fields: [tarefaId], references: [id], onDelete: Cascade)
+  dependeDe Tarefa @relation("TarefaDependeDe", fields: [dependeDeId], references: [id], onDelete: Cascade)
+
+  // CHECK (tarefa_id <> depende_de_id) no migration.sql — Prisma não modela CHECK.
+  @@unique([tarefaId, dependeDeId])
+  @@map("tarefa_dependencia")
+}
+
+model TarefaDelegacao {
+  id                String   @id @db.Uuid
+  tarefaId          String   @map("tarefa_id") @db.Uuid
+  deResponsavelId   String?  @map("de_responsavel_id") @db.Uuid
+  paraResponsavelId String?  @map("para_responsavel_id") @db.Uuid
+  autorId           String?  @map("autor_id") @db.Uuid
+  motivo            String?
+  criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tarefa          Tarefa   @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  deResponsavel   Usuario? @relation("TarefaDelegacaoDe", fields: [deResponsavelId], references: [id], onDelete: SetNull)
+  paraResponsavel Usuario? @relation("TarefaDelegacaoPara", fields: [paraResponsavelId], references: [id], onDelete: SetNull)
+  autor           Usuario? @relation("TarefaDelegacaoAutor", fields: [autorId], references: [id], onDelete: SetNull)
+
+  // Append-only, histórico de 1ª classe (D-06) — não é o audit genérico.
+  @@index([tarefaId, criadoEm])
+  @@map("tarefa_delegacao")
+}
+
+model CrmTarefaAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("crm_tarefa_audit")
 }

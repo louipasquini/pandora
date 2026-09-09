@@ -567,11 +567,72 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/015-crm-disparos/`](specs/015-crm-disparos/) e
   [`docs/015-crm-disparos.md`](docs/015-crm-disparos.md).
 
-- [ ] **016 — crm-tarefas**
-  `tarefa` / `nota` ligadas a `pessoa` / `oportunidade`. Checklists, agenda, cronômetro por
-  tarefa, gamificação, notificações/lembretes, delegação/reatribuição, dependência entre
-  tarefas, geração automática a partir de eventos de Pipeline/Workflow.
-  Frontend: gestor de tarefas (pessoal e geral).
+- [x] **016 — crm-tarefas** — ✅ implementada e validada (2026-09-09)
+  Décima fatia da Fase 1 (CRM), visão Parte 8.10 — gestor de tarefas do time, pessoal e
+  geral. Mora no _bounded context_ **`crm`** (já não-vazio desde 007–015;
+  `CONTEXT_MODULES` segue 11). **`tarefa`** — título, prazo, responsável opcional (`null` =
+  "geral", D-07), três âncoras opcionais e **independentes**
+  (`pessoaId`/`leadId`/`oportunidadeId`, D-01 — diferente de `interacao`/`oportunidade`,
+  que exigem exatamente uma; `leadId` existe para a geração automática via Workflow
+  ancorar em Lead) + **`tarefa_checklist_item`** (progresso `x/y` sempre derivado) +
+  **`tarefa_cronometro_periodo`** (períodos start/stop, índice único parcial `WHERE fim IS
+  NULL` = no máximo 1 aberto por tarefa) + **`tarefa_nota`** (comentário de
+  acompanhamento **append-only** — distinto da `interacao.NOTA` editável da 009; a própria
+  009/CL-02 já havia reservado essa separação) + **`tarefa_dependencia`** (sem ciclos —
+  `detectarCiclo` puro via DFS roda antes do `INSERT`; dependência pendente bloqueia só a
+  conclusão, 409 com a lista) + **`tarefa_delegacao`** (histórico de 1ª classe, mesmo
+  precedente de `oportunidade_movimentacao`/010 — não é o audit genérico). Escopo de visão
+  `tarefa:ver_todas`\|`ver_proprias` (D-08: `ver_proprias` inclui as tarefas **sem**
+  responsável — a fila geral é de todo mundo, por definição). Pontos de gamificação e
+  ranking (CL-01, resolvida com o dono do produto: pontos simples + ranking, sem badges)
+  **sempre derivados** — pesos congelados `PESOS_PONTOS_TAREFA` (base + bônus de prazo +
+  bônus de checklist completo), mesmo padrão de `calcularScore`/008, nunca contador
+  persistido. Notificações (CL-02: só in-app, sem WhatsApp/e-mail) via campo derivado
+  `vencendoHoje`/`atrasada` (dia civil em America/Sao_Paulo via `Intl` nativo, mesmo padrão
+  de `estaEmExpediente`/007) + `GET /crm/tarefas/notificacoes` (tarefas do próprio
+  sujeito). Geração automática (CL-03: só via Workflow, sem 2ª via nativa no Pipeline)
+  estende o catálogo fechado de ações da spec 014 com **`CRIAR_TAREFA`** (título/descrição/
+  prazo relativo em dias/responsável fixo opcional) — reaproveita o motor de fluxo e o
+  `WorkerScheduler` já existentes; `ExecutarAcaoService.executar()` ganha o parâmetro
+  `registroTipo` (repassado pelo `WorkerService`) para decidir `leadId` vs
+  `oportunidadeId`; idempotência (reprocessar não duplica) herdada **de graça** do guard já
+  existente do worker (`execucoes.existe` roda antes de qualquer ação); a simulação nunca
+  chama `executar()`, então `CRIAR_TAREFA` já nasce "simulável sem efeito colateral" sem
+  mudança adicional (D-03 da 014). Armadilha real pega só na verificação manual no
+  navegador (os e2e sempre autenticam como a credencial de serviço, que tem `ver_todas` e
+  não exercitava os caminhos): `sub` do JWT da credencial de serviço não é UUID de
+  `Usuario` — `criadoPorId`/`autorId` (nota, delegação) e o filtro de
+  `NotificacaoService.minhasNotificacoes` quebravam com 500; corrigido com
+  `resolverUsuarioIdOuNulo` (mesmo padrão de `resolverMovidoPor`, spec 010) — resolve para
+  `null` em vez de quebrar. **14ª migração Prisma** (`20260909190407_crm_tarefas` +
+  `..190442_crm_tarefas_constraints`): 6 tabelas + `crm_tarefa_audit` (forma canônica do
+  core) + enum `TarefaStatus`; índice único parcial + `CHECK (tarefa_id <> depende_de_id)`
+  via SQL bruto (Prisma não modela nenhum dos dois). **RBAC 004 estendido**: **+5**
+  permissões (`tarefa:{criar,editar,ver_todas,ver_proprias,delegar}`; administrador/
+  credencial de serviço de graça, **0 migração de dados**). **~21 endpoints**
+  `/crm/tarefas/**` + `/crm/pessoas/{id}/tarefas`, **0 endpoint público novo**. Frontend
+  `frontend/src/tarefas/`: item **CRM · Tarefas** atrás de `tarefa:ver_todas`\|
+  `ver_proprias` — `TarefasPage.tsx` (abas Minhas/Gerais/Todas, filtro de status, criação
+  inline com checklist; a aba Minhas detecta a credencial de serviço e mostra todas as
+  tarefas do escopo em vez de enviar um filtro malformado), `TarefaDetalhePage.tsx`
+  (checklist interativo, cronômetro iniciar/parar com tempo total, comentários,
+  dependências, delegação com histórico, transições de status), `RankingPanel.tsx`,
+  `NotificacoesBadge.tsx`; `frontend/src/workflow/FluxoDetalhePage.tsx` ganha o formulário
+  da ação **Criar tarefa**. **0 dep nova** (backend e frontend), **1 migração (2
+  arquivos)**, **0 porta nova no `core`**, **0 chave `.env` nova**. `CONTEXT_MODULES` segue
+  11. As 3 clarificações que definiam o escopo desta spec — profundidade da gamificação,
+  canal de notificação, mecanismo de geração automática — foram resolvidas com o dono do
+  produto **antes** da escrita do `plan.md`, 2026-09-09 (spec.md, seção Clarifications).
+  545 testes unitários backend (30 novos, domínio puro — sem banco) + 307 e2e (21 novos,
+  Postgres real, suíte 003–016 completa) + 113 frontend (7 novos, 2 arquivos), todos
+  verdes; lint/typecheck/build limpos nos dois workspaces; validado também manualmente no
+  navegador de ponta a ponta (criar tarefa com checklist, marcar item, cronômetro,
+  comentário, concluir/reabrir, dependência bloqueando conclusão, delegação com histórico,
+  fila geral, ranking de pontos, e a ação `CRIAR_TAREFA` publicada num fluxo do Workflow
+  gerando automaticamente uma tarefa via o worker de fundo real ao criar um lead novo).
+  Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+  Detalhe: [`specs/016-crm-tarefas/`](specs/016-crm-tarefas/) e
+  [`docs/016-crm-tarefas.md`](docs/016-crm-tarefas.md).
 
 - [ ] **017 — crm-dashboard**
   Métricas **derivadas por query** (nunca contador): gráficos, benchmarks, correlação,
