@@ -2,12 +2,14 @@ import { useSearchParams } from 'react-router';
 import { EquipesTab } from './EquipesTab';
 import { ExpedienteTab } from './ExpedienteTab';
 import { IntegracoesTab } from './IntegracoesTab';
+import { FaqAdminPage } from '../faq/FaqAdminPage';
 
-type Aba = 'equipes' | 'expediente' | 'integracoes';
+type Aba = 'equipes' | 'expediente' | 'integracoes' | 'faq';
 const ABAS: { k: Aba; label: string }[] = [
   { k: 'equipes', label: 'Equipes' },
   { k: 'expediente', label: 'Expediente' },
   { k: 'integracoes', label: 'Integrações' },
+  { k: 'faq', label: 'FAQ' },
 ];
 
 /**
@@ -50,6 +52,7 @@ export function CrmAdminPage() {
         {atual === 'equipes' && <EquipesTab />}
         {atual === 'expediente' && <ExpedienteTab />}
         {atual === 'integracoes' && <IntegracoesTab />}
+        {atual === 'faq' && <FaqAdminPage />}
       </div>
     </section>
   );

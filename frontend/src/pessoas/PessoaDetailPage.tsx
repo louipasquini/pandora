@@ -5,7 +5,7 @@ import { usePodeUsar } from '../auth/usePermissoes';
 import { TagPicker } from '../interacoes/TagPicker';
 import { TimelineInteracoes } from '../interacoes/TimelineInteracoes';
 import { tagsApi } from '../interacoes/interacoes-api';
-import { mensagemErro, pessoasApi, type Contato } from './pessoas-api';
+import { mensagemErro, pessoasApi, type CampoPersonalizadoDefView, type Contato } from './pessoas-api';
 import { MergeDialog } from './MergeDialog';
 
 function ContatoLinha({ c }: { c: Contato }) {
@@ -50,6 +50,14 @@ export function PessoaDetailPage() {
   const tags = useQuery({
     queryKey: ['pessoa-tags', id],
     queryFn: () => tagsApi.listarDe({ tipo: 'pessoa', id }),
+  });
+  const camposDefs = useQuery({
+    queryKey: ['pessoa-campos-defs'],
+    queryFn: () => pessoasApi.listarDefsCamposPersonalizados(),
+  });
+  const campos = useQuery({
+    queryKey: ['pessoa-campos', id],
+    queryFn: () => pessoasApi.camposPersonalizados(id),
   });
 
   const desfazer = useMutation({
@@ -191,6 +199,16 @@ export function PessoaDetailPage() {
         </div>
       </div>
 
+      {camposDefs.data && camposDefs.data.length > 0 && (
+        <CamposPersonalizados
+          pessoaId={id}
+          defs={camposDefs.data}
+          atuais={campos.data ?? {}}
+          podeEditar={podePessoaEditar}
+          onSalvou={() => void qc.invalidateQueries({ queryKey: ['pessoa-campos', id] })}
+        />
+      )}
+
       <div className="mt-6">
         <TimelineInteracoes
           ancora={{ pessoaId: id }}
@@ -210,5 +228,82 @@ export function PessoaDetailPage() {
         />
       )}
     </section>
+  );
+}
+
+/** Espelha `leads/LeadDetalhePage.tsx#CamposPersonalizados` (spec 013, CL-02). */
+function CamposPersonalizados({
+  pessoaId,
+  defs,
+  atuais,
+  podeEditar,
+  onSalvou,
+}: {
+  pessoaId: string;
+  defs: CampoPersonalizadoDefView[];
+  atuais: Record<string, string>;
+  podeEditar: boolean;
+  onSalvou: () => void;
+}) {
+  const [valores, setValores] = useState<Record<string, string>>(atuais);
+  const [erro, setErro] = useState<string | null>(null);
+  const salvar = useMutation({
+    mutationFn: () => pessoasApi.putCamposPersonalizados(pessoaId, valores),
+    onSuccess: onSalvou,
+    onError: (e: unknown) => setErro(e instanceof Error ? e.message : 'erro'),
+  });
+  const ativas = defs.filter((d) => d.ativo);
+
+  return (
+    <form
+      className="mt-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setErro(null);
+        salvar.mutate();
+      }}
+    >
+      <h2 className="text-sm font-semibold text-slate-700">Campos personalizados</h2>
+      <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+        {ativas.map((d) => (
+          <label key={d.chave} className="text-xs text-slate-500">
+            {d.rotulo}
+            {d.tipo === 'SELECAO' ? (
+              <select
+                aria-label={d.rotulo}
+                disabled={!podeEditar}
+                value={valores[d.chave] ?? ''}
+                onChange={(e) => setValores((v) => ({ ...v, [d.chave]: e.target.value }))}
+                className="mt-0.5 block w-full rounded-md border border-slate-300 px-2 py-1"
+              >
+                <option value="">—</option>
+                {d.opcoes.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                aria-label={d.rotulo}
+                disabled={!podeEditar}
+                value={valores[d.chave] ?? ''}
+                onChange={(e) => setValores((v) => ({ ...v, [d.chave]: e.target.value }))}
+                className="mt-0.5 block w-full rounded-md border border-slate-300 px-2 py-1"
+              />
+            )}
+          </label>
+        ))}
+      </div>
+      {erro && <p className="mt-2 text-sm text-brand-coral">{erro}</p>}
+      {podeEditar && (
+        <button
+          type="submit"
+          className="mt-2 rounded-md border border-slate-300 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Salvar campos
+        </button>
+      )}
+    </form>
   );
 }

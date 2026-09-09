@@ -135,27 +135,27 @@ utilidade).
 
 ## Fase 7 — Frontend
 
-- [ ] T032 [P][US1] `frontend/src/faq/use-faq.ts` — hooks TanStack Query (listar, criar,
+- [x] T032 [P][US1] `frontend/src/faq/use-faq.ts` — hooks TanStack Query (listar, criar,
       atualizar, versões), inline no padrão de `crm-admin/IntegracoesTab.tsx`.
-- [ ] T033 [US1] `frontend/src/faq/FaqAdminPage.tsx` — lista + criar/editar + histórico de
+- [x] T033 [US1] `frontend/src/faq/FaqAdminPage.tsx` — lista + criar/editar + histórico de
       versões, atrás de `crm_admin:gerir_faq` (leitura administrativa `crm_admin:ver`).
-- [ ] T034 [P][US2][US3][US4][US5] `frontend/src/atendimento/use-sugestoes.ts` — hooks
+- [x] T034 [P][US2][US3][US4][US5] `frontend/src/atendimento/use-sugestoes.ts` — hooks
       TanStack Query (gerar, listar por atendimento, aceitar, rejeitar, feedback).
-- [ ] T035 [US2][US3][US4][US5] `frontend/src/atendimento/PainelSugestoes.tsx` — pedir
+- [x] T035 [US2][US3][US4][US5] `frontend/src/atendimento/PainelSugestoes.tsx` — pedir
       sugestão para a mensagem selecionada; lista de sugestões (uma por pergunta
       identificada) com aceitar/rejeitar/feedback independentes; aceitar `RESPOSTA`
       pré-preenche o composer existente (sem enviar sozinho); aceitar `CAMPO_PERSONALIZADO`
       mostra o valor final editável antes de confirmar.
-- [ ] T036 Editar `frontend/src/atendimento/ConversaAtendimento.tsx` — monta
+- [x] T036 Editar `frontend/src/atendimento/ConversaAtendimento.tsx` — monta
       `PainelSugestoes` ao lado da timeline/composer; passa o `sugestaoId` aceito para o
       envio de resposta.
-- [ ] T037 [P][US4] `frontend/src/clientes/CamposPersonalizadosPessoaTab.tsx` (ou
+- [x] T037 [P][US4] `frontend/src/clientes/CamposPersonalizadosPessoaTab.tsx` (ou
       equivalente na tela de detalhe de pessoa já existente) — espelha a aba já existente em
       Leads (008): lista valores + edição manual, atrás de `pessoa:editar`.
-- [ ] T038 Editar `frontend/src/nav-items.ts`/`router.tsx` — item **FAQ** em
+- [x] T038 Editar `frontend/src/nav-items.ts`/`router.tsx` — item **FAQ** em
       **CRM · Administração**.
-- [ ] T039 [P] Testes de componente (`vitest` + Testing Library) para T033/T035/T037.
-- [ ] T040 `npm run lint && npm run typecheck && npm run build` nos dois workspaces.
+- [x] T039 [P] Testes de componente (`vitest` + Testing Library) para T033/T035/T037.
+- [x] T040 `npm run lint && npm run typecheck && npm run build` nos dois workspaces.
 
 ## Fase 8 — Documentação
 

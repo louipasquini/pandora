@@ -87,7 +87,7 @@ export const atendimentoApi = {
     ),
   assumir: (id: string) =>
     apiFetch(`/crm/atendimentos/${id}/assumir`, { method: 'POST' }).then((r) => json<AtendimentoView>(r)),
-  responder: (id: string, body: { conteudo: string; viaIa?: boolean }) =>
+  responder: (id: string, body: { conteudo: string; viaIa?: boolean; sugestaoId?: string }) =>
     apiFetch(`/crm/atendimentos/${id}/responder`, { method: 'POST', body: JSON.stringify(body) }).then((r) =>
       json<{ interacaoId: string; respostaId: string; primeiraResposta: boolean }>(r),
     ),
