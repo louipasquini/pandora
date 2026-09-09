@@ -13,7 +13,6 @@ CREATE TABLE "faq_item" (
     "pergunta" TEXT NOT NULL,
     "resposta" TEXT NOT NULL,
     "ativo" BOOLEAN NOT NULL DEFAULT true,
-    "criado_por_id" UUID,
     "criado_em" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "atualizado_em" TIMESTAMPTZ(6) NOT NULL,
 
@@ -21,12 +20,14 @@ CREATE TABLE "faq_item" (
 );
 
 -- CreateTable
+-- `autor` é STRING livre (não FK) — mesmo padrão de `crm_admin_audit.autor`
+-- (007): quem edita FAQ pode ser a credencial de serviço, não só um `Usuario`.
 CREATE TABLE "faq_item_versao" (
     "id" UUID NOT NULL,
     "faq_item_id" UUID NOT NULL,
     "pergunta" TEXT NOT NULL,
     "resposta" TEXT NOT NULL,
-    "autor_id" UUID,
+    "autor" TEXT,
     "criado_em" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "faq_item_versao_pkey" PRIMARY KEY ("id")
@@ -126,13 +127,7 @@ ALTER TABLE "sugestao_ia" ADD CONSTRAINT "sugestao_ia_alvo_check" CHECK (
 ALTER TABLE "resposta_atendimento" ADD CONSTRAINT "resposta_atendimento_sugestao_ia_id_fkey" FOREIGN KEY ("sugestao_ia_id") REFERENCES "sugestao_ia"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "faq_item" ADD CONSTRAINT "faq_item_criado_por_id_fkey" FOREIGN KEY ("criado_por_id") REFERENCES "usuario"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "faq_item_versao" ADD CONSTRAINT "faq_item_versao_faq_item_id_fkey" FOREIGN KEY ("faq_item_id") REFERENCES "faq_item"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "faq_item_versao" ADD CONSTRAINT "faq_item_versao_autor_id_fkey" FOREIGN KEY ("autor_id") REFERENCES "usuario"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "sugestao_ia" ADD CONSTRAINT "sugestao_ia_atendimento_id_fkey" FOREIGN KEY ("atendimento_id") REFERENCES "atendimento"("id") ON DELETE CASCADE ON UPDATE CASCADE;

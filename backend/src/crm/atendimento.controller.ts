@@ -12,6 +12,7 @@ import {
   TransferenciaService,
   projetarAtendimento,
 } from './application/atendimento';
+import { DecidirSugestaoService, GerarSugestaoService } from './application/sugestao-ia';
 import { InteracaoRepository } from './infra/interacao/interacao.repository';
 import { projetarInteracao } from './application/interacao/interacao.service';
 import {
@@ -22,6 +23,12 @@ import {
   responderAtendimentoSchema,
   transferirAtendimentoSchema,
 } from './dto/atendimento/atendimento.schema';
+import {
+  aceitarSugestaoSchema,
+  feedbackSugestaoSchema,
+  gerarSugestaoSchema,
+  listarSugestoesSchema,
+} from './dto/sugestao-ia/sugestao-ia.schema';
 import { agoraUtc } from '../core/core.module';
 
 function autor(req: Request): string {
@@ -54,6 +61,8 @@ export class AtendimentoController {
     private readonly transferencias: TransferenciaService,
     private readonly csat: CsatService,
     private readonly interacoes: InteracaoRepository,
+    private readonly gerarSugestao: GerarSugestaoService,
+    private readonly decidirSugestao: DecidirSugestaoService,
   ) {}
 
   @RequerPermissao('atendimento:atender')
@@ -122,5 +131,54 @@ export class AtendimentoController {
   @Post('atendimentos/:id/csat')
   registrarCsat(@Param('id') id: string, @Body() body: unknown) {
     return this.csat.registrarCsat(id, parse(registrarCsatSchema, body));
+  }
+
+  // ------------------------------------------------------- sugestão de IA (spec 013)
+
+  @AutenticadoBasta()
+  @Get('atendimentos/:id/sugestoes')
+  async listarSugestoes(
+    @Param('id') id: string,
+    @Query() q: Record<string, unknown>,
+    @Req() req: Request,
+  ) {
+    await this.consulta.exigirNoEscopo(id, req);
+    const dto = parse(listarSugestoesSchema, q);
+    return this.decidirSugestao.listar(id, dto.interacaoId);
+  }
+
+  @RequerPermissao('atendimento:atender')
+  @Post('atendimentos/:id/sugestoes')
+  gerarSugestoes(@Param('id') id: string, @Body() body: unknown) {
+    const dto = parse(gerarSugestaoSchema, body);
+    return this.gerarSugestao.gerar(id, dto.interacaoId);
+  }
+
+  @RequerPermissao('atendimento:atender')
+  @Post('atendimentos/:id/sugestoes/:sugestaoId/aceitar')
+  aceitarSugestao(
+    @Param('sugestaoId') sugestaoId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    const dto = parse(aceitarSugestaoSchema, body);
+    return this.decidirSugestao.aceitar(sugestaoId, dto.conteudoFinal, autor(req), req);
+  }
+
+  @RequerPermissao('atendimento:atender')
+  @Post('atendimentos/:id/sugestoes/:sugestaoId/rejeitar')
+  rejeitarSugestao(@Param('sugestaoId') sugestaoId: string, @Req() req: Request) {
+    return this.decidirSugestao.rejeitar(sugestaoId, autor(req));
+  }
+
+  @RequerPermissao('atendimento:atender')
+  @Post('atendimentos/:id/sugestoes/:sugestaoId/feedback')
+  avaliarSugestao(
+    @Param('sugestaoId') sugestaoId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    const dto = parse(feedbackSugestaoSchema, body);
+    return this.decidirSugestao.avaliarUtilidade(sugestaoId, dto.util, autor(req));
   }
 }

@@ -48,8 +48,6 @@ model Usuario {
   transferenciasPara          TransferenciaAtendimento[] @relation("TransferenciaParaAtendente")
   transferenciasExecutadas    TransferenciaAtendimento[] @relation("TransferenciaExecutadaPor")
   respostasAtendimento        RespostaAtendimento[]
-  faqItensCriados             FaqItem[]
-  faqVersoesAutor             FaqItemVersao[]
   sugestoesDecididas          SugestaoIa[]               @relation("SugestaoIaDecididoPor")
   sugestoesAvaliadas          SugestaoIa[]               @relation("SugestaoIaUtilRegistradoPor")
 
@@ -1394,16 +1392,15 @@ model FaqItem {
   pergunta     String
   resposta     String
   ativo        Boolean  @default(true)
-  criadoPorId  String?  @map("criado_por_id") @db.Uuid
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  criadoPor Usuario?        @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   versoes   FaqItemVersao[]
   sugestoes SugestaoIa[]
 
   // Sem DELETE físico — desativar (`ativo=false`) é a única forma de
-  // "remover"; histórico de versões permanece íntegro.
+  // "remover"; histórico de versões permanece íntegro. "Quem criou" fica só
+  // na 1ª FaqItemVersao — sem coluna própria (evita duplicar o dado).
   @@index([ativo])
   @@map("faq_item")
 }
@@ -1413,11 +1410,13 @@ model FaqItemVersao {
   faqItemId String   @map("faq_item_id") @db.Uuid
   pergunta  String
   resposta  String
-  autorId   String?  @map("autor_id") @db.Uuid
+  // `autor` é STRING livre (não FK) — mesmo padrão de `crm_admin_audit.autor`
+  // (007): quem edita FAQ pode ser a credencial de serviço (`sub` não é um
+  // `Usuario.id` real), não só um `Usuario` autenticado.
+  autor     String?
   criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
 
-  faqItem FaqItem  @relation(fields: [faqItemId], references: [id], onDelete: Cascade)
-  autor   Usuario? @relation(fields: [autorId], references: [id], onDelete: Restrict)
+  faqItem FaqItem @relation(fields: [faqItemId], references: [id], onDelete: Cascade)
 
   // Append-only — sem PATCH/DELETE (histórico de 1ª classe, FR-002).
   @@index([faqItemId, criadoEm])

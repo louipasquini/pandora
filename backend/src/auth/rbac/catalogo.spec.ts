@@ -35,6 +35,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'pessoa:ver',
       'pessoa:editar',
       'pessoa:merge',
+      'pessoa:gerir_campos_personalizados',
       'conta:ver',
       'conta:editar',
       'conta:merge',
@@ -145,6 +146,12 @@ describe('catálogo de permissões (spec 004)', () => {
     }
   });
 
+  it('inclui crm_admin:gerir_faq e pessoa:gerir_campos_personalizados (spec 013)', () => {
+    for (const id of ['crm_admin:gerir_faq', 'pessoa:gerir_campos_personalizados']) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+  });
+
   it('agruparPorRecurso preserva a ordem de 1ª aparição', () => {
     const grupos = agruparPorRecurso();
     expect(grupos.map((g) => g.recurso)).toEqual([
@@ -170,6 +177,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'crm_admin:gerir_pipelines',
       'crm_admin:gerir_whatsapp',
       'crm_admin:gerir_atendimento',
+      'crm_admin:gerir_faq',
     ]);
     expect(grupos[1].permissoes.map((p) => p.id)).toEqual([
       'lead:criar',
@@ -181,6 +189,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'pessoa:ver',
       'pessoa:editar',
       'pessoa:merge',
+      'pessoa:gerir_campos_personalizados',
     ]);
     expect(grupos[3].permissoes.map((p) => p.id)).toEqual([
       'conta:ver',
