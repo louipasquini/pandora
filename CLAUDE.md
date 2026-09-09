@@ -419,7 +419,88 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/012-crm-chat-ao-vivo/plan.md`](specs/012-crm-chat-ao-vivo/plan.md)
+Plano ativo: [`specs/013-crm-faq-e-sugestao-ia/plan.md`](specs/013-crm-faq-e-sugestao-ia/plan.md)
+(Fase 1 · spec 013 — **CRM · FAQ e Sugestão de IA**: sétima fatia da Fase 1 (CRM), visão
+Parte 8.3/8.5/10.6. Mora no _bounded context_ **`crm`** (já não-vazio desde 007–012);
+estende também **`clientes`** (005) com campo personalizado de `pessoa`. **`faq_item`**/
+**`faq_item_versao`** — base de FAQ versionada (histórico append-only, snapshot completo
+por edição, não *diff* — mesmo racional de `oportunidade_movimentacao`/
+`resposta_atendimento` não serem o audit genérico) **sem** vínculo com produto ou campanha
+nesta versão — nenhuma das duas entidades existe ainda neste ponto do roadmap (`produto`
+nasce na spec 023, `campanha` na 032, ambas muito depois desta 013); `FaqItem` não guarda
+"quem criou" (já fica na 1ª versão) e `FaqItemVersao.autor` é string livre, não FK — mesmo
+padrão de `crm_admin_audit.autor`, já que administrar FAQ pode ser a credencial de serviço.
+**`sugestao_ia`** — proposta **não-autoritativa** da IA, sempre síncrona e sempre dentro de
+um `Atendimento` (012) já existente, sobre uma `Interacao` de entrada já registrada — nunca
+uma varredura em massa ou proativa. Governança de decisões automatizadas (Parte 10.6,
+etapa 1) reforçada na própria API: `tipo=RESPOSTA` — `aceitar` só marca a decisão, **nunca
+envia** (o envio segue exigindo `POST /crm/atendimentos/:id/responder`, editado nesta spec
+com um `sugestaoId` opcional que força `viaIa=true` e grava
+`RespostaAtendimento.sugestaoIaId`, fechando o rastro de "quem respondeu, com/sem IA" já
+modelado pela 012); `tipo=CAMPO_PERSONALIZADO` — `aceitar` **já grava** o valor no cadastro
+na mesma chamada (assimetria intencional — a própria ação de aceitar É a confirmação
+humana exigida pela governança nesse caso). IA identifica múltiplas perguntas numa
+mensagem e propõe uma sugestão por pergunta; pedir de novo para a mesma mensagem
+**substitui** (`status=SUBSTITUIDA`) a pendente anterior daquela mensagem, nunca acumula
+duplicata. Feedback (útil/não útil) só depois de decidida (`ACEITA`\|`REJEITADA`).
+Sugestão de campo personalizado vale tanto para `lead` (008, via `ValorCampoService.
+definirValor`, novo método) quanto para `pessoa` já convertida — a maioria das conversas do
+Chat ao Vivo — via a **2ª porta de inversão de dependência do projeto**
+(`PortaCampoPersonalizadoPessoa` no `core`, mesmo padrão de `PortaIdentidade`, 008,
+implementada por `PortaCampoPersonalizadoPessoaAdapter` em `clientes/infra/`; o módulo
+`@Global()` `identidade-wiring.module.ts` foi **renomeado** para
+`clientes-wiring.module.ts`/`ClientesWiringModule` e passou a expor as duas portas, em vez
+de multiplicar módulos de wiring de 1 linha) — `crm` continua **sem importar
+`src/clientes/**`**; `clientes` ganha `campo_personalizado_pessoa`/`valor_campo_pessoa`,
+espelhando `campo_personalizado_lead`/`valor_campo_lead` (008) campo a campo, namespace de
+`chave` independente (sem unificação automática lead↔pessoa). Decidir uma sugestão de
+campo personalizado verifica **dinamicamente** `lead:editar`/`pessoa:editar` (conforme a
+âncora, via `SujeitoRbacService`, não só decorator estático — a mesma rota HTTP atende os
+dois casos). Provedor de IA = **API da Anthropic (Claude)**, chamada HTTP direta via
+`fetch` nativo (0 SDK novo) atrás de uma porta própria (`SugestaoIaClient`, mesmo padrão de
+`GraphApiClient`/011) que **nunca lança** — credencial ausente, falha de rede, resposta com
+erro ou sem texto interpretável devolvem `{ok:false, motivo}`; falha do provedor nunca
+bloqueia o atendimento (FR-014), tratada como "0 sugestões disponíveis". `interpretarRespostaIa`
+(domínio puro) nunca confia no formato bruto do provedor — item inválido é descartado sem
+derrubar os demais. Credencial reaproveita a tabela `integracao` já existente e **ociosa
+desde a 007** (`tipo=CONEXAO_INTERNA` — o sistema chamando um serviço externo, não emitindo
+uma chave —, `alvo=EXTERNO`, `nome` convencionado `sugestao-ia-anthropic`, modelo em
+`config.modelo` sem segredo) — **0 tabela nova de credencial, 0 chave `.env` nova**, ela é
+o primeiro consumidor real da tabela genérica que a 007 previu mas nunca usou. **11ª
+migração Prisma** (`20260909120000_crm_faq_sugestao_ia`): 5 tabelas (`faq_item`,
+`faq_item_versao`, `sugestao_ia` no `crm`; `campo_personalizado_pessoa`,
+`valor_campo_pessoa` no `clientes`) + 2 enums (`SugestaoIaTipo`, `SugestaoIaStatus`) + 1
+coluna (`resposta_atendimento.sugestao_ia_id`, nullable/`@unique`); `CHECK` de
+exclusividade do alvo de `sugestao_ia` via SQL bruto (Prisma não modela `CHECK`, mesmo
+padrão 007/009/010/012). **RBAC 004 estendido**: **+2** permissões
+(`crm_admin:gerir_faq`, `pessoa:gerir_campos_personalizados`); gerar/decidir/avaliar
+sugestão reaproveita `atendimento:atender` (nenhuma permissão nova só para isso);
+`administrador`/credencial de serviço de graça, **0 migração de dados/seed**. **~24
+endpoints** autenticados (FAQ ~6, sugestão ~5, campo personalizado de pessoa ~7, mais
+`sugestaoId` opcional no `responder` já existente), **0 endpoint público novo**. Frontend:
+`frontend/src/faq/` — nova aba **FAQ** dentro de **CRM · Administração** (007), atrás de
+`crm_admin:ver`\|`crm_admin:gerir_faq` — lista + criar/editar + histórico de versões;
+`frontend/src/atendimento/PainelSugestoes.tsx` — dentro da conversa do Chat ao Vivo
+(`ConversaAtendimento.tsx`, 012) — escolhe a mensagem de entrada (da própria timeline do
+atendimento, já carregada), pede sugestão, decide cada uma independentemente; aceitar
+resposta pré-preenche o composer existente (nunca envia sozinho); aceitar campo
+personalizado grava direto, desabilitado sem a permissão de editar conforme a âncora;
+`frontend/src/pessoas/PessoaDetailPage.tsx` ganha a mesma seção "Campos personalizados"
+que `LeadDetalhePage.tsx` já tinha (componente espelhado). Hooks TanStack Query inline —
+mesmo padrão de `whatsapp/WhatsappAdminPage.tsx`. **0 dep nova** (backend e frontend —
+testes de componente usam `fireEvent`, mesmo padrão de `pipelines/PipelinesPage.test.tsx`),
+**1 migração**, **1 porta nova** (`PortaCampoPersonalizadoPessoa`), **0 chave `.env`
+nova**. `CONTEXT_MODULES` segue 11. As 3 decisões que bloqueavam esta spec — vínculo de
+FAQ com produto/campanha inexistentes, destino do campo personalizado sugerido, provedor
+de IA — foram resolvidas com o dono do produto **antes** da escrita do `spec.md`,
+2026-09-09. 469 testes unitários backend (16 novos, todos de domínio puro — sem banco) +
+258 e2e (13 novos, Postgres real, suíte 003–013 completa) + 90 frontend (7 novos), todos
+verdes; lint/typecheck/build limpos nos dois workspaces.
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 012 — CRM · Chat ao Vivo (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/012-crm-chat-ao-vivo/plan.md`](specs/012-crm-chat-ao-vivo/plan.md)
 (Fase 1 · spec 012 — **CRM · Chat ao Vivo**: inbox de atendimento ao vivo (visão Parte
 8.5/8.12), construída **sobre** a timeline de `interacao` unificada (009) e o canal
 WhatsApp já conectado (011) — não uma 2ª tabela de mensagens. Mora no _bounded context_
@@ -479,6 +560,8 @@ da escrita do `spec.md`, 2026-09-04. 454 testes unitários backend (31 novos, to
 domínio puro — sem banco) + 245 e2e (23 novos, Postgres real, suíte 003–012 completa) + 83
 frontend (7 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces.
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.
+
+</details>
 
 <details><summary>Spec 011 — CRM · Integração com WhatsApp (implementada, resumo arquivado)</summary>
 

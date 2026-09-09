@@ -2,22 +2,27 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import type { Request } from 'express';
 import { agoraUtc, uuidv7 } from '../../../core/core.module';
 import { AtendimentoRepository, RespostaRepository } from '../../infra/atendimento';
+import { SugestaoIaRepository } from '../../infra/sugestao-ia';
 import { RegistrarInteracaoService } from '../interacao/registrar-interacao.service';
 import { EnvioWhatsappService } from '../whatsapp/envio-whatsapp.service';
 import type { ResponderAtendimentoDto } from '../../dto/atendimento/atendimento.schema';
 
 /**
- * `registrarResposta` (spec 012, FR-011..FR-013). Canal WHATSAPP delega ao
- * `EnvioWhatsappService` já existente da 011 (mesma validação de janela de
- * 24h/template — nenhuma regra nova). Canal MANUAL cria a `Interacao`
- * diretamente. Em ambos, grava `RespostaAtendimento` (quem respondeu, com/sem
- * IA) e marca `primeiraRespostaEm` na 1ª vez.
+ * `registrarResposta` (spec 012, FR-011..FR-013; spec 013, FR-012). Canal
+ * WHATSAPP delega ao `EnvioWhatsappService` já existente da 011 (mesma
+ * validação de janela de 24h/template — nenhuma regra nova). Canal MANUAL
+ * cria a `Interacao` diretamente. Em ambos, grava `RespostaAtendimento`
+ * (quem respondeu, com/sem IA) e marca `primeiraRespostaEm` na 1ª vez.
+ * `dto.sugestaoId` (spec 013) liga a resposta a uma `SugestaoIa` `ACEITA`/
+ * `tipo=RESPOSTA` já decidida deste mesmo atendimento — nunca a fonte da
+ * decisão de enviar em si (D-R6: aceitar ≠ enviar).
  */
 @Injectable()
 export class RespostaService {
   constructor(
     private readonly atendimentos: AtendimentoRepository,
     private readonly respostas: RespostaRepository,
+    private readonly sugestoes: SugestaoIaRepository,
     private readonly registrarInteracao: RegistrarInteracaoService,
     private readonly envioWhatsapp: EnvioWhatsappService,
   ) {}
@@ -35,6 +40,20 @@ export class RespostaService {
     }
     if (atendimento.atendenteAtualId !== autorId) {
       throw new ForbiddenException({ erro: 'nao_e_o_atendente_atual' });
+    }
+
+    let viaIa = dto.viaIa ?? false;
+    if (dto.sugestaoId) {
+      const sugestao = await this.sugestoes.porId(dto.sugestaoId);
+      if (
+        !sugestao ||
+        sugestao.atendimentoId !== atendimentoId ||
+        sugestao.tipo !== 'RESPOSTA' ||
+        sugestao.status !== 'ACEITA'
+      ) {
+        throw new ConflictException({ erro: 'sugestao_invalida_para_resposta' });
+      }
+      viaIa = true;
     }
 
     let interacaoId: string;
@@ -75,7 +94,8 @@ export class RespostaService {
       atendimentoId,
       interacaoId,
       atendenteId: autorId,
-      viaIa: dto.viaIa ?? false,
+      viaIa,
+      sugestaoIaId: dto.sugestaoId ?? null,
     });
 
     if (primeiraResposta) {

@@ -99,4 +99,44 @@ export class ValorCampoService {
     }
     return depois;
   }
+
+  /**
+   * Grava **1** valor sem tocar nos demais, sem checagem de escopo de visão
+   * (o chamador já resolveu o `leadId` a partir de um contexto autorizado —
+   * spec 013, `DecidirSugestaoService`). Espelha `ValorCampoPessoaService.
+   * definirValor` (spec 013).
+   */
+  async definirValor(leadId: string, definicaoId: string, valorBruto: unknown, autor: string): Promise<void> {
+    const def = await this.defs.porId(definicaoId);
+    if (!def || !def.ativo) {
+      throw new UnprocessableEntityException({ erro: 'campo_desconhecido_ou_inativo' });
+    }
+    const r = validarValorCampo(def.tipo, def.opcoes, valorBruto);
+    if (!r.ok) {
+      throw new UnprocessableEntityException({ erro: 'valor_invalido', chave: def.chave });
+    }
+
+    const antes =
+      (await this.valores.porLead(leadId)).find((v) => v.definicaoId === definicaoId)?.valor ??
+      null;
+
+    if ('remover' in r) {
+      await this.valores.aplicar(leadId, [], [definicaoId]);
+    } else {
+      await this.valores.aplicar(leadId, [{ definicaoId, valor: r.valor }], []);
+    }
+
+    const depois = 'remover' in r ? null : r.valor;
+    if (antes !== depois) {
+      await this.audit.registrar({
+        autor,
+        entidade: 'valor_campo_lead',
+        entidadeId: leadId,
+        campo: `campos.${def.chave}`,
+        valorAnterior: antes,
+        valorNovo: depois,
+        motivo: 'campos_personalizados',
+      });
+    }
+  }
 }

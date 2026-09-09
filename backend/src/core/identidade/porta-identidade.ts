@@ -10,7 +10,9 @@
  * proíbe.
  *
  * A implementação (adaptador) vive em `src/clientes/` e é registrada por um
- * módulo `@Global()` (`IdentidadeWiringModule`). Zero lógica aqui.
+ * módulo `@Global()` (`ClientesWiringModule`, renomeado de
+ * `IdentidadeWiringModule` na spec 013, que passou a expor uma 2ª porta).
+ * Zero lógica aqui.
  */
 
 /** Dados brutos de identidade; a engine normaliza (e-mail, telefone E.164, doc + DV). */
