@@ -384,7 +384,11 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   expediente por equipe atrás de `crm_admin:gerir_atendimento`); **CRM · Disparos** (015,
   `disparo:ver`, visão geral/histórico + construtor inline canal/template[s]/segmento
   e/ou CSV/teste A/B/agendamento atrás de `disparo:criar`, detalhe com métricas por
-  status/variante, export e quality rating sob demanda). `vite.config.ts` lê o
+  status/variante, export e quality rating sob demanda); **CRM · Tarefas** (016,
+  `tarefa:ver_todas`\|`ver_proprias`, abas Minhas/Gerais/Todas + agenda, detalhe com
+  checklist/cronômetro/comentários/dependências/delegação atrás de `tarefa:editar`\|
+  `tarefa:delegar`, ranking de pontos derivado; formulário da ação **Criar tarefa** dentro
+  do editor de fluxo do Workflow). `vite.config.ts` lê o
   `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
   `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
@@ -422,7 +426,93 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/015-crm-disparos/plan.md`](specs/015-crm-disparos/plan.md)
+Plano ativo: [`specs/016-crm-tarefas/plan.md`](specs/016-crm-tarefas/plan.md)
+(Fase 1 · spec 016 — **CRM · Tarefas**: décima fatia da Fase 1 (CRM), visão Parte 8.10 —
+gestor de tarefas do time, pessoal e geral. Mora no _bounded context_ **`crm`** (já
+não-vazio desde 007–015; `CONTEXT_MODULES` segue **11**). **`Tarefa`** — título, prazo,
+responsável opcional (`null` = "geral", D-07), três âncoras opcionais e **independentes**
+(`pessoaId`/`leadId`/`oportunidadeId`, D-01 — diferente de `interacao`/`oportunidade`, que
+exigem exatamente uma; `leadId` existe especificamente para a ação `CRIAR_TAREFA` ancorar
+em Lead) + **`TarefaChecklistItem`** (progresso `x/y` sempre derivado) +
+**`TarefaCronometroPeriodo`** (períodos start/stop; índice único parcial
+`(tarefa_id) WHERE fim IS NULL` = no máximo 1 aberto por tarefa) + **`TarefaNota`**
+(comentário de acompanhamento **append-only** — distinto de `interacao.NOTA`, que é
+editável; a spec 009/CL-02 já havia reservado essa separação: "tarefa/nota de fluxo de
+trabalho... continuam reservadas para a spec 016") + **`TarefaDependencia`** (sem ciclos —
+`detectarCiclo` puro via DFS roda antes do `INSERT`; dependência pendente bloqueia só a
+conclusão, 409 com a lista de pendências) + **`TarefaDelegacao`** (histórico de 1ª classe,
+mesmo precedente de `oportunidade_movimentacao`/010 — não é o audit genérico). Escopo de
+visão `tarefa:ver_todas`\|`ver_proprias` (D-08: `ver_proprias` inclui as tarefas **sem**
+responsável — a fila geral é de todo mundo, por definição; mesmo padrão "OU" + filtro no
+`where` de `OportunidadeConsultaService`/010). Pontos de gamificação e ranking (CL-01,
+resolvida com o dono do produto: pontos simples + ranking, sem badges/níveis) **sempre
+derivados** — tabela de pesos congelada `PESOS_PONTOS_TAREFA` (base + bônus "concluída no
+prazo" + bônus "checklist 100%"), mesmo padrão de `calcularScore`/008, nunca contador
+persistido. Notificações (CL-02: só in-app — sem WhatsApp/e-mail, o projeto não tinha
+infra de e-mail e o canal WhatsApp/011 fica reservado à conversa com a aluna) via campo
+derivado `vencendoHoje`/`atrasada` (dia civil em America/Sao_Paulo via `Intl` nativo, mesmo
+padrão de `estaEmExpediente`/007, **0 dependência nova**) + `GET /crm/tarefas/notificacoes`
+(tarefas do próprio sujeito autenticado). Geração automática (CL-03: só via ação nova no
+Workflow — o Pipeline/010 não ganhou uma 2ª via nativa) estende o catálogo fechado
+`ACAO_TIPOS` da spec 014 com **`CRIAR_TAREFA`** (título/descrição/prazo relativo em dias/
+responsável fixo opcional) — reaproveita **exatamente** o motor de fluxo e o
+`WorkerScheduler` já existentes (condições E/OU, publicação/versionamento, worker);
+`ExecutarAcaoService.executar()` ganha um 4º parâmetro `registroTipo` (repassado pelo
+`WorkerService`, que já o calcula via `registroTipoDoGatilho`) para decidir `leadId` vs
+`oportunidadeId`; a idempotência (reprocessar não duplica tarefa) vem **de graça** do guard
+já existente do worker — `WorkerService.processarLinha` só chama `executar()` depois de
+checar `execucoes.existe({fluxoVersaoId, fonte, fonteRegistroId})`, então nenhuma chave de
+idempotência nova foi necessária dentro da própria ação; a simulação nunca chama
+`executar()`, então `CRIAR_TAREFA` já nasce "simulável sem efeito colateral" sem mudança
+adicional (D-03 da 014). Armadilha real pega **só na verificação manual no navegador**
+(os e2e sempre autenticam como a credencial de serviço, que resolve para `ver_todas` e não
+exercitava os caminhos): `sub` do JWT da credencial de serviço (`SERVICE_CLIENT_ID`, spec
+003) não é o id de um `Usuario` real — passar isso direto para colunas FK
+(`criadoPorId`/`autorId` de nota e delegação, e o filtro de
+`NotificacaoService.minhasNotificacoes`) derrubava a chamada com 500 (Postgres rejeita a
+string não-UUID); corrigido com `resolverUsuarioIdOuNulo` (mesmo padrão de
+`resolverMovidoPor`, `mover-oportunidade.service.ts`/010) — resolve para `null` em vez de
+quebrar; `TarefaConsultaService.escopoDe` não precisou do mesmo tratamento porque a
+credencial de serviço sempre resolve para `ver_todas` antes de qualquer comparação de
+`responsavelId` (mesmo precedente seguro já usado por `OportunidadeConsultaService`/
+`LeadConsultaService`). **14ª migração Prisma** (`20260909190407_crm_tarefas` +
+`..190442_crm_tarefas_constraints`): 6 tabelas + `crm_tarefa_audit` (forma canônica do
+core, `AJUSTE_MANUAL`, append-only, só delta real — delegação **não** duplica aqui, é
+`tarefa_delegacao`) + enum `TarefaStatus`; índice único parcial + `CHECK
+(tarefa_id <> depende_de_id)` via SQL bruto (Prisma não modela nenhum dos dois). **RBAC 004
+estendido**: **+5** permissões (`tarefa:{criar,editar,ver_todas,ver_proprias,delegar}`;
+`administrador`/credencial de serviço de graça, **0 migração de dados**). **~21 endpoints**
+`/crm/tarefas/**` + `GET /crm/pessoas/{id}/tarefas`, **0 endpoint público novo**. Frontend:
+`frontend/src/tarefas/` — item **CRM · Tarefas** atrás de `tarefa:ver_todas`\|
+`tarefa:ver_proprias` — `TarefasPage.tsx` (abas Minhas/Gerais/Todas — Todas só com
+`ver_todas` —, filtro de status, criação inline com checklist; a aba Minhas detecta quando
+o sujeito é a credencial de serviço e mostra todas as tarefas do escopo em vez de enviar um
+filtro `responsavelId` malformado, com uma legenda explicando por quê),
+`TarefaDetalhePage.tsx` (checklist interativo, cronômetro iniciar/parar com tempo total
+derivado, comentários de acompanhamento, dependências com indicador de bloqueio, delegação
+com histórico, transições de status como conjunto fechado), `RankingPanel.tsx` (pontos por
+período), `NotificacoesBadge.tsx` (contagem vencendo/atrasada, `refetchInterval` 60s);
+`frontend/src/workflow/FluxoDetalhePage.tsx` ganha o formulário da ação **Criar tarefa**
+(título/prazo em dias/responsável). Hooks TanStack Query inline, mesmo padrão de
+`whatsapp/WhatsappAdminPage.tsx`. **0 dep nova** (backend e frontend), **1 migração (2
+arquivos)**, **0 porta nova no `core`**, **0 chave `.env` nova**. `CONTEXT_MODULES` segue
+11. As 3 clarificações que definiam o escopo desta spec — profundidade da gamificação,
+canal de notificação, mecanismo de geração automática — foram resolvidas com o dono do
+produto **antes** da escrita do `plan.md`, 2026-09-09 (spec.md, seção Clarifications). 545
+testes unitários backend (30 novos, domínio puro — sem banco) + 307 e2e (21 novos, Postgres
+real, suíte 003–016 completa) + 113 frontend (7 novos, 2 arquivos), todos verdes;
+lint/typecheck/build limpos nos dois workspaces; validado também manualmente no navegador
+de ponta a ponta (criar tarefa com checklist pelo formulário, marcar item, cronômetro
+iniciar/parar, comentar, concluir/reabrir, dependência bloqueando conclusão até a outra
+tarefa concluir, delegação com histórico, fila geral visível à credencial de serviço,
+ranking de pontos refletindo a conclusão, e a ação `CRIAR_TAREFA` publicada num fluxo do
+Workflow gerando automaticamente uma tarefa — via o worker de fundo real, sem chamada
+manual de `/processar` — ao criar um lead novo).
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 015 — CRM · Disparos (WhatsApp) (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/015-crm-disparos/plan.md`](specs/015-crm-disparos/plan.md)
 (Fase 1 · spec 015 — **CRM · Disparos (WhatsApp)**: nona fatia da Fase 1 (CRM), visão Parte
 8.6. Mora no _bounded context_ **`crm`** (já não-vazio desde 007–014), construído **sobre**
 a infraestrutura de canal/template/mensagem já existente da spec 011
@@ -494,6 +584,8 @@ navegador de ponta a ponta (conectar canal/template pela API, criar disparo pelo
 do painel apontando para um segmento real, ver o disparo concluído na lista e o detalhe com
 export e quality rating).
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 014 — CRM · Workflow (Motor de Automação) (implementada, resumo arquivado)</summary>
 

@@ -35,8 +35,15 @@ describe('acoesCompativeis', () => {
     expect(acoes).not.toContain('MOVER_OPORTUNIDADE_ETAPA');
   });
 
-  it('OPORTUNIDADE_ETAPA_MUDOU só permite mover oportunidade', () => {
-    expect(acoesCompativeis('OPORTUNIDADE_ETAPA_MUDOU')).toEqual(['MOVER_OPORTUNIDADE_ETAPA']);
+  it('OPORTUNIDADE_ETAPA_MUDOU permite mover oportunidade e criar tarefa (spec 016)', () => {
+    expect(acoesCompativeis('OPORTUNIDADE_ETAPA_MUDOU')).toEqual([
+      'MOVER_OPORTUNIDADE_ETAPA',
+      'CRIAR_TAREFA',
+    ]);
+  });
+
+  it('gatilhos de lead também permitem criar tarefa (spec 016)', () => {
+    expect(acoesCompativeis('LEAD_CRIADO')).toContain('CRIAR_TAREFA');
   });
 
   it('EVENTO_EXTERNO não restringe (nunca executa mesmo)', () => {

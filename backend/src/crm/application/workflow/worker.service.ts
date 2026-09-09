@@ -123,7 +123,7 @@ export class WorkerService {
     const listaAcoes = versao.acoes as unknown as AcaoFluxo[];
     for (const acao of listaAcoes) {
       try {
-        await this.acoes.executar(acao, linha.registroId, versao.id);
+        await this.acoes.executar(acao, linha.registroId, versao.id, registroTipo);
         acoesAplicadas.push({ tipo: acao.tipo, status: 'aplicada' });
       } catch (err) {
         const detalhe = (err as Error).message.slice(0, 500);

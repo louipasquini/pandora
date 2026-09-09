@@ -69,6 +69,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/crm/disparos',
     requerPermissao: 'disparo:ver',
   },
+  {
+    label: 'CRM · Tarefas',
+    to: '/crm/tarefas',
+    requerPermissao: ['tarefa:ver_todas', 'tarefa:ver_proprias'],
+  },
   { label: 'CRM', to: '/crm', soon: true },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },

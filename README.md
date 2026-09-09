@@ -119,14 +119,17 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  próprio crm, biblioteca de modelos, simulação sem efeito colateral
                  (spec 014 — subpasta workflow/) + Disparos: envio em massa de WhatsApp por
                  segmento e/ou CSV, dedup + opt-out, worker in-house, teste A/B, quality
-                 rating sob demanda (spec 015 — subpasta disparos/)
+                 rating sob demanda (spec 015 — subpasta disparos/) + Tarefas: checklist,
+                 cronômetro, comentários append-only, dependência sem ciclos, delegação,
+                 pontos/ranking derivados, notificações in-app, ação CRIAR_TAREFA no
+                 Workflow (spec 016 — subpasta tarefa/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
                  007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
                  whatsapp 011 + atendimento 012 + faq/sugestao_ia/campo_personalizado_pessoa
-                 013 + workflow 014 + disparos 015) + migrações + seed.ts
+                 013 + workflow 014 + disparos 015 + tarefa 016) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -157,6 +160,8 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     disparos/    CRM · Disparos — visão geral/histórico, construtor (canal, template[s],
                  segmento e/ou CSV, teste A/B, agendamento), detalhe com métricas, export e
                  quality rating sob demanda (spec 015)
+    tarefas/     CRM · Tarefas — abas Minhas/Gerais/Todas, agenda, detalhe com checklist/
+                 cronômetro/comentários/dependências/delegação, ranking de pontos (spec 016)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -199,8 +204,10 @@ npm run db:up
 #    faq_item/faq_item_versao/sugestao_ia/campo_personalizado_pessoa/valor_campo_pessoa
 #    na 11ª; spec 014 acrescenta fluxo_automacao/fluxo_automacao_versao/execucao_fluxo/
 #    fluxo_modelo/fluxo_cursor_fonte na 12ª; spec 015 acrescenta execucao_disparo/
-#    disparo_contato_importado/mensagem_disparo na 13ª — todas sem seed de negócio,
-#    exceto a 014, que semeia 3 fluxo_modelo de partida)
+#    disparo_contato_importado/mensagem_disparo na 13ª; spec 016 acrescenta tarefa/
+#    tarefa_checklist_item/tarefa_cronometro_periodo/tarefa_nota/tarefa_dependencia/
+#    tarefa_delegacao/crm_tarefa_audit na 14ª — todas sem seed de negócio, exceto a
+#    014, que semeia 3 fluxo_modelo de partida)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" + a biblioteca de modelos de fluxo (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
@@ -268,7 +275,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
-(CRM) em andamento** (specs 007–015 entregues; próxima 016).
+(CRM) em andamento** (specs 007–016 entregues; próxima 017).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -544,7 +551,34 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   status/variante, export e quality rating. **0 dep nova**, **1 migração**, **0 chave
   `.env` de segredo nova** (4 variáveis de config do worker). Ver
   [`docs/015-crm-disparos.md`](docs/015-crm-disparos.md).
-- ⏭️ Próxima: **016 — crm-tarefas** (Fase 1 — CRM).
+- ✅ **016 — crm-tarefas**: gestor de tarefas do time, pessoal e geral (visão 8.10).
+  **`tarefa`** — título, prazo, responsável opcional (`null` = "geral", D-07), três âncoras
+  opcionais e independentes (`pessoa_id`/`lead_id`/`oportunidade_id`, D-01 — diferente de
+  `interacao`/`oportunidade`, que exigem exatamente uma) — com **`tarefa_checklist_item`**
+  (progresso sempre derivado), **`tarefa_cronometro_periodo`** (períodos start/stop, no
+  máximo 1 aberto por tarefa via índice único parcial), **`tarefa_nota`** (comentário de
+  acompanhamento **append-only**, distinto da `interacao.NOTA` editável da 009 — reserva já
+  registrada na CL-02 daquela spec), **`tarefa_dependencia`** (sem ciclos — `detectarCiclo`
+  puro via DFS roda antes do `INSERT`; dependência pendente bloqueia só a conclusão, 409)
+  e **`tarefa_delegacao`** (histórico de 1ª classe, mesmo padrão de
+  `oportunidade_movimentacao`/010). Pontos de gamificação (CL-01) e ranking **sempre
+  derivados** (pesos congelados `PESOS_PONTOS_TAREFA` — base + bônus de prazo + bônus de
+  checklist completo, mesmo padrão de `calcularScore`/008); notificações in-app (CL-02) via
+  campo derivado `vencendoHoje`/`atrasada` (dia civil em America/Sao_Paulo, mesmo padrão de
+  `estaEmExpediente`/007) + `GET /crm/tarefas/notificacoes`, sem envio externo. Geração
+  automática (CL-03) só via ação nova **`CRIAR_TAREFA`** no catálogo fechado do Workflow
+  (014) — reaproveita o motor de fluxo e o worker já existentes; idempotência (reprocessar
+  não duplica) herdada de graça do guard já existente do `WorkerService`. Escopo de visão
+  `tarefa:ver_todas`\|`ver_proprias` (D-08: `ver_proprias` inclui as tarefas **sem**
+  responsável — a fila geral é de todo mundo). **14ª migração Prisma** (6 tabelas + 1 audit
+  + enum `TarefaStatus`; índice único parcial + `CHECK` via SQL bruto). Catálogo RBAC ganha
+  `tarefa:{criar,editar,ver_todas,ver_proprias,delegar}` (+5). ~21 endpoints autenticados,
+  0 endpoint público novo. Painel: **CRM · Tarefas** — abas Minhas/Gerais/Todas, agenda por
+  vencimento, detalhe com checklist/cronômetro/comentários/dependências/delegação, painel
+  de ranking; `CRM · Workflow` ganha o formulário da ação Criar tarefa. **0 dep nova**, **1
+  migração (2 arquivos)**, **0 chave `.env` nova**. Ver
+  [`docs/016-crm-tarefas.md`](docs/016-crm-tarefas.md).
+- ⏭️ Próxima: **017 — crm-dashboard** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

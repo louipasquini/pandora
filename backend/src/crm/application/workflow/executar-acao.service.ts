@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { LeadEstagio } from '@prisma/client';
+import type { FluxoRegistroTipo, LeadEstagio } from '@prisma/client';
 import type { AcaoFluxo } from '../../domain/workflow';
 import { validarMovimento } from '../../domain/pipeline';
 import { LeadRepository } from '../../infra/lead/lead.repository';
@@ -10,6 +10,7 @@ import { CrmLeadAuditService } from '../lead/crm-lead-audit.service';
 import { LeadScoreService } from '../lead/lead-score.service';
 import { TagService } from '../tag/tag.service';
 import { RegistrarInteracaoService } from '../interacao/registrar-interacao.service';
+import { TarefaService } from '../tarefa/tarefa.service';
 
 /** Ator do sistema para toda ação disparada pelo Workflow (D-05 do plan.md). */
 export const ATOR_WORKFLOW = 'sistema:workflow';
@@ -32,9 +33,15 @@ export class ExecutarAcaoService {
     private readonly oportunidades: OportunidadeRepository,
     private readonly pipelines: PipelineRepository,
     private readonly movimentacoes: MovimentacaoRepository,
+    private readonly tarefas: TarefaService,
   ) {}
 
-  async executar(acao: AcaoFluxo, registroId: string, fluxoVersaoId: string): Promise<void> {
+  async executar(
+    acao: AcaoFluxo,
+    registroId: string,
+    fluxoVersaoId: string,
+    registroTipo: FluxoRegistroTipo,
+  ): Promise<void> {
     switch (acao.tipo) {
       case 'MOVER_LEAD_ESTAGIO':
         return this.moverLeadEstagio(registroId, acao.estagioDestino);
@@ -52,6 +59,22 @@ export class ExecutarAcaoService {
         return;
       case 'MOVER_OPORTUNIDADE_ETAPA':
         return this.moverOportunidadeEtapa(registroId, acao.etapaDestinoId, acao.motivo ?? null);
+      case 'CRIAR_TAREFA': {
+        const prazo = new Date();
+        if (acao.prazoDias) prazo.setUTCDate(prazo.getUTCDate() + acao.prazoDias);
+        await this.tarefas.criar(
+          {
+            titulo: acao.titulo,
+            descricao: acao.descricao,
+            dataVencimento: acao.prazoDias ? prazo.toISOString() : undefined,
+            responsavelId: acao.responsavelId,
+            leadId: registroTipo === 'LEAD' ? registroId : undefined,
+            oportunidadeId: registroTipo === 'OPORTUNIDADE' ? registroId : undefined,
+          },
+          { criadoPorId: null, origem: `workflow:${fluxoVersaoId}` },
+        );
+        return;
+      }
     }
   }
 
