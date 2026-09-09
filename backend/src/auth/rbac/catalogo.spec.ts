@@ -156,6 +156,18 @@ describe('catálogo de permissões (spec 004)', () => {
     expect(PERMISSAO_IDS.has('crm_admin:gerir_workflow')).toBe(true);
   });
 
+  it('inclui o recurso tarefa (spec 016)', () => {
+    for (const id of [
+      'tarefa:criar',
+      'tarefa:editar',
+      'tarefa:ver_todas',
+      'tarefa:ver_proprias',
+      'tarefa:delegar',
+    ]) {
+      expect(PERMISSAO_IDS.has(id)).toBe(true);
+    }
+  });
+
   it('agruparPorRecurso preserva a ordem de 1ª aparição', () => {
     const grupos = agruparPorRecurso();
     expect(grupos.map((g) => g.recurso)).toEqual([
@@ -171,6 +183,7 @@ describe('catálogo de permissões (spec 004)', () => {
       'whatsapp',
       'atendimento',
       'disparo',
+      'tarefa',
     ]);
     expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
       'crm_admin:ver',

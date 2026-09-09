@@ -238,6 +238,21 @@ export const PERMISSOES = Object.freeze([
     recurso: 'disparo',
     rotulo: 'Cancelar um disparo agendado',
   },
+  // --- Tarefas do CRM (spec 016) ---
+  { id: 'tarefa:criar', recurso: 'tarefa', rotulo: 'Criar tarefas' },
+  {
+    id: 'tarefa:editar',
+    recurso: 'tarefa',
+    rotulo:
+      'Editar tarefas (título, descrição, prazo, âncoras, status, checklist, cronômetro, comentários, dependências)',
+  },
+  { id: 'tarefa:ver_todas', recurso: 'tarefa', rotulo: 'Ver todas as tarefas' },
+  {
+    id: 'tarefa:ver_proprias',
+    recurso: 'tarefa',
+    rotulo: 'Ver apenas as próprias tarefas e as tarefas gerais (sem responsável)',
+  },
+  { id: 'tarefa:delegar', recurso: 'tarefa', rotulo: 'Delegar/reatribuir tarefas' },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

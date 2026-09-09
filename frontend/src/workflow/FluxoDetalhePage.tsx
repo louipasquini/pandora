@@ -74,6 +74,8 @@ function acaoVazia(tipo: AcaoTipo): AcaoFluxo {
       return { tipo, conteudo: '' };
     case 'MOVER_OPORTUNIDADE_ETAPA':
       return { tipo, etapaDestinoId: '' };
+    case 'CRIAR_TAREFA':
+      return { tipo, titulo: '' };
   }
 }
 
@@ -437,6 +439,38 @@ function AcaoEditorLinha({
             onChange={(e) => onChange({ ...acao, motivo: e.target.value })}
             placeholder="motivo (obrigatório se a etapa for perdida)"
             className="flex-1 rounded-md border border-slate-300 px-2 py-1"
+          />
+        </>
+      )}
+      {acao.tipo === 'CRIAR_TAREFA' && (
+        <>
+          <input
+            aria-label="Título da tarefa"
+            value={acao.titulo}
+            disabled={!podeGerir}
+            onChange={(e) => onChange({ ...acao, titulo: e.target.value })}
+            placeholder="título da tarefa"
+            className="flex-1 rounded-md border border-slate-300 px-2 py-1"
+          />
+          <input
+            aria-label="Prazo em dias"
+            type="number"
+            min={1}
+            value={acao.prazoDias ?? ''}
+            disabled={!podeGerir}
+            onChange={(e) =>
+              onChange({ ...acao, prazoDias: e.target.value ? Number(e.target.value) : undefined })
+            }
+            placeholder="prazo (dias)"
+            className="w-28 rounded-md border border-slate-300 px-2 py-1"
+          />
+          <input
+            aria-label="Responsável (vazio = geral)"
+            value={acao.responsavelId ?? ''}
+            disabled={!podeGerir}
+            onChange={(e) => onChange({ ...acao, responsavelId: e.target.value || undefined })}
+            placeholder="responsável (vazio = geral)"
+            className="rounded-md border border-slate-300 px-2 py-1"
           />
         </>
       )}
