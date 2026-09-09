@@ -129,6 +129,23 @@ import {
   WorkerScheduler as DisparosWorkerScheduler,
   WorkerService as DisparosWorkerService,
 } from './application/disparos';
+import { TarefaController } from './tarefa.controller';
+import { TarefaRepository } from './infra/tarefa/tarefa.repository';
+import { ChecklistRepository } from './infra/tarefa/checklist.repository';
+import { CronometroRepository } from './infra/tarefa/cronometro.repository';
+import { NotaTarefaRepository } from './infra/tarefa/nota.repository';
+import { DependenciaRepository } from './infra/tarefa/dependencia.repository';
+import { DelegacaoRepository } from './infra/tarefa/delegacao.repository';
+import { CrmTarefaAuditService } from './application/tarefa/crm-tarefa-audit.service';
+import { TarefaService } from './application/tarefa/tarefa.service';
+import { TarefaConsultaService } from './application/tarefa/tarefa-consulta.service';
+import { ChecklistService } from './application/tarefa/checklist.service';
+import { CronometroService } from './application/tarefa/cronometro.service';
+import { NotaTarefaService } from './application/tarefa/nota-tarefa.service';
+import { DependenciaService } from './application/tarefa/dependencia.service';
+import { DelegacaoService } from './application/tarefa/delegacao.service';
+import { RankingService } from './application/tarefa/ranking.service';
+import { NotificacaoService } from './application/tarefa/notificacao.service';
 
 /**
  * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010 + 011 +
@@ -186,6 +203,7 @@ import {
     FaqController,
     WorkflowController,
     DisparoController,
+    TarefaController,
   ],
   providers: [
     // 007
@@ -292,11 +310,29 @@ import {
     QualityRatingService,
     DisparosWorkerService,
     DisparosWorkerScheduler,
+    // 016
+    TarefaRepository,
+    ChecklistRepository,
+    CronometroRepository,
+    NotaTarefaRepository,
+    DependenciaRepository,
+    DelegacaoRepository,
+    CrmTarefaAuditService,
+    TarefaService,
+    TarefaConsultaService,
+    ChecklistService,
+    CronometroService,
+    NotaTarefaService,
+    DependenciaService,
+    DelegacaoService,
+    RankingService,
+    NotificacaoService,
   ],
   exports: [
     RegistrarLeadService,
     RegistrarInteracaoService,
     PortaObservacaoPagamentoService,
+    TarefaService,
   ],
 })
 export class CrmModule implements OnModuleInit {
@@ -313,8 +349,9 @@ export class CrmModule implements OnModuleInit {
     const whatsapp = PERMISSOES.filter((p) => p.recurso === 'whatsapp').map((p) => p.id);
     const atendimento = PERMISSOES.filter((p) => p.recurso === 'atendimento').map((p) => p.id);
     const disparo = PERMISSOES.filter((p) => p.recurso === 'disparo').map((p) => p.id);
+    const tarefa = PERMISSOES.filter((p) => p.recurso === 'tarefa').map((p) => p.id);
     this.logger.log(
-      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length} whatsapp=${whatsapp.length} atendimento=${atendimento.length} disparo=${disparo.length}`,
+      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length} whatsapp=${whatsapp.length} atendimento=${atendimento.length} disparo=${disparo.length} tarefa=${tarefa.length}`,
     );
   }
 }

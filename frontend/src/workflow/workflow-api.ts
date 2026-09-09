@@ -90,7 +90,8 @@ export type AcaoTipo =
   | 'APLICAR_TAG'
   | 'REMOVER_TAG'
   | 'REGISTRAR_NOTA'
-  | 'MOVER_OPORTUNIDADE_ETAPA';
+  | 'MOVER_OPORTUNIDADE_ETAPA'
+  | 'CRIAR_TAREFA';
 
 export const ACAO_ROTULOS: Record<AcaoTipo, string> = {
   MOVER_LEAD_ESTAGIO: 'Mover lead para outro estágio',
@@ -98,15 +99,23 @@ export const ACAO_ROTULOS: Record<AcaoTipo, string> = {
   REMOVER_TAG: 'Remover tag',
   REGISTRAR_NOTA: 'Registrar nota',
   MOVER_OPORTUNIDADE_ETAPA: 'Mover oportunidade para outra etapa',
+  CRIAR_TAREFA: 'Criar tarefa (spec 016)',
 };
 
 /** contracts/workflow.md — catálogo fechado de ações compatíveis por gatilho. */
 export function acoesCompativeis(tipo: GatilhoTipo): AcaoTipo[] {
-  if (tipo === 'OPORTUNIDADE_ETAPA_MUDOU') return ['MOVER_OPORTUNIDADE_ETAPA'];
+  if (tipo === 'OPORTUNIDADE_ETAPA_MUDOU') return ['MOVER_OPORTUNIDADE_ETAPA', 'CRIAR_TAREFA'];
   if (tipo === 'EVENTO_EXTERNO') {
-    return ['MOVER_LEAD_ESTAGIO', 'APLICAR_TAG', 'REMOVER_TAG', 'REGISTRAR_NOTA', 'MOVER_OPORTUNIDADE_ETAPA'];
+    return [
+      'MOVER_LEAD_ESTAGIO',
+      'APLICAR_TAG',
+      'REMOVER_TAG',
+      'REGISTRAR_NOTA',
+      'MOVER_OPORTUNIDADE_ETAPA',
+      'CRIAR_TAREFA',
+    ];
   }
-  return ['MOVER_LEAD_ESTAGIO', 'APLICAR_TAG', 'REMOVER_TAG', 'REGISTRAR_NOTA'];
+  return ['MOVER_LEAD_ESTAGIO', 'APLICAR_TAG', 'REMOVER_TAG', 'REGISTRAR_NOTA', 'CRIAR_TAREFA'];
 }
 
 export type OperadorCondicao =
@@ -144,7 +153,8 @@ export type AcaoFluxo =
   | { tipo: 'APLICAR_TAG'; tag: string }
   | { tipo: 'REMOVER_TAG'; tag: string }
   | { tipo: 'REGISTRAR_NOTA'; conteudo: string }
-  | { tipo: 'MOVER_OPORTUNIDADE_ETAPA'; etapaDestinoId: string; motivo?: string };
+  | { tipo: 'MOVER_OPORTUNIDADE_ETAPA'; etapaDestinoId: string; motivo?: string }
+  | { tipo: 'CRIAR_TAREFA'; titulo: string; descricao?: string; prazoDias?: number; responsavelId?: string };
 
 export type VersaoStatus = 'RASCUNHO' | 'PUBLICADA' | 'ARQUIVADA';
 

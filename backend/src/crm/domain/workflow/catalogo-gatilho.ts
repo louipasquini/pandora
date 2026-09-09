@@ -27,9 +27,10 @@ const ACOES_LEAD: readonly AcaoTipo[] = [
   'APLICAR_TAG',
   'REMOVER_TAG',
   'REGISTRAR_NOTA',
+  'CRIAR_TAREFA',
 ];
 
-const ACOES_OPORTUNIDADE: readonly AcaoTipo[] = ['MOVER_OPORTUNIDADE_ETAPA'];
+const ACOES_OPORTUNIDADE: readonly AcaoTipo[] = ['MOVER_OPORTUNIDADE_ETAPA', 'CRIAR_TAREFA'];
 
 const TODAS_ACOES: readonly AcaoTipo[] = [
   'MOVER_LEAD_ESTAGIO',
@@ -37,6 +38,7 @@ const TODAS_ACOES: readonly AcaoTipo[] = [
   'REMOVER_TAG',
   'REGISTRAR_NOTA',
   'MOVER_OPORTUNIDADE_ETAPA',
+  'CRIAR_TAREFA',
 ];
 
 /**
