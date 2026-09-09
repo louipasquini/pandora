@@ -120,6 +120,19 @@ export const envSchema = z
     /** Máximo de linhas processadas por fonte, por passada. */
     CRM_WORKFLOW_WORKER_LOTE: z.coerce.number().int().min(1).default(50),
 
+    // --- Worker de Disparos do CRM (spec 015) ---
+    /** Liga o laço de fundo do worker. Desligado em teste (setup-db.ts força `false`). */
+    CRM_DISPAROS_WORKER_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    /** Intervalo entre passadas do worker, em ms — o próprio ritmo É o throttling (FR-008). */
+    CRM_DISPAROS_WORKER_INTERVALO_MS: z.coerce.number().int().min(250).default(5_000),
+    /** Máximo de mensagens enviadas por passada (entre todas as execuções em andamento). */
+    CRM_DISPAROS_WORKER_LOTE: z.coerce.number().int().min(1).default(20),
+    /** Tentativas de envio de uma mensagem antes de virar `FALHOU` terminal. */
+    CRM_DISPAROS_WORKER_MAX_TENTATIVAS: z.coerce.number().int().min(1).default(3),
+
     // --- Contas de origem (7 blocos, 21 chaves, todas opcionais na 001) ---
     ...accountsShape,
   })

@@ -60,7 +60,10 @@ export interface EntradaAuditoriaCrm {
     // mesmo perfil de `equipe`/`integracao` (reuso deliberado, ver research.md da 011).
     | 'canal_whatsapp'
     | 'template_whatsapp'
-    | 'opt_out_whatsapp';
+    | 'opt_out_whatsapp'
+    // spec 015 — ciclo de vida de um disparo (criar/cancelar) é config de baixo
+    // volume, mesmo perfil de `canal_whatsapp`/`template_whatsapp`.
+    | 'execucao_disparo';
   entidadeId: string;
   campo: string;
   valorAnterior: unknown;

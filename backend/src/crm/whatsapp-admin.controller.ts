@@ -15,6 +15,7 @@ import { z, type ZodTypeAny } from 'zod';
 import type { AuthContext } from '../auth/guards/jwt-auth.guard';
 import { RequerPermissao } from '../auth/rbac/decorators/requer-permissao.decorator';
 import { CanalWhatsappService, TemplateWhatsappService } from './application/whatsapp';
+import { QualityRatingService } from './application/disparos';
 import { EventoWebhookWhatsappRepository } from './infra/whatsapp';
 import {
   atualizarCanalWhatsappSchema,
@@ -50,6 +51,7 @@ export class WhatsappAdminController {
     private readonly canais: CanalWhatsappService,
     private readonly templates: TemplateWhatsappService,
     private readonly eventos: EventoWebhookWhatsappRepository,
+    private readonly qualityRating: QualityRatingService,
   ) {}
 
   @RequerPermissao('crm_admin:ver')
@@ -89,6 +91,12 @@ export class WhatsappAdminController {
   listarTemplates(@Param('id') id: string, @Query() q: Record<string, unknown>) {
     const { statusAprovacao } = parse(listarTemplatesWhatsappSchema, q);
     return this.templates.listar(id, statusAprovacao);
+  }
+
+  @RequerPermissao('crm_admin:ver')
+  @Get('canais/:id/quality-rating')
+  qualityRatingDoCanal(@Param('id') id: string) {
+    return this.qualityRating.consultar(id);
   }
 
   @RequerPermissao('crm_admin:ver')
