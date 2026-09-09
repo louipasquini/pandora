@@ -1502,3 +1502,137 @@ model ValorCampoPessoa {
   @@index([definicaoId])
   @@map("valor_campo_pessoa")
 }
+
+// ============================================================================
+// crm — Workflow / motor de automação (spec 014) — 12ª migração de negócio.
+// Visão Parte 8.8. `fluxo_automacao` (metadado estável) + `fluxo_automacao_versao`
+// (snapshot imutável de gatilho+condições+ações; no máximo 1 `PUBLICADA` por
+// fluxo — índice único parcial no migration.sql, Prisma não modela índice
+// parcial) + `execucao_fluxo` (histórico append-only, idempotente por
+// `(fluxo_versao_id, fonte, fonte_registro_id)`). Gatilhos internos são
+// detectados por uma varredura periódica (`WorkerScheduler` in-house, mesmo
+// padrão da `ingestao`, spec 006) sobre trilhas já append-only do próprio
+// `crm` — nunca sobre outro bounded context; `fluxo_cursor_fonte` guarda o
+// cursor por fonte. `EVENTO_EXTERNO` fica só modelado (CL-01 do spec.md) —
+// nunca aparece como `fonte` de uma `execucao_fluxo` nesta versão.
+// `fluxo_modelo` é a biblioteca de automações prontas (CL-02), semeada via
+// `prisma/seed.ts`, sem ciclo de vida próprio de versão/publicação. Nenhuma
+// ação do MVP toca em `pessoa` — só `lead`/`oportunidade` (D-R4 do
+// research.md) —, então nenhuma FK nova em `Lead`/`Oportunidade`/`Interacao`/
+// `TagAssociacao`/`Pessoa`. Ver docs/014-crm-workflow.md.
+// ============================================================================
+
+enum FluxoGatilhoTipo {
+  LEAD_CRIADO
+  LEAD_ESTAGIO_MUDOU
+  OPORTUNIDADE_ETAPA_MUDOU
+  INTERACAO_REGISTRADA
+  TAG_APLICADA
+  EVENTO_EXTERNO
+}
+
+enum FluxoVersaoStatus {
+  RASCUNHO
+  PUBLICADA
+  ARQUIVADA
+}
+
+enum FluxoRegistroTipo {
+  LEAD
+  OPORTUNIDADE
+}
+
+enum FluxoExecucaoResultado {
+  EXECUTADA
+  CONDICAO_NAO_SATISFEITA
+  FALHOU
+}
+
+model FluxoAutomacao {
+  id           String   @id @db.Uuid
+  nome         String
+  descricao    String?
+  criadoPor    String?  @map("criado_por")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  versoes FluxoAutomacaoVersao[]
+
+  // Sem DELETE físico — um fluxo indesejado se arquiva (todas as versões
+  // terminam ARQUIVADA), nunca desaparece (mesmo racional de equipe/integracao).
+  @@map("fluxo_automacao")
+}
+
+model FluxoAutomacaoVersao {
+  id           String            @id @db.Uuid
+  fluxoId      String            @map("fluxo_id") @db.Uuid
+  numero       Int
+  status       FluxoVersaoStatus @default(RASCUNHO)
+  gatilhoTipo  FluxoGatilhoTipo  @map("gatilho_tipo")
+  condicoes    Json
+  acoes        Json
+  autor        String?
+  publicadoPor String?           @map("publicado_por")
+  publicadoEm  DateTime?         @map("publicado_em") @db.Timestamptz(6)
+  arquivadoPor String?           @map("arquivado_por")
+  arquivadoEm  DateTime?         @map("arquivado_em") @db.Timestamptz(6)
+  criadoEm     DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime          @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  fluxo     FluxoAutomacao  @relation(fields: [fluxoId], references: [id], onDelete: Cascade)
+  execucoes ExecucaoFluxo[]
+
+  // Índice único PARCIAL (fluxo_id) WHERE status = 'PUBLICADA' — só 1 versão
+  // publicada por fluxo (D-01) — no migration.sql (Prisma não modela índice
+  // parcial).
+  @@unique([fluxoId, numero])
+  @@index([fluxoId, status])
+  @@index([gatilhoTipo, status])
+  @@map("fluxo_automacao_versao")
+}
+
+model ExecucaoFluxo {
+  id              String                  @id @db.Uuid
+  fluxoVersaoId   String                  @map("fluxo_versao_id") @db.Uuid
+  fonte           FluxoGatilhoTipo
+  fonteRegistroId String                  @map("fonte_registro_id") @db.Uuid
+  registroTipo    FluxoRegistroTipo       @map("registro_tipo")
+  registroId      String                  @map("registro_id") @db.Uuid
+  resultado       FluxoExecucaoResultado
+  acoesAplicadas  Json                    @map("acoes_aplicadas")
+  erroDetalhe     String?                 @map("erro_detalhe")
+  ocorridoEm      DateTime                @map("ocorrido_em") @db.Timestamptz(6)
+  criadoEm        DateTime                @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  fluxoVersao FluxoAutomacaoVersao @relation(fields: [fluxoVersaoId], references: [id], onDelete: Cascade)
+
+  // Chave de idempotência (D-06) — reprocessar a mesma linha-fonte para a
+  // mesma versão nunca duplica o efeito. Append-only — sem PATCH/DELETE.
+  @@unique([fluxoVersaoId, fonte, fonteRegistroId])
+  @@index([registroTipo, registroId, criadoEm])
+  @@index([fluxoVersaoId, criadoEm])
+  @@map("execucao_fluxo")
+}
+
+model FluxoModelo {
+  id          String           @id @db.Uuid
+  nome        String
+  descricao   String?
+  gatilhoTipo FluxoGatilhoTipo @map("gatilho_tipo")
+  condicoes   Json
+  acoes       Json
+  criadoEm    DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  // Somente leitura para o usuário — escrita só via prisma/seed.ts (CL-02).
+  @@map("fluxo_modelo")
+}
+
+model FluxoCursorFonte {
+  fonte          FluxoGatilhoTipo @id
+  ultimoCriadoEm DateTime         @map("ultimo_criado_em") @db.Timestamptz(6)
+  ultimoId       String           @map("ultimo_id") @db.Uuid
+  atualizadoEm   DateTime         @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  // Estado técnico do worker — não é dado de negócio (D-R8 do research.md).
+  @@map("fluxo_cursor_fonte")
+}
