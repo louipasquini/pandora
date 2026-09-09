@@ -25,18 +25,18 @@ utilidade).
 
 ## Fase 2 — Domínio puro (sem banco) `[P]` entre arquivos diferentes
 
-- [ ] T004 [P][US2] `backend/src/crm/domain/sugestao-ia/prompt.ts` + `.spec.ts` —
+- [x] T004 [P][US2] `backend/src/crm/domain/sugestao-ia/prompt.ts` + `.spec.ts` —
       `montarPrompt(mensagem, faqAtiva, definicoesCampo)`: determinístico, mensagem/listas
       vazias não quebram, inclui só FAQ `ativo=true`.
-- [ ] T005 [P][US2][US3] `backend/src/crm/domain/sugestao-ia/parse-resposta.ts` +
+- [x] T005 [P][US2][US3] `backend/src/crm/domain/sugestao-ia/parse-resposta.ts` +
       `.spec.ts` — `interpretarRespostaIa(bruto)`: schema `zod` da lista de sugestões; JSON
       inválido/campo faltando/tipo desconhecido → item descartado, nunca lança; tudo
       descartado → `{ sugestoes: [], problema }`; múltiplas perguntas → múltiplas entradas
       `tipo: RESPOSTA`.
-- [ ] T006 [P][US5] `backend/src/crm/domain/sugestao-ia/estado.ts` + `.spec.ts` —
+- [x] T006 [P][US5] `backend/src/crm/domain/sugestao-ia/estado.ts` + `.spec.ts` —
       `podeDecidir(status)` (só `PENDENTE`), `podeAvaliarUtilidade(status)` (só
       `ACEITA`\|`REJEITADA`).
-- [ ] T007 [P] `backend/src/crm/domain/sugestao-ia/index.ts` — barrel.
+- [x] T007 [P] `backend/src/crm/domain/sugestao-ia/index.ts` — barrel.
 
 ## Fase 3 — Persistência (infra)
 
@@ -48,7 +48,7 @@ utilidade).
       feedback, `substituirPendentesDaInteracao(interacaoOrigemId)` (D-05).
 - [ ] T010 [P] `backend/src/crm/infra/faq/index.ts` + `backend/src/crm/infra/sugestao-ia/
       index.ts` — barrels.
-- [ ] T011 [P][US4] `backend/src/clientes/infra/campo-personalizado-pessoa.repository.ts` —
+- [x] T011 [P][US4] `backend/src/clientes/infra/campo-personalizado-pessoa.repository.ts` —
       CRUD de definição + valores (mesmo formato de
       `backend/src/crm/infra/lead/campo-personalizado-lead.repository.ts` da 008, mas em
       `clientes`).
@@ -58,22 +58,22 @@ utilidade).
 - [ ] T012 [US1] `backend/src/crm/application/faq/faq.service.ts` — `criar`/`atualizar`
       (gera `FaqItemVersao` só quando `pergunta`/`resposta` mudam de valor), `listar`
       (catálogo `ativo=true` e lista administrativa), `obter`, `listarVersoes`.
-- [ ] T013 [US4] `backend/src/clientes/application/campo-personalizado-pessoa.service.ts` —
+- [x] T013 [US4] `backend/src/clientes/application/campo-personalizado-pessoa.service.ts` —
       `criarDefinicao`/`atualizarDefinicao`/`listarDefinicoes` (mesma validação de `chave`
       única/imutável, `tipo` imutável da 008), `substituirValores(pessoaId, valores)` (mesmo
       contrato de substituição total do `LeadService`), `definirValor(pessoaId, definicaoId,
       valor)` (grava **1** valor — usado pela porta, T015).
-- [ ] T014 [US4] `backend/src/clientes/campo-personalizado-pessoa.controller.ts` —
+- [x] T014 [US4] `backend/src/clientes/campo-personalizado-pessoa.controller.ts` —
       `/clientes/campos-personalizados`, `/clientes/admin/campos-personalizados/**`,
       `/pessoas/:id/campos-personalizados` (`GET`/`PUT`) — ver `contracts/
       campo-personalizado-pessoa.md`.
-- [ ] T015 [US4] `backend/src/core/campo-personalizado-pessoa/porta-campo-personalizado-
+- [x] T015 [US4] `backend/src/core/campo-personalizado-pessoa/porta-campo-personalizado-
       pessoa.ts` — interface `PortaCampoPersonalizadoPessoa` (`listarDefinicoesAtivas`,
       `definirValor`) + token `PORTA_CAMPO_PERSONALIZADO_PESSOA`; reexportar em
       `core/core.module.ts`.
-- [ ] T016 [US4] `backend/src/clientes/infra/porta-campo-personalizado-pessoa.adapter.ts` —
+- [x] T016 [US4] `backend/src/clientes/infra/porta-campo-personalizado-pessoa.adapter.ts` —
       implementa a porta chamando `CampoPersonalizadoPessoaService` (T013).
-- [ ] T017 Renomear `backend/src/clientes/identidade-wiring.module.ts` →
+- [x] T017 Renomear `backend/src/clientes/identidade-wiring.module.ts` →
       `backend/src/clientes/clientes-wiring.module.ts` / `ClientesWiringModule`: mantém o
       provider de `PORTA_IDENTIDADE` (008) e acrescenta o de `PORTA_CAMPO_PERSONALIZADO_
       PESSOA` (T016); editar o import em `backend/src/app.module.ts`.

@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
 } from '@nestjs/common';
@@ -15,12 +16,14 @@ import type { AuthContext } from '../auth/guards/jwt-auth.guard';
 import { RequerPermissao } from '../auth/rbac/decorators/requer-permissao.decorator';
 import { PessoaService } from './application/pessoa.service';
 import { MergeService } from './application/merge.service';
+import { ValorCampoPessoaService } from './application/valor-campo-pessoa.service';
 import {
   criarPessoaSchema,
   listaQuerySchema,
   mergeBodySchema,
   patchPessoaSchema,
 } from './dto/pessoa.schema';
+import { valoresCamposPessoaSchema } from './dto/campo-personalizado-pessoa.schema';
 
 function autor(req: Request): string {
   return (req as Request & { auth?: AuthContext }).auth?.sub ?? 'desconhecido';
@@ -36,6 +39,7 @@ export class PessoaController {
   constructor(
     private readonly pessoas: PessoaService,
     private readonly merge: MergeService,
+    private readonly valores: ValorCampoPessoaService,
   ) {}
 
   @RequerPermissao('pessoa:ver')
@@ -107,5 +111,19 @@ export class PessoaController {
     );
     const sobrevivente = await this.pessoas.verDetalhe(sobreviventeId);
     return { sobrevivente, notas };
+  }
+
+  @RequerPermissao('pessoa:ver')
+  @Get(':id/campos-personalizados')
+  camposPersonalizados(@Param('id') id: string) {
+    return this.valores.obter(id);
+  }
+
+  @RequerPermissao('pessoa:editar')
+  @Put(':id/campos-personalizados')
+  putCamposPersonalizados(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const parsed = valoresCamposPessoaSchema.safeParse(body ?? {});
+    if (!parsed.success) throw new BadRequestException('corpo inválido');
+    return this.valores.substituir(id, parsed.data, autor(req));
   }
 }

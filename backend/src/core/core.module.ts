@@ -94,3 +94,11 @@ export {
   type PortaIdentidade,
   PORTA_IDENTIDADE,
 } from './identidade/porta-identidade';
+
+// --- campo personalizado de pessoa (013) — contrato de inversão de
+// dependência p/ o crm gravar/ler campo personalizado de pessoa ---
+export {
+  type DefinicaoCampoPersonalizadoPessoa,
+  type PortaCampoPersonalizadoPessoa,
+  PORTA_CAMPO_PERSONALIZADO_PESSOA,
+} from './campo-personalizado-pessoa/porta-campo-personalizado-pessoa';

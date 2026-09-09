@@ -7,7 +7,11 @@ import {
 } from '../../core/core.module';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export type EntidadeClientes = 'pessoa' | 'conta';
+export type EntidadeClientes =
+  | 'pessoa'
+  | 'conta'
+  | 'campo_personalizado_pessoa'
+  | 'valor_campo_pessoa';
 
 export interface EntradaAuditoria {
   autor: string;
