@@ -100,6 +100,8 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     prisma/      PrismaService / PrismaModule
     health/      GET /health (composição + banco)
     clientes/    pessoa + conta: identidade, dedup, merge (spec 005 — domain/ application/ infra/)
+                 + campo personalizado de pessoa, exposto ao crm via porta de inversão de
+                 dependência (spec 013)
     ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/)
     crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring,
                  campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
@@ -108,15 +110,18 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  métricas (spec 010) + WhatsApp: canal, template, webhook autenticado por
                  HMAC, janela de 24h, envio, opt-out (spec 011) + Chat ao Vivo: fila,
                  endereçamento por carga, SLA de 1ª resposta e CSAT sempre derivados,
-                 transferência, resposta automática fora do expediente (spec 012 — domain/
-                 application/ infra/, subpastas lead/ interacao/ tag/ segmento/ pipeline/
-                 whatsapp/ atendimento/)
+                 transferência, resposta automática fora do expediente (spec 012) + FAQ
+                 versionada e Sugestão de IA — síncrona, sempre dentro de um atendimento,
+                 nunca envia/grava sozinha (spec 013 — domain/ application/ infra/,
+                 subpastas lead/ interacao/ tag/ segmento/ pipeline/ whatsapp/ atendimento/
+                 faq/ sugestao-ia/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
                  007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
-                 whatsapp 011 + atendimento 012) + migrações + seed.ts
+                 whatsapp 011 + atendimento 012 + faq/sugestao_ia/campo_personalizado_pessoa
+                 013) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -126,7 +131,8 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     app/         router + query client
     auth/        AuthProvider, apiFetch (401 + 403), RequirePermissao, usePermissoesEfetivas
     admin/       Administração — abas Perfis e Usuários (spec 004)
-    pessoas/ contas/  lista, detalhe, criação e merge (spec 005)
+    pessoas/ contas/  lista, detalhe, criação e merge (spec 005) + campos personalizados
+                 (espelha leads/, spec 013)
     eventos/     painel de eventos de ingestão — revisar/erro + reprocessar (spec 006)
     crm-admin/   CRM · Administração — abas Equipes / Expediente / Integrações (spec 007)
     leads/       CRM · Leads — lista, detalhe, score, campos personalizados, converter (spec 008)
@@ -137,7 +143,10 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     whatsapp/    CRM · WhatsApp — conectar canal, sincronizar e ver templates (spec 011)
     atendimento/ CRM · Chat ao Vivo — fila com indicador de SLA, conversa (assumir/
                  responder/transferir/encerrar/CSAT), administração de SLA e mensagem
-                 fora do expediente por equipe (spec 012)
+                 fora do expediente por equipe (spec 012) + painel de sugestão de IA
+                 (spec 013)
+    faq/         aba FAQ dentro de CRM · Administração — lista, criar/editar, histórico
+                 de versões (spec 013)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -176,7 +185,9 @@ npm run db:up
 #    spec 010 acrescenta pipeline/oportunidade na 8ª; spec 011 acrescenta
 #    canal_whatsapp/template_whatsapp/mensagem_whatsapp/evento_webhook_whatsapp/
 #    opt_out_whatsapp na 9ª; spec 012 acrescenta atendimento/
-#    transferencia_atendimento/resposta_atendimento na 10ª — todas sem seed de negócio)
+#    transferencia_atendimento/resposta_atendimento na 10ª; spec 013 acrescenta
+#    faq_item/faq_item_versao/sugestao_ia/campo_personalizado_pessoa/valor_campo_pessoa
+#    na 11ª — todas sem seed de negócio)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
@@ -244,7 +255,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
-(CRM) em andamento** (specs 007–012 entregues; próxima 013).
+(CRM) em andamento** (specs 007–013 entregues; próxima 014).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -445,7 +456,31 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   `TimelineInteracoes` (009) para o histórico completo; administração de SLA/mensagem fora
   do expediente por equipe. **0 dep nova**, **1 migração, 0 chave `.env` nova**. Ver
   [`docs/012-crm-chat-ao-vivo.md`](docs/012-crm-chat-ao-vivo.md).
-- ⏭️ Próxima: **013 — crm-faq-e-sugestao-ia** (Fase 1 — CRM).
+- ✅ **013 — crm-faq-e-sugestao-ia**: base de FAQ versionada (`faq_item`/`faq_item_versao`,
+  histórico append-only, snapshot completo por edição) **sem** vínculo com produto ou
+  campanha nesta versão — nenhuma das duas entidades existe ainda neste ponto do roadmap.
+  **`sugestao_ia`** — proposta não-autoritativa da IA, síncrona, sempre dentro de um
+  atendimento (012) já existente, sobre uma `Interacao` de entrada já registrada; **nunca**
+  envia mensagem nem grava campo sozinha (governança 10.6): `RESPOSTA` só marca a decisão
+  (aceitar ≠ enviar); `CAMPO_PERSONALIZADO` já grava ao aceitar. IA identifica múltiplas
+  perguntas numa mensagem; pedir de novo para a mesma mensagem substitui a pendente
+  anterior. Sugestão de campo personalizado vale para `lead` (008) **e** `pessoa` já
+  convertida — `clientes` ganha `campo_personalizado_pessoa`/`valor_campo_pessoa` (espelha
+  a estrutura de lead), exposta ao `crm` por uma **2ª porta de inversão de dependência**
+  (`PortaCampoPersonalizadoPessoa`, mesmo padrão de `PortaIdentidade`, 008;
+  `identidade-wiring.module.ts` renomeado para `clientes-wiring.module.ts`/
+  `ClientesWiringModule`). Provedor de IA = **API da Anthropic** via `fetch` nativo, atrás
+  de uma porta própria que **nunca lança** — falha do provedor nunca bloqueia o
+  atendimento; credencial reaproveita a tabela `integracao` já existente e ociosa desde a
+  007 (**0 tabela nova de credencial, 0 chave `.env` nova**). **11ª migração Prisma** (5
+  tabelas + 2 enums + 1 coluna). Catálogo RBAC ganha `crm_admin:gerir_faq` +
+  `pessoa:gerir_campos_personalizados` (+2); gerar/decidir sugestão reaproveita
+  `atendimento:atender`; campo personalizado verifica `lead:editar`/`pessoa:editar`
+  **dinamicamente**. ~24 endpoints autenticados, 0 endpoint público novo. Painel: aba
+  **FAQ** em CRM · Administração + painel de sugestões dentro da conversa do Chat ao Vivo.
+  **0 dep nova**, **1 migração, 0 chave `.env` nova**. Ver
+  [`docs/013-crm-faq-e-sugestao-ia.md`](docs/013-crm-faq-e-sugestao-ia.md).
+- ⏭️ Próxima: **014 — crm-workflow** (Fase 1 — CRM).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
