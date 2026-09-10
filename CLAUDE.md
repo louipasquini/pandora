@@ -6,6 +6,15 @@
 > A seção `SPECKIT` abaixo é gerada automaticamente — **não edite manualmente** e não
 > coloque conteúdo dentro dela.
 
+## Convenções de commit e PR
+
+- **Sem coautoria de IA.** Commits e descrições de PR **não** levam trailer
+  `Co-Authored-By: Claude …`, `Claude-Session-…`, nem linha `🤖 Generated with …`. O autor
+  do commit é a pessoa. `.claude/settings.json` fixa `"includeCoAuthoredBy": false` para o
+  repositório; agentes não devem reintroduzir essas linhas manualmente.
+- Mensagens no formato Conventional Commits (`feat(contexto): …`, `fix(...)`, `docs(...)`,
+  `test(...)`, `chore(...)`), em português, uma fatia por commit.
+
 ## O que é
 
 Reconstrução, com arquitetura limpa, do sistema de dados da **Amor em Nutrir (AEN)** —
