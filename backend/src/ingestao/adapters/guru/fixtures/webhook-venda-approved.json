@@ -1,0 +1,66 @@
+{
+  "api_token": "GURU-TOKEN-FIXTURE-NAO-PERSISTIR",
+  "webhook_type": "transaction",
+  "id": "9081534a-7512-4dab-9172-218c1dc10001",
+  "status": "approved",
+  "type": "producer",
+  "campo_novo_2027": "o parser ignora chaves inéditas",
+  "dates": {
+    "created_at": "2026-03-08T09:19:04Z",
+    "ordered_at": "2026-03-08T11:33:45Z",
+    "confirmed_at": "2026-03-08T11:35:57Z",
+    "canceled_at": null,
+    "warranty_until": "2026-04-07T11:35:57Z"
+  },
+  "contact": {
+    "id": "906d1e37-de6a-4f4d-8271-91ecd0d60001",
+    "name": "Marta Nogueira",
+    "email": "marta.nogueira@example.com",
+    "doc": "39053344705",
+    "phone_local_code": "55",
+    "phone_number": "11991234567",
+    "address": "Rua das Acácias",
+    "address_number": "120",
+    "address_comp": "ap 42",
+    "address_district": "Jardim",
+    "address_city": "São Paulo",
+    "address_state": "SP",
+    "address_zip_code": "01310000",
+    "address_country": "BR"
+  },
+  "payment": {
+    "currency": "BRL",
+    "method": "credit_card",
+    "gross": 497,
+    "net": 468.1,
+    "discount_value": 0,
+    "total": 497,
+    "marketplace_id": "ch_asaas_pay_000001",
+    "marketplace_name": "asaas",
+    "tax": { "rate": 0.058, "value": 28.9 },
+    "coupon": { "coupon_code": "MARCO10", "incidence_type": "percent", "final_value": 0 }
+  },
+  "product": {
+    "id": "1587151001",
+    "internal_id": "906d1e37-de6a-4f4d-8271-91ecd0d6a001",
+    "name": "Curso Nutrição Materno-Infantil",
+    "type": "product",
+    "qty": 1,
+    "unit_value": 497,
+    "total_value": 497,
+    "offer": { "id": "of_nmx_anual", "name": "NMX — Oferta Anual" }
+  },
+  "items": [
+    {
+      "id": "1587151001",
+      "name": "Curso Nutrição Materno-Infantil",
+      "type": "product",
+      "qty": 1,
+      "total_value": 497,
+      "unit_value": 497,
+      "offer": { "id": "of_nmx_anual", "name": "NMX — Oferta Anual" }
+    }
+  ],
+  "subscription": [],
+  "source": { "utm_source": "instagram", "utm_medium": "bio", "utm_campaign": "lancamento-marco" }
+}

@@ -1,0 +1,40 @@
+{
+  "api_token": "GURU-TOKEN-FIXTURE-NAO-PERSISTIR",
+  "webhook_type": "transaction",
+  "id": "9081534a-7512-4dab-9172-218c1dc10001",
+  "status": "refunded",
+  "type": "producer",
+  "dates": {
+    "created_at": "2026-03-08T09:19:04Z",
+    "ordered_at": "2026-03-08T11:33:45Z",
+    "confirmed_at": "2026-03-08T11:35:57Z",
+    "canceled_at": "2026-03-20T14:10:00Z"
+  },
+  "contact": {
+    "name": "Marta Nogueira",
+    "email": "marta.nogueira@example.com",
+    "doc": "39053344705",
+    "phone_local_code": "55",
+    "phone_number": "11991234567"
+  },
+  "payment": {
+    "currency": "BRL",
+    "method": "credit_card",
+    "gross": 497,
+    "net": 468.1,
+    "total": 497,
+    "refund_reason": "Solicitação dentro da garantia",
+    "tax": { "value": 28.9 }
+  },
+  "product": {
+    "id": "1587151001",
+    "name": "Curso Nutrição Materno-Infantil",
+    "type": "product",
+    "qty": 1,
+    "total_value": 497,
+    "unit_value": 497,
+    "offer": { "id": "of_nmx_anual", "name": "NMX — Oferta Anual" }
+  },
+  "items": [],
+  "subscription": []
+}

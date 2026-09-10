@@ -1,0 +1,7 @@
+﻿id;status;valor_bruto;valor_liquido;moeda;data_pedido;data_aprovacao;produto;codigo_oferta;tipo;assinatura;ciclo;nome;email;documento;telefone
+9081534a-7512-4dab-9172-218c1dc1c001;approved;497.00;468.10;BRL;2026-03-01;2026-03-01;"Curso NMX; turma anual";of_nmx_anual;producer;nao;;Marta Nogueira;marta.nogueira@example.com;390.533.447-05;(11) 99123-4567
+9081534a-7512-4dab-9172-218c1dc1c002;waiting_payment;197.00;;BRL;2026-03-02;;Curso PCS;of_pcs_boleto;producer;nao;;Renato Aguiar;renato.aguiar@example.com;52998224725;21988887777
+9081534a-7512-4dab-9172-218c1dc1c003;refunded;897.00;845.60;BRL;2026-02-10;2026-02-10;Formacao Completa;of_form_completa;producer;nao;;Bianca Prado;bianca.prado@example.com;16899535009;
+;approved;100.00;95.00;BRL;2026-03-04;2026-03-04;Linha sem id;of_x;producer;nao;;Sem Id;sem.id@example.com;;
+9081534a-7512-4dab-9172-218c1dc1c005;approved;89.90;84.50;BRL;2026-03-12;2026-03-12;Assinatura Comunidade;of_comunidade_mensal;producer;sim;3;Aline Souza;aline.souza@example.com;11144477735;31977776666
+9081534a-7512-4dab-9172-218c1dc1c006;approved;60.00;56.40;USD;2026-03-03;2026-03-03;Masterclass Internacional;of_masterclass_intl;affiliate;nao;;Carla Dias;carla.dias@example.com;39860211062;

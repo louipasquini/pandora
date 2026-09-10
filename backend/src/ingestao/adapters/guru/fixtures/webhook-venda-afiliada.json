@@ -1,0 +1,47 @@
+{
+  "api_token": "GURU-TOKEN-FIXTURE-NAO-PERSISTIR",
+  "webhook_type": "transaction",
+  "id": "9081534a-7512-4dab-9172-218c1dc10004",
+  "status": "approved",
+  "type": "affiliate",
+  "affiliations": [
+    {
+      "affiliates_group_name": "Parceiros AEN",
+      "name": "Amor em Nutrir",
+      "currency": "BRL",
+      "value": 89.4,
+      "net_value": 84.2,
+      "fee": 5.2
+    }
+  ],
+  "dates": {
+    "created_at": "2026-03-11T13:00:00Z",
+    "ordered_at": "2026-03-11T13:00:15Z",
+    "confirmed_at": "2026-03-11T13:02:40Z"
+  },
+  "contact": {
+    "name": "Cliente de Outro Produtor",
+    "email": "cliente.terceiro@example.com",
+    "doc": "94271564656"
+  },
+  "payment": {
+    "currency": "BRL",
+    "method": "pix",
+    "gross": 298,
+    "net": 84.2,
+    "affiliate_value": 89.4,
+    "total": 298
+  },
+  "product": {
+    "id": "ext_produtor_x_01",
+    "name": "Curso de Terceiro (AEN é afiliada)",
+    "type": "product",
+    "qty": 1,
+    "total_value": 298,
+    "unit_value": 298,
+    "offer": { "id": "of_terceiro_x", "name": "Oferta de Terceiro" },
+    "producer": { "name": "Produtor X", "marketplace_id": "mkt_produtor_x" }
+  },
+  "items": [],
+  "subscription": []
+}

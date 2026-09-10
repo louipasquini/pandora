@@ -1,0 +1,57 @@
+{
+  "api_token": "GURU-TOKEN-FIXTURE-NAO-PERSISTIR",
+  "webhook_type": "transaction",
+  "id": "9081534a-7512-4dab-9172-218c1dc10005",
+  "status": "approved",
+  "type": "producer",
+  "dates": {
+    "created_at": "2026-03-12T06:00:00Z",
+    "ordered_at": "2026-03-12T06:00:05Z",
+    "confirmed_at": "2026-03-12T06:01:10Z"
+  },
+  "contact": {
+    "name": "Aline Souza",
+    "email": "aline.souza@example.com",
+    "doc": "11144477735",
+    "phone_local_code": "55",
+    "phone_number": "31977776666"
+  },
+  "invoice": {
+    "id": "in_ciclo3",
+    "charge_at": "2026-03-12",
+    "created_at": "2026-03-12T06:00:00Z",
+    "cycle": 3,
+    "period_start": "2026-03-12",
+    "period_end": "2026-04-12",
+    "status": "paid",
+    "type": "cycle",
+    "value": 89.9
+  },
+  "payment": {
+    "currency": "BRL",
+    "method": "credit_card",
+    "gross": 89.9,
+    "net": 84.5,
+    "total": 89.9,
+    "tax": { "value": 5.4 }
+  },
+  "product": {
+    "id": "1587151005",
+    "name": "Assinatura Comunidade AEN",
+    "type": "plan",
+    "qty": 1,
+    "total_value": 89.9,
+    "unit_value": 89.9,
+    "offer": { "id": "of_comunidade_mensal", "name": "Comunidade — Mensal" }
+  },
+  "items": [],
+  "subscription": {
+    "id": "sub_BOAEj2WTKoclmg4X",
+    "internal_id": "9ccde88d-3739-48fe-8e32-d69398b80005",
+    "subscription_code": "sub_7F3X50uu4VxTGenj",
+    "last_status": "active",
+    "charged_every_days": 30,
+    "charged_times": 3,
+    "started_at": "2026-01-12T06:01:10Z"
+  }
+}

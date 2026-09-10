@@ -1,0 +1,43 @@
+{
+  "data": [
+    {
+      "id": "9081534a-7512-4dab-9172-218c1dc1a001",
+      "status": "approved",
+      "type": "producer",
+      "dates": { "created_at": "2026-03-01T10:00:00Z", "ordered_at": "2026-03-01T10:00:03Z", "confirmed_at": "2026-03-01T10:01:00Z" },
+      "contact": { "name": "Ana Lima", "email": "ana.lima@example.com", "doc": "77645498600" },
+      "payment": { "currency": "BRL", "method": "pix", "gross": 297, "net": 282.1, "total": 297, "tax": { "value": 14.9 } },
+      "product": { "id": "p1", "name": "Curso PCS", "type": "product", "qty": 1, "total_value": 297, "unit_value": 297, "offer": { "id": "of_pcs_pix", "name": "PCS — Pix" } },
+      "items": [],
+      "subscription": []
+    },
+    {
+      "id": "9081534a-7512-4dab-9172-218c1dc1a002",
+      "status": "waiting_payment",
+      "type": "producer",
+      "dates": { "created_at": "2026-03-02T11:00:00Z", "ordered_at": "2026-03-02T11:00:05Z" },
+      "contact": { "name": "Bruno Teixeira", "email": "bruno.teixeira@example.com" },
+      "payment": { "currency": "BRL", "method": "billet", "gross": 149 },
+      "product": { "id": "p2", "name": "Ebook Nutrição", "type": "product", "qty": 1, "total_value": 149, "unit_value": 149, "offer": { "id": "of_ebook", "name": "Ebook — Boleto" } },
+      "items": [],
+      "subscription": []
+    },
+    {
+      "id": "9081534a-7512-4dab-9172-218c1dc1a003",
+      "status": "approved",
+      "type": "producer",
+      "dates": { "created_at": "2026-03-03T12:00:00Z", "ordered_at": "2026-03-03T12:00:02Z", "confirmed_at": "2026-03-03T12:00:40Z" },
+      "contact": { "name": "Carla Dias", "email": "carla.dias@example.com", "doc": "39860211062" },
+      "payment": { "currency": "USD", "method": "credit_card", "gross": 60, "net": 56.4, "total": 60, "tax": { "value": 3.6 } },
+      "product": { "id": "p3", "name": "Masterclass Internacional", "type": "product", "qty": 1, "total_value": 60, "unit_value": 60, "offer": { "id": "of_masterclass_intl", "name": "Masterclass — USD" } },
+      "items": [],
+      "subscription": []
+    }
+  ],
+  "has_more_pages": 0,
+  "next_cursor": "",
+  "on_first_page": 1,
+  "on_last_page": 1,
+  "per_page": 50,
+  "total_rows": 3
+}
