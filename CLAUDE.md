@@ -439,7 +439,109 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/019-adapter-tmb/plan.md`](specs/019-adapter-tmb/plan.md)
+Plano ativo: [`specs/020-adapter-asaas/plan.md`](specs/020-adapter-asaas/plan.md)
+(Fase 2 · spec 020 — **Adaptadores de borda da Asaas**: 2ª das 4 specs de adaptadores da
+Fase 2 (019 TMB ✅, 020 Asaas, 021 Guru, 022 Hotmart) — molde direto da 019. Materializa o
+**Princípio III** para as **duas contas Asaas** `ASAAS_PRD` / `ASAAS_SVC` (`PlataformaOrigem`
+do `core`): 3 funções **puras** `parse*()` (webhook de cobrança `{ event, payment }`
+`payment.status` / API `GET /v3/payments` paginada `offset`/`limit`/`hasMore` / CSV de
+export) transformam os payloads crus em **`EventoCanonico`** do `core` — **recebendo a
+`conta` como parâmetro** (diferente da 019: TMB é conta única; aqui o payload da Asaas
+**nunca** determina a conta — ela vem do path `/prd`\|`/svc` ou do corpo do endpoint),
+testadas contra **fixtures reais sem tocar o banco**. Vivem em
+**`src/ingestao/adapters/asaas/`** (visão Apêndice C); **não importam `financeiro`/`clientes`**
+— o **`financeiro/domain/status-map/asaas.ts`** (vocabulário bruto → `StatusTransacaoCanonico`:
+`RECEIVED`/`CONFIRMED`/`RECEIVED_IN_CASH`/`DUNNING_RECEIVED`→`PAGO`,
+`PENDING`/`AWAITING_RISK_ANALYSIS`→`PENDENTE`, `OVERDUE`/`DUNNING_REQUESTED`→`EM_ATRASO`,
+`REFUNDED`/`REFUND_REQUESTED`/`REFUND_IN_PROGRESS`→`ESTORNADO`,
+`CHARGEBACK_REQUESTED`/`CHARGEBACK_DISPUTE`/`AWAITING_CHARGEBACK_REVERSAL`→`CHARGEBACK`,
+`DELETED`→`CANCELADO`; **compartilhado** entre PRD/SVC e entre as 3 fontes
+`asaas.webhook`/`asaas.api`/`asaas.csv` — o CSV espelha o enum da API, Assumption) mora no
+`financeiro` e é consumido lá pela etapa 3 da 018; registrado via
+`Object.assign(MAPAS_STATUS, { ASAAS_PRD: ASAAS, ASAAS_SVC: ASAAS })` — `mapearStatus` (018)
+é chamado com `plataforma = "ASAAS_PRD"`\|`"ASAAS_SVC"`, as duas apontam para o mesmo objeto.
+**Superfície HTTP fina**: **2 webhooks públicos por conta**
+`POST /webhooks/asaas/{prd,svc}` (prefixo `/webhooks/` já é allowlist da 003; auth real =
+`ASAAS_PRD_WEBHOOK_TOKEN`/`ASAAS_SVC_WEBHOOK_TOKEN` verificado em tempo constante pelo
+**`WebhookAuthenticator`** da 003, header `asaas-access-token` | `authorization: Bearer`;
+token errado/ausente/**da outra conta** → **401**, 0 evento; **não** HMAC — a Asaas não
+assina o corpo) + **2 endpoints** `POST /ingestao/asaas/{sincronizar,importar-csv}` sob a
+permissão **já existente** `evento:ingerir` (`conta` **obrigatória** no corpo — o webhook a
+tira do path; CSV como texto no corpo JSON, 0 dep de upload binário). Todos são invólucros
+finos que só chamam **`RegistrarEventoService.registrarEvento`** (a porta da etapa 0 que a
+006 exportou "para os adapters 019–022") — o worker faz classificar → resolver pessoa (018)
+→ upsert transação (018). **Nenhum `INSERT` direto, nenhuma etapa nova —
+`worker.service.ts`/`etapas.ts`/`pipeline-wiring.module.ts`/`classificar.ts`/`schema.prisma`
+sem diff.** Payload de webhook **sem `payment.id`** (evento `TRANSFER_*`/`SUBSCRIPTION_*` que
+a Asaas manda para a mesma URL, ou lixo) → conta em `ignorados`, é logado, e **não** é
+registrado (sem identidade não há dedup nem projeção); `200 { registrados: 0, ignorados: n }`
+— a Asaas espera 2xx (a fila pausa após muitas falhas). **`AsaasApiClient`** atrás de
+interface + token DI (`ASAAS_API_CLIENT`), impl com **`fetch` nativo do Node 24** (0 dep —
+padrão `TmbApiClient`/019, `GraphApiClient`/011): header **`access_token: <ASAAS_<conta>
+_API_KEY>`** (a Asaas usa esse header, **não** `Bearer`) + `User-Agent`, base
+`ASAAS_<conta>_API_BASE_URL` ?? `https://api.asaas.com/v3` (sandbox é config); pagina
+`offset`/`limit` (default/teto 100) enquanto `body.hasMore`, com
+`dateCreated[ge]`/`dateCreated[le]`; **dublê nos e2e** (`overrideProvider(ASAAS_API_CLIENT)`);
+sem `ASAAS_<conta>_API_KEY` → `AsaasApiIndisponivelError(conta)` → `/sincronizar` responde
+**422** (não 500). Controllers em `src/ingestao/asaas/`; `WebhookAuthenticator` já vem do
+próprio `IngestaoModule` (desde a 019). **Decisões com o dono do produto (2026-09-10)** —
+020 não está `⚠ clarify` no ROADMAP, mas as 3 decisões de fato ambíguas foram levadas ao
+dono: **A-01** chave natural `id_origem` = `payment.id` (`"pay_…"`, consistente nas 3
+fontes; **por conta** — só único dentro de `(<conta>, payment.id)`, a `PlataformaOrigem`
+desambigua; os N eventos de uma cobrança — created → confirmed → received → refunded… —
+resolvem para `(<conta>, <payment.id>)`, o `UPSERT_TRANSACAO` da 018 mantém 1 linha e o
+`status_canonico` reflete o último evento processado, Regra Inviolável nº 1 por construção);
+**A-02** `payment.externalReference` → `EventoCanonico.referenciaExterna.idOrigem` **sem**
+`plataforma` (o adapter transporta a ponte crua para a Guru; `classificar` regra 2 —
+`ref.idOrigem && ref.plataforma && ref.plataforma !== conta` → `DESCONHECIDO`+`revisar` p/
+024 — **não dispara** sem `ref.plataforma`, então a cobrança cai em `VENDA_PROPRIA` ou
+`RECORRENCIA` se tiver `subscription`, **nunca** `DESCONHECIDO` por causa do
+`externalReference`; cravar o vínculo Asaas↔Guru de fato e marcar a Asaas como não-receita é
+da **spec 024**, etapa 4; cobrança avulsa sem `externalReference` resolve tudo
+normalmente); **A-03** escopo = parser puro + endpoints finos `/ingestao/asaas/*` (superfície
+`admin/` completa fica p/ a spec de migração). Defaults documentados **A-04..A-16** no
+`spec.md` (§Clarifications) — zero `NEEDS CLARIFICATION`. **Ajuste sintético** (A-05):
+`statusOrigem` = `payment.status` cru **exceto** quando `payment.deleted === true` (cobrança
+removida — o `payment.status` fica congelado no valor anterior e não reflete a remoção) → o
+adapter emite `"DELETED"` (conceito real da Asaas, determinístico — não um palpite);
+`status-map` traduz `DELETED → CANCELADO`; `PAYMENT_RESTORED` volta ao `payment.status` real.
+**Asaas não tem** papel de afiliada (`ehAfiliada` nunca emitido); **tem** assinatura nativa
+(`payment.subscription` não-vazio → `assinatura.ehRecorrencia = true` → `classificar` →
+`RECORRENCIA`); moeda não exposta → `BRL` cravado na borda (`Dinheiro.deDecimal` do `core`,
+escala ×10000, sem `float`); **comprador não vem no `payment`** (só o id `cus_…`) — o
+`comprador` do `EventoCanonico` fica vazio no webhook/API (`RESOLVER_PESSOA` da 018 tolera),
+só o **CSV** monta comprador das colunas `cliente`/`email`/`cpf_cnpj`/`telefone`; enriquecer
+via `GET /v3/customers/{id}` (2ª chamada de rede) fica p/ spec futura. `valores.bruto` =
+`payment.value`, `valores.liquido` = `payment.netValue`, `valores.taxas` = `value − netValue`
+só quando `0 < resultado < value`; `originalValue`/`interestValue`/`discount`/`refunds[]` só
+no `payload_bruto`. `ocorridoEm` = `paymentDate`??`confirmedDate`??`clientPaymentDate`??
+`dateCreated` (webhook/API) / `data_pagamento`??`data_criacao`??`vencimento` (CSV), string
+crua — a etapa 3 (018) aplica `parseInstante` do `core` (tolera `"2024-05-10"` date-only,
+`"2024-05-10 11:20:32"` com espaço, ISO c/ fuso). Parser de CSV **à mão** (0 dep — cópia da
+019: detecta `,`/`;` no cabeçalho, tira BOM, mini state-machine de aspas; mapa de colunas
+com aliases inglês/pt-BR). O `payload_bruto` do webhook é o **envelope inteiro**
+`{ event, payment }` — eventos distintos do mesmo `payment.id` têm hashes distintos (N
+`evento_origem`), reentrega do mesmo evento é dedup por hash. **0 migração, 0 tabela, 0
+dependência nova, 0 chave `.env` nova** (`ASAAS_PRD_*`/`ASAAS_SVC_*` já em `accountConfig`
+da 001/003), **0 porta nova, 0 permissão nova, 0 frontend** (os eventos aparecem no painel
+**Eventos**/006, as transações em **Financeiro · Transações**/018 sem mudança de frontend).
+`CONTEXT_MODULES` segue **11** — o adapter é subdiretório do `ingestao`. 711 testes
+unitários backend (+55 vs. a 019 — domínio puro: helpers de normalização, os 3 parsers
+contra fixtures reais, `AsaasApiClient` com dublê de `fetch`, `status-map/asaas` com
+varredura de cobertura de vocabulário contra as fixtures) + 376 e2e (21 suítes, +16 —
+Postgres real, container isolado **`pandora-db-spec020` na porta 55437**, já que
+55432/55433/55435/55436 estavam em uso por outras sessões: US1 webhook por conta → transação
++ OVERDUE/DELETED + 401 + evento não-cobrança, US2 ponte Guru sem forçar revisão +
+`PAYMENT_REFUNDED` colapsa no `payment.id` → 1 transação `ESTORNADO`/`REEMBOLSO` + dedup por
+hash + status inédito → revisão, US3 sincronização com dublê de 2 páginas + `conta` fora do
+enum → 422 + sem chave → 422, US4 import CSV com comprador, SC-015 isolamento PRD/SVC → 2
+transações, `grep` de fronteira, catálogo RBAC inalterado, `/health` = 11), todos verdes;
+lint/typecheck/build limpos no backend; frontend inalterado. Artefatos: `research.md`,
+`data-model.md`, `contracts/` (4), `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 019 — Adaptadores de borda da TMB (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/019-adapter-tmb/plan.md`](specs/019-adapter-tmb/plan.md)
 (Fase 2 · spec 019 — **Adaptadores de borda da TMB**: 1ª das 4 specs de adaptadores da Fase
 2 (019 TMB, 020 Asaas, 021 Guru, 022 Hotmart). Materializa o **Princípio III** (bordas
 finas, núcleo canônico) para a conta única **`TMB`**: 4 funções **puras** `parse*()`
@@ -514,6 +616,8 @@ sincronização com dublê de 2 páginas + 422 sem config, US4 import CSV, `grep
 catálogo RBAC inalterado, `/health` = 11), todos verdes; lint/typecheck/build limpos no
 backend; frontend inalterado. Artefatos: `research.md`, `data-model.md`, `contracts/` (4),
 `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 018 — Financeiro · ledger de transações (implementada, resumo arquivado)</summary>
 

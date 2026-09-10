@@ -226,8 +226,11 @@ transação `ASAAS_*` **própria** nesta fatia (o vínculo e a exclusão de rece
 1. **Given** uma fixture `PAYMENT_CONFIRMED` com `externalReference` não-vazio, **When**
    registrada, **Then** `evento_canonico.referenciaExterna.idOrigem` == esse valor e
    `referenciaExterna.plataforma` é ausente.
-2. **Given** o evento acima, **When** processado, **Then** `transacao.classificacao =
-   VENDA_PROPRIA`, `status_canonico = PAGO` — a exclusão de receita fica para a spec 024.
+2. **Given** o evento acima, **When** processado, **Then** `transacao.precisa_revisao =
+   false` e `transacao.classificacao ∈ { VENDA_PROPRIA, RECORRENCIA }` conforme haja
+   `subscription` — **nunca** `DESCONHECIDO`/revisão por causa do `externalReference` (a
+   regra 2 de `classificar` só dispara com `referenciaExterna.plataforma` presente). A
+   exclusão de receita fica para a spec 024.
 3. **Given** uma cobrança Asaas **sem** `externalReference`, **When** registrada, **Then**
    `evento_canonico.referenciaExterna` é ausente.
 
@@ -453,8 +456,9 @@ ignoradas: 1, erros: ["linha 3: sem identificador de cobrança"] }`.
 - **SC-002**: `POST /webhooks/asaas/prd` sem token / token errado / token da outra conta →
   **401** e `count(evento_origem) == 0`.
 - **SC-003**: `PAYMENT_CONFIRMED` com `externalReference` → `evento_canonico.referenciaExterna
-  = { idOrigem: <valor> }` (sem `plataforma`); após `processar`, `transacao.classificacao =
-  VENDA_PROPRIA`.
+  = { idOrigem: <valor> }` (sem `plataforma`); após `processar`, `transacao.precisa_revisao =
+  false` e `classificacao` ∈ `{ VENDA_PROPRIA, RECORRENCIA }` — **nunca** `DESCONHECIDO` por
+  causa do `externalReference`.
 - **SC-004**: `PAYMENT_RECEIVED` seguido de `PAYMENT_REFUNDED` para o mesmo `payment.id` →
   **2** `evento_origem`, **1** `transacao`, `status_canonico` final `ESTORNADO`,
   `classificacao = REEMBOLSO` (Regra Inviolável nº 1).

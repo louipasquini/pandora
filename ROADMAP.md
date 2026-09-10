@@ -780,10 +780,59 @@ montado aqui, etapa por etapa.
   [`specs/019-adapter-tmb/`](specs/019-adapter-tmb/) e
   [`docs/019-adapter-tmb.md`](docs/019-adapter-tmb.md).
 
-- [ ] **020 — adapter-asaas**
-  Adapters Asaas (contas PRD e SVC): webhook por conta, API `GET /payments`, CSV.
-  `externalReference` como ponte para a Guru. `status_map/asaas/{api,csv}`. Webhooks
-  `POST /webhooks/asaas/{prd,svc}`. Sem frontend.
+- [x] **020 — adapter-asaas** — ✅ implementada e validada (2026-09-10)
+  Segunda das 4 specs de adaptadores da Fase 2 (molde direto da 019). Borda de entrada das
+  **duas contas Asaas** (`ASAAS_PRD`, `ASAAS_SVC`): 3 funções puras `parse*()` (webhook de
+  cobrança `{ event, payment }` / API `GET /v3/payments` paginada `offset`/`limit` `hasMore`
+  / CSV de export) → `EventoCanonico` do `core`, **recebendo a `conta` como parâmetro** (o
+  payload da Asaas nunca a determina), testadas contra **fixtures reais sem tocar o banco**
+  (Princípio III). Vive em `src/ingestao/adapters/asaas/`; **não importa `financeiro`** — o
+  `status-map/asaas.ts` (vocabulário `RECEIVED`/`CONFIRMED`/`OVERDUE`/`REFUNDED`/
+  `CHARGEBACK_*`/`DELETED`→canônico, compartilhado entre PRD e SVC e entre
+  `asaas.webhook`/`asaas.api`/`asaas.csv`) mora no `financeiro` e é registrado via
+  `Object.assign(MAPAS_STATUS, { ASAAS_PRD: ASAAS, ASAAS_SVC: ASAAS })`. **Superfície HTTP
+  fina**: 2 webhooks **públicos por conta** `POST /webhooks/asaas/{prd,svc}` (prefixo
+  `/webhooks/` já é allowlist da 003; auth real = `ASAAS_<conta>_WEBHOOK_TOKEN` via
+  `WebhookAuthenticator`, header `asaas-access-token` — token errado/da outra conta → 401,
+  0 evento) + 2 endpoints `POST /ingestao/asaas/{sincronizar,importar-csv}` sob a permissão
+  **já existente** `evento:ingerir` (`conta` obrigatória no corpo). Todos só chamam
+  `RegistrarEventoService.registrarEvento` (a porta da etapa 0 que a 006 exportou "para os
+  adapters 019–022"); o worker faz o resto — **nenhuma etapa nova; `worker.service.ts` /
+  `etapas.ts` / `pipeline-wiring.module.ts` / `classificar.ts` / `schema.prisma` sem diff**.
+  `AsaasApiClient` atrás de interface (`fetch` nativo do Node 24, **0 dep**; header
+  `access_token`, NÃO Bearer; base default `https://api.asaas.com/v3`; dublê nos e2e); sem
+  `ASAAS_<conta>_API_KEY` → `AsaasApiIndisponivelError` → `/sincronizar` responde **422**
+  (não 500). **Decisões com o dono do produto (2026-09-10)**: A-01 chave natural `id_origem`
+  = `payment.id` (`pay_…`, por conta — a `PlataformaOrigem` desambigua; os N eventos de uma
+  cobrança colapsam na mesma transação, último evento vence, Regra Inviolável nº 1 por
+  construção); A-02 `externalReference` → `referenciaExterna.idOrigem` **sem** `plataforma`
+  (o adapter transporta a ponte crua; `classificar` regra 2 não dispara sem `plataforma` →
+  a cobrança é `VENDA_PROPRIA`/`RECORRENCIA`, nunca `DESCONHECIDO` por isso; cravar o
+  vínculo Asaas↔Guru é da **spec 024**); A-03 escopo = parser puro + endpoints finos
+  `/ingestao/asaas/*` (superfície `admin/` completa fica p/ a spec de migração). Defaults
+  documentados A-04..A-16 no `spec.md`. **Ajuste sintético** (A-05): `payment.deleted ===
+  true` → `statusOrigem = "DELETED"` (o `payment.status` fica congelado na remoção; `DELETED
+  → CANCELADO`). **Asaas não tem** papel de afiliada (`ehAfiliada` nunca emitido); tem
+  assinatura nativa (`payment.subscription` → `assinatura.ehRecorrencia`); moeda `BRL`
+  cravada na borda; **comprador não vem no `payment`** (só o id `cus_…`) — só o CSV monta
+  `comprador`; `originalValue`/`interestValue`/`refunds[]` só no `payload_bruto`. Parser de
+  CSV **à mão** (0 dep — cópia da 019). **0 migração, 0 tabela, 0 dependência nova, 0 chave
+  `.env` nova** (`ASAAS_PRD_*`/`ASAAS_SVC_*` já em `accountConfig`), **0 porta nova, 0
+  permissão nova, 0 frontend** (eventos no painel **Eventos**/006, transações em
+  **Financeiro · Transações**/018 sem mudança). `CONTEXT_MODULES` segue **11**. 711 testes
+  unitários backend (+55 vs. a 019 — domínio puro: helpers, os 3 parsers contra fixtures
+  reais, `AsaasApiClient` com dublê de `fetch`, `status-map/asaas` com varredura de
+  cobertura) + 376 e2e (21 suítes, +16 — Postgres real, container isolado
+  `pandora-db-spec020` na porta **55437**, já que 55432/55433/55435/55436 estavam em uso:
+  US1 webhook por conta → transação + OVERDUE/DELETED + 401 + evento não-cobrança, US2 ponte
+  Guru sem forçar revisão + `PAYMENT_REFUNDED` colapsa no `payment.id` + dedup por hash +
+  status inédito → revisão, US3 sincronização com dublê de 2 páginas + `conta` inválida →
+  422 + sem chave → 422, US4 import CSV com comprador, SC-015 isolamento PRD/SVC → 2
+  transações, `grep` de fronteira, catálogo RBAC inalterado, `/health` = 11), todos verdes;
+  lint/typecheck/build limpos no backend; frontend inalterado. Artefatos: `research.md`,
+  `data-model.md`, `contracts/` (4), `quickstart.md`. Detalhe:
+  [`specs/020-adapter-asaas/`](specs/020-adapter-asaas/) e
+  [`docs/020-adapter-asaas.md`](docs/020-adapter-asaas.md).
 
 - [ ] **021 — adapter-guru**
   Adapters Guru (contas PRD e SVC): webhook por conta, API `GET /transactions` (janelas
