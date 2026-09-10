@@ -1,0 +1,55 @@
+{
+  "object": "list",
+  "hasMore": false,
+  "totalCount": 3,
+  "limit": 100,
+  "offset": 0,
+  "data": [
+    {
+      "object": "payment",
+      "id": "pay_a1000000000000000001",
+      "dateCreated": "2026-03-02",
+      "customer": "cus_000006200001",
+      "subscription": null,
+      "value": 4200.0,
+      "netValue": 4053.0,
+      "description": "Pos - Turma 48 - a vista",
+      "billingType": "PIX",
+      "status": "RECEIVED",
+      "dueDate": "2026-03-02",
+      "paymentDate": "2026-03-02",
+      "confirmedDate": "2026-03-02",
+      "externalReference": ""
+    },
+    {
+      "object": "payment",
+      "id": "pay_a1000000000000000002",
+      "dateCreated": "2026-03-05",
+      "customer": "cus_000006200002",
+      "subscription": "sub_aa11bb22cc33",
+      "value": 89.9,
+      "netValue": 86.71,
+      "description": "Clube da Nutri - mensal",
+      "billingType": "CREDIT_CARD",
+      "status": "CONFIRMED",
+      "dueDate": "2026-03-05",
+      "paymentDate": "2026-03-05",
+      "confirmedDate": "2026-03-05",
+      "externalReference": "guru-tx-def456"
+    },
+    {
+      "object": "payment",
+      "id": "pay_a1000000000000000003",
+      "dateCreated": "2026-03-07",
+      "customer": "cus_000006200003",
+      "subscription": null,
+      "value": 350.0,
+      "description": "Mentoria - boleto",
+      "billingType": "BOLETO",
+      "status": "PENDING",
+      "dueDate": "2026-03-20",
+      "paymentDate": null,
+      "externalReference": null
+    }
+  ]
+}

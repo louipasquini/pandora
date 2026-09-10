@@ -1,0 +1,19 @@
+{
+  "object": "list",
+  "hasMore": false,
+  "totalCount": 10,
+  "limit": 100,
+  "offset": 0,
+  "data": [
+    { "object": "payment", "id": "pay_voc0000000000000001", "customer": "cus_v01", "value": 100.0, "netValue": 96.5, "status": "CONFIRMED", "dateCreated": "2026-05-01", "paymentDate": "2026-05-01", "description": "cartao confirmado" },
+    { "object": "payment", "id": "pay_voc0000000000000002", "customer": "cus_v02", "value": 100.0, "netValue": 100.0, "status": "RECEIVED_IN_CASH", "dateCreated": "2026-05-02", "paymentDate": "2026-05-02", "description": "baixa manual" },
+    { "object": "payment", "id": "pay_voc0000000000000003", "customer": "cus_v03", "value": 100.0, "netValue": 90.0, "status": "DUNNING_RECEIVED", "dateCreated": "2026-05-03", "paymentDate": "2026-05-10", "description": "pago via negativacao" },
+    { "object": "payment", "id": "pay_voc0000000000000004", "customer": "cus_v04", "value": 100.0, "status": "AWAITING_RISK_ANALYSIS", "dateCreated": "2026-05-04", "description": "cartao em analise" },
+    { "object": "payment", "id": "pay_voc0000000000000005", "customer": "cus_v05", "value": 100.0, "status": "DUNNING_REQUESTED", "dateCreated": "2026-05-05", "description": "enviado para negativacao" },
+    { "object": "payment", "id": "pay_voc0000000000000006", "customer": "cus_v06", "value": 100.0, "netValue": 90.0, "status": "REFUND_REQUESTED", "dateCreated": "2026-05-06", "paymentDate": "2026-05-06", "description": "estorno solicitado" },
+    { "object": "payment", "id": "pay_voc0000000000000007", "customer": "cus_v07", "value": 100.0, "netValue": 90.0, "status": "REFUND_IN_PROGRESS", "dateCreated": "2026-05-07", "paymentDate": "2026-05-07", "description": "estorno em andamento" },
+    { "object": "payment", "id": "pay_voc0000000000000008", "customer": "cus_v08", "value": 100.0, "netValue": 90.0, "status": "CHARGEBACK_REQUESTED", "dateCreated": "2026-05-08", "paymentDate": "2026-05-08", "description": "chargeback aberto" },
+    { "object": "payment", "id": "pay_voc0000000000000009", "customer": "cus_v09", "value": 100.0, "netValue": 90.0, "status": "CHARGEBACK_DISPUTE", "dateCreated": "2026-05-09", "paymentDate": "2026-05-09", "description": "chargeback em disputa" },
+    { "object": "payment", "id": "pay_voc0000000000000010", "customer": "cus_v10", "value": 100.0, "netValue": 90.0, "status": "AWAITING_CHARGEBACK_REVERSAL", "dateCreated": "2026-05-10", "paymentDate": "2026-05-10", "description": "aguardando reversao de chargeback" }
+  ]
+}

@@ -1,0 +1,7 @@
+﻿id;status;value;netValue;dateCreated;paymentDate;dueDate;description;externalReference;subscription;customer;email;cpfCnpj;phone
+pay_c1000000000000000001;RECEIVED;250.00;241.13;2026-02-10;2026-02-11;2026-02-15;"Curso rapido; modulo 1";;;Ana Paula Souza;ana.souza@asaas-e2e.invalid;999.000.111-22;+5511911112222
+pay_c1000000000000000002;CONFIRMED;89.90;86.71;2026-02-12;2026-02-12;2026-02-12;Clube da Nutri mensal;guru-tx-zzz999;sub_c1c1c1c1;Bruno Carvalho;bruno.c@asaas-e2e.invalid;999.000.111-33;+5521933334444
+pay_c1000000000000000003;PENDING;480.00;;2026-02-14;;2026-03-01;Mentoria trimestral;;;Carla Nunes Dias;carla.dias@asaas-e2e.invalid;99.000.111/0001-22;
+pay_c1000000000000000004;OVERDUE;120.00;;2026-01-05;;2026-01-20;Ebook avulso;;;Diego Lima;diego.lima@asaas-e2e.invalid;;+5531955556666
+pay_c1000000000000000005;REFUNDED;250.00;241.13;2026-02-10;2026-02-11;2026-02-15;Estorno do curso rapido;;;Ana Paula Souza;ana.souza@asaas-e2e.invalid;999.000.111-22;+5511911112222
+;RECEIVED;60.00;57.90;2026-02-20;2026-02-20;2026-02-20;Linha sem identificador;;;Sem Id;sem.id@asaas-e2e.invalid;;

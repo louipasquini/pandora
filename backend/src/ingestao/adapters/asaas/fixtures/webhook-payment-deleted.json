@@ -1,0 +1,23 @@
+{
+  "id": "evt_38d4e5f6a7b8c9d0e1f2",
+  "event": "PAYMENT_DELETED",
+  "dateCreated": "2026-03-05 18:20:33",
+  "payment": {
+    "object": "payment",
+    "id": "pay_2b3c4d5e6f708192a3b4",
+    "dateCreated": "2026-03-04",
+    "customer": "cus_000006241595",
+    "subscription": null,
+    "installment": null,
+    "value": 120.0,
+    "netValue": null,
+    "description": "Cobranca cancelada antes do pagamento",
+    "billingType": "BOLETO",
+    "status": "PENDING",
+    "dueDate": "2026-03-12",
+    "paymentDate": null,
+    "confirmedDate": null,
+    "externalReference": null,
+    "deleted": true
+  }
+}

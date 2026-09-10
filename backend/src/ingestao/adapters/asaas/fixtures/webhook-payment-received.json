@@ -1,0 +1,33 @@
+{
+  "id": "evt_05a1b2c3d4e5f6a7b8c9",
+  "event": "PAYMENT_RECEIVED",
+  "dateCreated": "2026-03-09 09:12:44",
+  "payment": {
+    "object": "payment",
+    "id": "pay_9f8e7d6c5b4a30291817",
+    "dateCreated": "2026-03-08",
+    "customer": "cus_000006241593",
+    "subscription": null,
+    "installment": null,
+    "paymentLink": null,
+    "value": 197.0,
+    "netValue": 190.13,
+    "originalValue": null,
+    "interestValue": null,
+    "description": "Pos em Nutricao Clinica - matricula",
+    "billingType": "PIX",
+    "status": "RECEIVED",
+    "dueDate": "2026-03-10",
+    "originalDueDate": "2026-03-10",
+    "paymentDate": "2026-03-09",
+    "clientPaymentDate": "2026-03-09",
+    "confirmedDate": "2026-03-09",
+    "creditDate": "2026-03-10",
+    "externalReference": "",
+    "deleted": false,
+    "bankSlipUrl": null,
+    "invoiceUrl": "https://www.asaas.com/i/9f8e7d6c5b4a",
+    "invoiceNumber": "04812733",
+    "campo_novo_2027": "a Asaas pode adicionar campos — o parser ignora"
+  }
+}

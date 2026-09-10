@@ -4,6 +4,7 @@ import {
   type ResolucaoStatus,
 } from '../../../core/core.module';
 import { TMB } from './tmb';
+import { ASAAS } from './asaas';
 
 /**
  * Tradução do **vocabulário bruto de status** de cada plataforma para
@@ -26,6 +27,8 @@ export const MAPAS_STATUS: Record<
 
 // spec 019 — conta única `TMB` (webhook Vendas/Financeiro, API, CSV).
 Object.assign(MAPAS_STATUS, { TMB });
+// spec 020 — contas `ASAAS_PRD` / `ASAAS_SVC` (webhook por conta, API v3, CSV).
+Object.assign(MAPAS_STATUS, { ASAAS_PRD: ASAAS, ASAAS_SVC: ASAAS });
 
 export interface ResultadoStatusMapeado extends ResolucaoStatus {
   motivo?: string;

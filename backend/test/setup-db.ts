@@ -49,6 +49,15 @@ export default function setupDb(): void {
   if (!process.env.TMB_WEBHOOK_TOKEN) {
     process.env.TMB_WEBHOOK_TOKEN = 'tmb-webhook-token-e2e';
   }
+  // Adapter Asaas (spec 020): fixtures dos tokens de webhook por conta — sem eles
+  // o `WebhookAuthenticator` recusa `POST /webhooks/asaas/{prd,svc}` com 401.
+  // `test/support/asaas.ts` lê os mesmos valores.
+  if (!process.env.ASAAS_PRD_WEBHOOK_TOKEN) {
+    process.env.ASAAS_PRD_WEBHOOK_TOKEN = 'asaas-prd-webhook-token-e2e';
+  }
+  if (!process.env.ASAAS_SVC_WEBHOOK_TOKEN) {
+    process.env.ASAAS_SVC_WEBHOOK_TOKEN = 'asaas-svc-webhook-token-e2e';
+  }
   const base = process.env.TEST_DATABASE_URL;
   if (!base) {
     throw new Error(

@@ -104,7 +104,10 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  dependência (spec 013)
     ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/);
                  adapters/tmb/ (parsers puros das 4 fontes + TmbApiClient) + tmb/ (webhooks públicos
-                 /webhooks/tmb/* + /ingestao/tmb/{sincronizar,importar-csv}) — spec 019
+                 /webhooks/tmb/* + /ingestao/tmb/{sincronizar,importar-csv}) — spec 019;
+                 adapters/asaas/ (parsers puros das 3 fontes, por conta, + AsaasApiClient) + asaas/
+                 (webhooks públicos por conta /webhooks/asaas/{prd,svc} +
+                 /ingestao/asaas/{sincronizar,importar-csv}) — spec 020
     crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring,
                  campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
                  timeline unificada, tag compartilhada, query salva (spec 009) + Pipeline/
@@ -660,7 +663,34 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   (`Estornado`/`Reembolsado`/…). TMB não tem assinatura/afiliada; moeda `BRL` na borda.
   **0 migração, 0 tabela, 0 dep nova, 0 chave `.env` nova, 0 porta nova, 0 permissão nova,
   0 frontend.** `CONTEXT_MODULES` = 11. Ver [`docs/019-adapter-tmb.md`](docs/019-adapter-tmb.md).
-- Próxima: **020 — adapter-asaas** (Fase 2 — Financeiro).
+- ✅ **020 — adapter-asaas** — 2ª das 4 specs de adaptadores da Fase 2 (molde da 019). Borda
+  de entrada das **duas contas Asaas** (`ASAAS_PRD`, `ASAAS_SVC`): 3 `parse*()` puros
+  (webhook de cobrança `{ event, payment }` / API `GET /v3/payments` paginada `offset`/
+  `limit`/`hasMore` / CSV), **recebendo a `conta` como parâmetro** (o payload nunca a
+  determina), testados contra **fixtures reais sem tocar o banco**. Vive em
+  `src/ingestao/adapters/asaas/`; **não importa `financeiro`** — o `status-map/asaas.ts`
+  (`RECEIVED`/`CONFIRMED`/`OVERDUE`/`REFUNDED`/`CHARGEBACK_*`/`DELETED`→canônico,
+  compartilhado entre PRD/SVC e entre `asaas.webhook`/`.api`/`.csv`) mora no `financeiro`;
+  `Object.assign(MAPAS_STATUS, { ASAAS_PRD: ASAAS, ASAAS_SVC: ASAAS })`. **2 webhooks
+  públicos por conta** `POST /webhooks/asaas/{prd,svc}` (auth = `ASAAS_<conta>_WEBHOOK_TOKEN`
+  via `WebhookAuthenticator`, header `asaas-access-token`; token errado/da outra conta →
+  401) + **2 endpoints** `POST /ingestao/asaas/{sincronizar,importar-csv}` sob
+  `evento:ingerir` (`conta` obrigatória no corpo). Todos só chamam `RegistrarEventoService`
+  (etapa 0) — **`worker.service.ts`/`etapas.ts`/`pipeline-wiring`/`classificar.ts` sem
+  diff**. `AsaasApiClient` atrás de interface (`fetch` nativo, 0 dep; header `access_token`,
+  NÃO Bearer; base default `https://api.asaas.com/v3`; dublê nos e2e); sem
+  `ASAAS_<conta>_API_KEY` → `/sincronizar` responde **422**. Decisões com o dono do produto
+  (2026-09-10): A-01 chave natural `id_origem` = `payment.id` (por conta — a
+  `PlataformaOrigem` desambigua; N eventos de uma cobrança colapsam na mesma transação,
+  último evento vence); A-02 `externalReference` → `referenciaExterna.idOrigem` **sem**
+  `plataforma` (o vínculo Asaas↔Guru é da spec 024; `classificar` regra 2 não dispara sem
+  `plataforma`); A-03 escopo = parser + endpoints finos `/ingestao/asaas/*`. Ajuste
+  sintético (A-05): `payment.deleted === true` → `statusOrigem = "DELETED"` → `CANCELADO`.
+  Asaas não tem afiliada; tem assinatura nativa (`subscription` → `RECORRENCIA`); moeda
+  `BRL` na borda; **comprador só vem no CSV** (o `payment` traz só `cus_…`). **0 migração, 0
+  tabela, 0 dep nova, 0 chave `.env` nova, 0 porta nova, 0 permissão nova, 0 frontend.**
+  `CONTEXT_MODULES` = 11. Ver [`docs/020-adapter-asaas.md`](docs/020-adapter-asaas.md).
+- Próxima: **021 — adapter-guru** (Fase 2 — Financeiro).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
