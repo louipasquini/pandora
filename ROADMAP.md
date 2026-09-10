@@ -900,11 +900,94 @@ montado aqui, etapa por etapa.
   [`specs/021-adapter-guru/`](specs/021-adapter-guru/) e
   [`docs/021-adapter-guru.md`](docs/021-adapter-guru.md).
 
-- [ ] **022 — adapter-hotmart**
-  Adapters Hotmart (contas PRD e SVC): OAuth2 client_credentials, API `GET /sales/history`
-  + `GET /sales/price/details`, CSV. `is_subscription` no payload. Sem webhook na v1
-  (adapter `hotmart/webhook` previsto para feature futura). `status_map/hotmart/api`.
-  Sem frontend.
+- [x] **022 — adapter-hotmart** — ✅ implementada e validada (2026-09-10)
+  Quarta e **última** das 4 specs de adaptadores da Fase 2 (molde direto da 019/020/021).
+  Borda de entrada das **duas contas Hotmart** (`HOTMART_PRD`, `HOTMART_SVC`): funções puras
+  `parse*()` (API `GET /payments/api/v1/sales/history` **paginação por cursor**
+  `page_info.next_page_token` / API `GET /payments/api/v1/sales/price/details` — 2ª chamada
+  de rede, merge por `transaction` / CSV de export / webhook `PURCHASE_*` **stub desligado**)
+  → `EventoCanonico` do `core`, **recebendo a `conta` como parâmetro**, testadas contra
+  **fixtures reais sem tocar o banco** (Princípio III). Vive em
+  `src/ingestao/adapters/hotmart/`; **não importa `financeiro`** — o `status-map/hotmart.ts`
+  (`APPROVED`/`COMPLETE`→`PAGO`, `PRINTED_BILLET`/`WAITING_PAYMENT`/`UNDER_ANALISYS`/
+  `PROCESSING_TRANSACTION`→`PENDENTE`, `OVERDUE`/`NO_FUNDS`→`EM_ATRASO`, `REFUNDED`/
+  `PARTIALLY_REFUNDED`/`DISPUTE`→`ESTORNADO`, `CHARGEBACK`/`PROTESTED`→`CHARGEBACK`,
+  `CANCELLED`/`EXPIRED`→`CANCELADO`, `BLOCKED`→`RECUSADO`; `STARTED`/`PRE_ORDER` **fora do
+  mapa de propósito** → revisão) mora no `financeiro` e é registrado via
+  `Object.assign(MAPAS_STATUS, { HOTMART_PRD: HOTMART, HOTMART_SVC: HOTMART })`. **Superfície
+  HTTP fina**: 2 endpoints `POST /ingestao/hotmart/{sincronizar,importar-csv}` sob a
+  permissão **já existente** `evento:ingerir` (`conta` obrigatória no corpo) + 2 webhooks
+  **públicos por conta** `POST /webhooks/hotmart/{prd,svc}` (**stub — a Hotmart não tem
+  webhook na v1**): guarda de flag `HOTMART_WEBHOOK_ENABLED` (default `false`) → **503**
+  antes de autenticar/parsear; `=true` → autentica `hottok`
+  (`HOTMART_<conta>_WEBHOOK_TOKEN` via `WebhookAuthenticator`, header `X-HOTMART-HOTTOK` |
+  `Bearer`) → parseia (removendo `hottok` do corpo) → registra `hotmart.webhook` → **200**.
+  Todos só chamam `RegistrarEventoService.registrarEvento` (a porta da etapa 0 que a 006
+  exportou "para os adapters 019–022"); o worker faz o resto — **nenhuma etapa nova;
+  `worker.service.ts` / `etapas.ts` / `pipeline-wiring.module.ts` / `classificar.ts` /
+  `schema.prisma` sem diff**. `HotmartApiClient` atrás de interface (`fetch` nativo do Node
+  24, **0 dep**): **OAuth2 `client_credentials`** — `POST
+  https://api-sec-vlc.hotmart.com/security/oauth/token` (Basic + `grant_type` + `client_id` +
+  `client_secret`), `access_token` **cacheado em memória por conta** até `expires_in − 60s`;
+  `GET {base}/sales/{history,price/details}` (`start_date`/`end_date` em **epoch ms**,
+  `transaction_status` opcional, `page_token` cursor); base default
+  `https://developers.hotmart.com/payments/api/v1`; dublê nos e2e (2 métodos —
+  `listarVendas`, `listarDetalhesPreco`); sem
+  `HOTMART_<conta>_CLIENT_ID`/`_CLIENT_SECRET`/`_API_KEY` → `HotmartApiIndisponivelError` →
+  `/sincronizar` responde **422**; janela > 365 dias → **422** no DTO (guarda contra o `502`
+  de query lenta da Hotmart; API não chamada). **Decisões com o dono do produto
+  (2026-09-10)**: H-01 credenciais OAuth = **4 chaves `.env` novas dedicadas**
+  `HOTMART_{PRD,SVC}_CLIENT_{ID,SECRET}` (opcionais; `_API_KEY` guarda o token **Basic** do
+  painel do dev; `_WEBHOOK_TOKEN` guarda o `hottok`); H-02 `GET /sales/price/details` entra
+  como **2ª chamada de rede** (merge por `transaction` — `vat`+`fee` refinam `valores.taxas`,
+  `coupon`/`base`/`real_conversion_rate` só no `payload_bruto` sob `price_details`; detalhe
+  faltando não é erro; detalhe órfão é ignorado); H-03 escopo = parsers puros + endpoints
+  finos `/ingestao/hotmart/*` + **webhook stub desligado** (parser completo e testado, rota
+  em 503 até `HOTMART_WEBHOOK_ENABLED=true`). Defaults documentados H-04..H-20 no `spec.md`.
+  **Chave natural `id_origem` = `purchase.transaction`** (`"HP…"`, por conta — a
+  `PlataformaOrigem` desambigua; os N estados de uma compra colapsam na mesma transação,
+  último evento vence, Regra Inviolável nº 1). **`statusOrigem` = `purchase.status` cru** (o
+  `event` do webhook fica só no `payload_bruto`). **Moeda sempre exposta**
+  (`purchase.price.currency_code`/`.currency_value`/coluna, ISO 4217 validado pelo `core`;
+  ausente/inválida → `BRL` cravado + erro não-fatal). **Papel de afiliada**
+  (`purchase.commission_as === "AFFILIATE"` → `ehAfiliada = true` → `VENDA_AFILIADA` — Regra
+  Inviolável nº 8). **Assinatura** (`purchase.is_subscription === true` +
+  `recurrency_number` → `assinatura.{ehRecorrencia,numeroCiclo}` → `RECORRENCIA` para ciclos
+  > 1). O adapter **nunca emite `referenciaExterna`** (a Hotmart processa a própria cobrança
+  — não terceiriza como a Guru→Asaas). Comprador: API `sales/history` só `buyer.name` +
+  `buyer.email`; webhook `data.buyer` rico (documento + telefone + endereço); CSV colunas de
+  comprador. `ocorridoEm` = `purchase.approved_date` ?? `purchase.order_date` (epoch ms,
+  string crua — a etapa 3 aplica `parseInstante`, limiar `1e11` distingue s/ms). Parser de
+  CSV **à mão** (0 dep — cópia da 021). **0 migração, 0 tabela, 0 dependência nova, 0 porta
+  nova de aplicação, 0 permissão nova, 0 frontend** (eventos no painel **Eventos**/006,
+  transações em **Financeiro · Transações**/018 sem mudança). Chaves `.env` **novas**:
+  `HOTMART_{PRD,SVC}_CLIENT_{ID,SECRET}` (4, opcionais) + `HOTMART_WEBHOOK_ENABLED` (1,
+  default `false`). `CONTEXT_MODULES` segue **11**. 840 testes unitários backend (+63 vs. a
+  021 — domínio puro: `normalizar-hotmart` (helpers + moeda parametrizada + `taxasDe`/
+  `somarDinheiro`), `parse-venda-api` contra fixture real de `sales/history` + merge de
+  `price/details` + afiliada + assinatura + estorno colapsado, `parse-webhook` (stub, contra
+  fixtures `PURCHASE_*` — comprador rico, sem `hottok`), `parse-linha-csv`,
+  `hotmart-api-client` com dublê de `fetch` (1 POST de OAuth reusado, paginação por
+  `page_token`, `transaction_status` repetido, 502), `status-map/hotmart` com varredura de
+  cobertura) + 410 e2e (23 suítes, +16 — Postgres real, container isolado
+  `pandora-db-spec022` na porta **55439**, já que 55432/55433/55435/55436/55438 estavam em
+  uso por outras sessões: US1 sincronização com dublê de 2 páginas de `sales/history` por
+  cursor → transações `HOTMART_PRD` + `APPROVED`→`PAGO` + `WAITING_PAYMENT`→`PENDENTE` + sem
+  credenciais → 422 + `conta` inválida → 422 + janela > 365 d → 422 (API não chamada), US2
+  `price/details` casado → `payload_bruto.price_details` + `ABC10` + venda sem detalhe sem
+  erro + `commission_as: "AFFILIATE"` → `VENDA_AFILIADA` + `is_subscription` +
+  `recurrency_number: 3` → `RECORRENCIA` + `APPROVED`+`PARTIALLY_REFUNDED` colapsa no
+  `transaction` → 2 eventos, 1 transação `ESTORNADO`/`REEMBOLSO` + `STARTED` → `DESCONHECIDO`
+  + revisão + `CHARGEBACK` do mesmo lote sem revisão, US3 import CSV 5 boas + 1 sem id →
+  `{ novos: 5, ignoradas: 1 }` + 2º import → `novos: 0`, US4 webhook stub: flag desligado →
+  503, 0 evento + 2ª instância com `HOTMART_WEBHOOK_ENABLED=true` → 200 + 1 `evento_origem`
+  `hotmart.webhook` sem `hottok` + `processar` → `PAGO` + `hottok` errado → 401, SC-016
+  isolamento PRD/SVC → 2 transações, segredo (`grep` de `client_secret`/`access_token`/
+  `hottok`/`Basic ` = 0), `grep` de fronteira, catálogo RBAC inalterado, `/health` = 11),
+  todos verdes; lint/typecheck/build limpos no backend; frontend inalterado. Artefatos:
+  `research.md`, `data-model.md`, `contracts/` (4), `quickstart.md`. Detalhe:
+  [`specs/022-adapter-hotmart/`](specs/022-adapter-hotmart/) e
+  [`docs/022-adapter-hotmart.md`](docs/022-adapter-hotmart.md).
 
 - [ ] **023 — catalogo-produto-oferta**
   `produto` (id surrogate, `codigo` de 3 letras = alias único, `nome`/`assinatura`

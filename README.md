@@ -111,7 +111,11 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  adapters/guru/ (parsers puros das 3 fontes, por conta, + GuruApiClient com
                  paginação por cursor) + guru/ (webhooks públicos por conta
                  /webhooks/guru/{prd,svc} — token api_token NO CORPO +
-                 /ingestao/guru/{sincronizar,importar-csv}) — spec 021
+                 /ingestao/guru/{sincronizar,importar-csv}) — spec 021;
+                 adapters/hotmart/ (parsers puros por conta, + HotmartApiClient com OAuth2
+                 client_credentials + paginação por cursor; sales/history + sales/price/details
+                 merge) + hotmart/ (/ingestao/hotmart/{sincronizar,importar-csv} +
+                 /webhooks/hotmart/{prd,svc} — STUB desligado, HOTMART_WEBHOOK_ENABLED) — spec 022
     crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring,
                  campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
                  timeline unificada, tag compartilhada, query salva (spec 009) + Pipeline/
@@ -726,7 +730,47 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   `contact`. **0 migração, 0 tabela, 0 dep nova, 0 chave `.env` nova, 0 porta nova, 0
   permissão nova, 0 frontend.** `CONTEXT_MODULES` = 11. Ver
   [`docs/021-adapter-guru.md`](docs/021-adapter-guru.md).
-- Próxima: **022 — adapter-hotmart** (Fase 2 — Financeiro).
+- ✅ **022 — adapter-hotmart** — 4ª e **última** das 4 specs de adaptadores da Fase 2 (molde
+  da 019/020/021). Borda de entrada das **duas contas Hotmart** (`HOTMART_PRD`,
+  `HOTMART_SVC`): `parse*()` puros (API `GET /payments/api/v1/sales/history` **paginação por
+  cursor** `page_info.next_page_token` / API `GET /payments/api/v1/sales/price/details` — **2ª
+  chamada de rede**, merge por `transaction` / CSV / webhook `PURCHASE_*` **stub**),
+  **recebendo a `conta` como parâmetro**, testados contra **fixtures reais sem tocar o
+  banco**. Vive em `src/ingestao/adapters/hotmart/`; **não importa `financeiro`** — o
+  `status-map/hotmart.ts` (`APPROVED`/`COMPLETE`→`PAGO`, `PRINTED_BILLET`/`WAITING_PAYMENT`/
+  `UNDER_ANALISYS`/`PROCESSING_TRANSACTION`→`PENDENTE`, `OVERDUE`/`NO_FUNDS`→`EM_ATRASO`,
+  `REFUNDED`/`PARTIALLY_REFUNDED`/`DISPUTE`→`ESTORNADO`, `CHARGEBACK`/`PROTESTED`→`CHARGEBACK`,
+  `CANCELLED`/`EXPIRED`→`CANCELADO`, `BLOCKED`→`RECUSADO`; `STARTED`/`PRE_ORDER` → revisão)
+  mora no `financeiro`; `Object.assign(MAPAS_STATUS, { HOTMART_PRD: HOTMART, HOTMART_SVC:
+  HOTMART })`. **2 endpoints** `POST /ingestao/hotmart/{sincronizar,importar-csv}` sob
+  `evento:ingerir` (`conta` obrigatória no corpo) + **2 webhooks públicos por conta**
+  `POST /webhooks/hotmart/{prd,svc}` — **STUB** (a Hotmart não tem webhook na v1): flag
+  `HOTMART_WEBHOOK_ENABLED` (default `false`) → **503** antes de autenticar; `=true` →
+  autentica `hottok` (`HOTMART_<conta>_WEBHOOK_TOKEN` via `WebhookAuthenticator`, header
+  `X-HOTMART-HOTTOK`|`Bearer`) → parseia (sem `hottok`) → registra `hotmart.webhook` → **200**.
+  Todos só chamam `RegistrarEventoService` (etapa 0) — **`worker.service.ts`/`etapas.ts`/
+  `pipeline-wiring`/`classificar.ts`/`schema` sem diff**. `HotmartApiClient` atrás de
+  interface (`fetch` nativo, 0 dep): **OAuth2 `client_credentials`** — token Basic +
+  `client_id`/`client_secret` → `access_token` **cacheado em memória por conta**; `GET
+  {base}/sales/{history,price/details}` (`start_date`/`end_date` em epoch ms; `page_token`
+  cursor); base default `https://developers.hotmart.com/payments/api/v1`; dublê nos e2e (2
+  métodos); sem `HOTMART_<conta>_CLIENT_ID`/`_CLIENT_SECRET`/`_API_KEY` → `/sincronizar`
+  responde **422**; janela > 365 dias → **422** no DTO. Decisões com o dono do produto
+  (2026-09-10): H-01 credenciais OAuth = **4 chaves `.env` novas** `HOTMART_{PRD,SVC}_CLIENT_
+  {ID,SECRET}` (`_API_KEY` guarda o token Basic; `_WEBHOOK_TOKEN` o `hottok`); H-02 `GET
+  /sales/price/details` entra como **2ª chamada de rede** (merge por `transaction` — `vat`+
+  `fee` refinam `valores.taxas`, `coupon`/`base` só no `payload_bruto`); H-03 escopo =
+  parsers puros + endpoints finos `/ingestao/hotmart/*` + webhook **stub desligado**. Chave
+  natural `id_origem` = `purchase.transaction` (`"HP…"`, por conta); `statusOrigem` =
+  `purchase.status` cru; moeda sempre exposta (`price.currency_code`/`.currency_value`/coluna;
+  inválida → `BRL`); papel de afiliada (`commission_as === "AFFILIATE"` → `VENDA_AFILIADA`);
+  assinatura (`is_subscription` + `recurrency_number` → `RECORRENCIA` p/ ciclos > 1); **nunca
+  emite `referenciaExterna`**; comprador rico só no webhook. `ocorridoEm` = `approved_date` ??
+  `order_date` (epoch ms). **0 migração, 0 tabela, 0 dep nova, 0 porta nova de aplicação, 0
+  permissão nova, 0 frontend.** Chaves `.env` novas: `HOTMART_{PRD,SVC}_CLIENT_{ID,SECRET}` +
+  `HOTMART_WEBHOOK_ENABLED`. `CONTEXT_MODULES` = 11. Ver
+  [`docs/022-adapter-hotmart.md`](docs/022-adapter-hotmart.md).
+- Próxima: **023 — catalogo-produto-oferta** (Fase 2 — Financeiro).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
