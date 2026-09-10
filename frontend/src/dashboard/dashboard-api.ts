@@ -19,7 +19,7 @@ export function mensagemErro(err: unknown): string {
   return err instanceof Error ? err.message : 'erro inesperado';
 }
 
-function qs(params: Record<string, unknown>): string {
+function qs(params: object): string {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== '') p.set(k, String(v));
@@ -210,7 +210,7 @@ export const METRICAS_META: { id: string; rotulo: string; monetaria: boolean }[]
 
 export const dashboardApi = {
   montar: (f: FiltrosDashboard) =>
-    apiFetch(`/crm/dashboard${qs(f as Record<string, unknown>)}`)
+    apiFetch(`/crm/dashboard${qs({ ...f })}`)
       .then(checarOk)
       .then((r) => json<DashboardView>(r)),
   catalogo: () =>
