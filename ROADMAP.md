@@ -744,11 +744,41 @@ montado aqui, etapa por etapa.
   [`specs/018-financeiro-transacao-ledger/`](specs/018-financeiro-transacao-ledger/) e
   [`docs/018-financeiro-transacao-ledger.md`](docs/018-financeiro-transacao-ledger.md).
 
-- [ ] **019 — adapter-tmb**
-  Adapters TMB: webhook Vendas (payload achatado) + webhook Financeiro (nível de parcela,
-  só `status_financeiro`), API `GET /api/pedidos`, CSV. `parse(payload|linha) →
-  EventoCanonico`. `status_map/tmb/{api,csv}` versionados. Fixtures reais. Webhooks
-  públicos `POST /webhooks/tmb/{vendas,financeiro}`. Sem frontend.
+- [x] **019 — adapter-tmb** — ✅ implementada e validada (2026-09-10)
+  Primeira das 4 specs de adaptadores da Fase 2. Borda de entrada da conta única **`TMB`**:
+  4 funções puras `parse*()` (webhook Vendas achatado / webhook Financeiro `[{dados}]` nível
+  de parcela / API `GET /api/pedidos` paginada / CSV) → `EventoCanonico` do `core`, testadas
+  contra **fixtures reais sem tocar o banco** (Princípio III). Vive em
+  `src/ingestao/adapters/tmb/` (visão Apêndice C); **não importa `financeiro`** — o
+  `status-map/tmb.ts` (vocabulário bruto → `StatusTransacaoCanonico`, por fonte
+  `tmb.webhook-vendas`/`tmb.webhook-financeiro`/`tmb.api`/`tmb.csv`) mora no `financeiro` e
+  é consumido lá pela etapa 3 (018); registrado via `Object.assign(MAPAS_STATUS, { TMB })`.
+  **Superfície HTTP fina**: 2 webhooks **públicos** `POST /webhooks/tmb/{vendas,financeiro}`
+  (prefixo `/webhooks/` já é allowlist da 003; auth real = `TMB_WEBHOOK_TOKEN` via
+  `WebhookAuthenticator` em tempo constante — token errado → 401, 0 evento) + 2 endpoints
+  `POST /ingestao/tmb/{sincronizar,importar-csv}` sob a permissão **já existente**
+  `evento:ingerir`. Todos só chamam `RegistrarEventoService.registrarEvento` (a porta da
+  etapa 0 que a 006 exportou "para os adapters 019–022"); o worker faz o resto —
+  **nenhuma etapa nova, `worker.service.ts`/`etapas.ts`/`pipeline-wiring.module.ts` sem
+  diff**. `TmbApiClient` atrás de interface (`fetch` nativo do Node 24, **0 dep**; dublê
+  nos e2e); sem `TMB_API_BASE_URL`/`TMB_API_KEY` → `/sincronizar` responde **422** (não
+  500). **Decisões com o dono do produto (2026-09-10)**: D-01 chave natural `id_origem` =
+  `pedido`/`pedido_id` (inteiro→string; `id_externo` só no `payload_bruto`); D-02 webhook
+  Financeiro nível de parcela **colapsa no pedido, último evento vence** (cada parcela vira
+  um `evento_origem` imutável — histórico completo preservado; refino de carteira fica p/
+  spec futura de cobranças); D-03 escopo = parser puro + endpoints finos `/ingestao/tmb/*`
+  (superfície `admin/` completa fica p/ a spec de migração). Defaults documentados D-04..D-15
+  no `spec.md`. **Melhoria colateral** (regra local, sem adapter): `RE_ESTORNO` de
+  `classificar.ts` (006) ampliado de `estorno` → `estorn[oa]|reembols|devolu[cç]` para casar
+  os particípios pt-BR (`Estornado`/`Reembolsado`/…) que a TMB manda em `status_pagamento`.
+  **TMB não tem** assinatura/afiliada (`assinatura`/`ehAfiliada` nunca preenchidos); moeda
+  `BRL` cravada na borda; método/vencimento só no `payload_bruto`. **0 migração, 0 tabela,
+  0 dep nova, 0 chave `.env` nova, 0 porta nova, 0 permissão nova, 0 frontend.**
+  `CONTEXT_MODULES` segue **11**. 656 unit backend (+47, domínio puro) + 360 e2e (20 suítes,
+  +13; Postgres real — container isolado `pandora-db-spec019` na porta 55436, já que
+  55432/55433/55435 estavam em uso) verdes; lint/typecheck/build limpos. Detalhe:
+  [`specs/019-adapter-tmb/`](specs/019-adapter-tmb/) e
+  [`docs/019-adapter-tmb.md`](docs/019-adapter-tmb.md).
 
 - [ ] **020 — adapter-asaas**
   Adapters Asaas (contas PRD e SVC): webhook por conta, API `GET /payments`, CSV.

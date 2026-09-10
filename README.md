@@ -102,7 +102,9 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     clientes/    pessoa + conta: identidade, dedup, merge (spec 005 — domain/ application/ infra/)
                  + campo personalizado de pessoa, exposto ao crm via porta de inversão de
                  dependência (spec 013)
-    ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/)
+    ingestao/    evento_origem + EventoCanonico + worker do pipeline canônico (spec 006 — domain/ application/ infra/);
+                 adapters/tmb/ (parsers puros das 4 fontes + TmbApiClient) + tmb/ (webhooks públicos
+                 /webhooks/tmb/* + /ingestao/tmb/{sincronizar,importar-csv}) — spec 019
     crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring,
                  campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
                  timeline unificada, tag compartilhada, query salva (spec 009) + Pipeline/
@@ -638,7 +640,27 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   (lista + filtros + detalhe com valores por moeda + link p/ o evento de origem). **0 dep
   nova**, **1 migração**, **0 porta nova**, **0 chave `.env` nova**. `CONTEXT_MODULES` = 11.
   Ver [`docs/018-financeiro-transacao-ledger.md`](docs/018-financeiro-transacao-ledger.md).
-- Próxima: **019 — adapter-tmb** (Fase 2 — Financeiro).
+- ✅ **019 — adapter-tmb** — 1ª das 4 specs de adaptadores da Fase 2. Borda de entrada da
+  conta única **`TMB`**: 4 `parse*()` puros (webhook Vendas achatado / webhook Financeiro
+  `[{dados}]` nível de parcela / API `GET /api/pedidos` paginada / CSV) → `EventoCanonico`,
+  testados contra **fixtures reais sem tocar o banco** (Princípio III). Vive em
+  `src/ingestao/adapters/tmb/`; **não importa `financeiro`** — o `status-map/tmb.ts` (bruto
+  → `StatusTransacaoCanonico`, por fonte `tmb.webhook-vendas`/`-financeiro`/`.api`/`.csv`)
+  mora no `financeiro` e é consumido lá pela etapa 3; `Object.assign(MAPAS_STATUS, { TMB })`.
+  **2 webhooks públicos** `POST /webhooks/tmb/{vendas,financeiro}` (auth = `TMB_WEBHOOK_TOKEN`
+  via `WebhookAuthenticator`; token errado → 401) + **2 endpoints** `POST /ingestao/tmb/{
+  sincronizar,importar-csv}` sob `evento:ingerir` (já existente). Todos só chamam
+  `RegistrarEventoService` (etapa 0) — **`worker.service.ts`/`etapas.ts`/`pipeline-wiring`
+  sem diff, nenhuma etapa nova**. `TmbApiClient` atrás de interface (`fetch` nativo, 0 dep;
+  dublê nos e2e); sem `TMB_API_*` → `/sincronizar` responde **422**. Decisões com o dono do
+  produto (2026-09-10): D-01 chave natural `id_origem` = `pedido`; D-02 webhook Financeiro
+  (nível de parcela) **colapsa no pedido, último evento vence** (cada parcela = um
+  `evento_origem` imutável); D-03 escopo = parser + endpoints finos `/ingestao/tmb/*`.
+  Melhoria colateral: `RE_ESTORNO` de `classificar.ts` (006) casa particípios pt-BR
+  (`Estornado`/`Reembolsado`/…). TMB não tem assinatura/afiliada; moeda `BRL` na borda.
+  **0 migração, 0 tabela, 0 dep nova, 0 chave `.env` nova, 0 porta nova, 0 permissão nova,
+  0 frontend.** `CONTEXT_MODULES` = 11. Ver [`docs/019-adapter-tmb.md`](docs/019-adapter-tmb.md).
+- Próxima: **020 — adapter-asaas** (Fase 2 — Financeiro).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

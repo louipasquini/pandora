@@ -5,9 +5,18 @@ O adapter de borda (specs 019–022) produz `EventoCanonico.statusOrigem` (cru) 
 `tipoOrigem` (o rótulo da fonte, ex.: `guru.webhook`, `tmb.csv`); a tradução para o enum
 canônico mora aqui, **versionada por fonte**.
 
-## Como as specs 019–022 populam
+## Status
 
-1. Criar `status-map/guru.ts` (idem tmb/asaas/hotmart):
+| spec | plataforma(s) | arquivo | fontes |
+| --- | --- | --- | --- |
+| **019** ✅ | `TMB` | [`tmb.ts`](./tmb.ts) | `tmb.webhook-vendas`, `tmb.webhook-financeiro`, `tmb.api`, `tmb.csv` |
+| 020 | `ASAAS_PRD`, `ASAAS_SVC` | `asaas.ts` | — |
+| 021 | `GURU_PRD`, `GURU_SVC` | `guru.ts` | — |
+| 022 | `HOTMART_PRD`, `HOTMART_SVC` | `hotmart.ts` | — |
+
+## Como as specs 020–022 populam (a 019/TMB já seguiu este molde)
+
+1. Criar `status-map/guru.ts` (idem asaas/hotmart; ver `tmb.ts` como referência):
 
    ```ts
    import { StatusTransacaoCanonico } from '../../../core/core.module';
