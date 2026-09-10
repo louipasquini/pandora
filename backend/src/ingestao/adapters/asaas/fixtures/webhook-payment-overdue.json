@@ -1,0 +1,27 @@
+{
+  "id": "evt_16b2c3d4e5f6a7b8c9d0",
+  "event": "PAYMENT_OVERDUE",
+  "dateCreated": "2026-03-14 03:05:11",
+  "payment": {
+    "object": "payment",
+    "id": "pay_1a2b3c4d5e6f70819200",
+    "dateCreated": "2026-03-01",
+    "customer": "cus_000006241594",
+    "subscription": null,
+    "installment": null,
+    "value": 350.0,
+    "netValue": null,
+    "description": "Mentoria - parcela avulsa",
+    "billingType": "BOLETO",
+    "status": "OVERDUE",
+    "dueDate": "2026-03-13",
+    "originalDueDate": "2026-03-13",
+    "paymentDate": null,
+    "clientPaymentDate": null,
+    "confirmedDate": null,
+    "externalReference": null,
+    "deleted": false,
+    "bankSlipUrl": "https://www.asaas.com/b/pdf/1a2b3c4d5e6f",
+    "invoiceUrl": "https://www.asaas.com/i/1a2b3c4d5e6f"
+  }
+}

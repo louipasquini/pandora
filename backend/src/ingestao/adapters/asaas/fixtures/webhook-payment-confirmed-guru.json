@@ -1,0 +1,24 @@
+{
+  "id": "evt_49e5f6a7b8c9d0e1f2a3",
+  "event": "PAYMENT_CONFIRMED",
+  "dateCreated": "2026-03-10 21:03:52",
+  "payment": {
+    "object": "payment",
+    "id": "pay_3c4d5e6f708192a3b4c5",
+    "dateCreated": "2026-03-10",
+    "customer": "cus_000006241596",
+    "subscription": "sub_7h8i9j0k1l2m",
+    "installment": null,
+    "value": 89.9,
+    "netValue": 86.71,
+    "description": "Clube da Nutri - assinatura mensal",
+    "billingType": "CREDIT_CARD",
+    "status": "CONFIRMED",
+    "dueDate": "2026-03-10",
+    "paymentDate": "2026-03-10",
+    "confirmedDate": "2026-03-10",
+    "creditDate": "2026-04-09",
+    "externalReference": "guru-tx-abc123",
+    "deleted": false
+  }
+}

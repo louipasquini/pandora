@@ -16,6 +16,11 @@ import { TmbWebhooksController } from './tmb/tmb-webhooks.controller';
 import { TmbIngestaoController } from './tmb/tmb-ingestao.controller';
 import { TmbSyncService } from './tmb/tmb-sync.service';
 import { TmbCsvImportService } from './tmb/tmb-csv-import.service';
+import { AsaasApiClientHttp, ASAAS_API_CLIENT } from './adapters/asaas';
+import { AsaasWebhooksController } from './asaas/asaas-webhooks.controller';
+import { AsaasIngestaoController } from './asaas/asaas-ingestao.controller';
+import { AsaasSyncService } from './asaas/asaas-sync.service';
+import { AsaasCsvImportService } from './asaas/asaas-csv-import.service';
 
 /**
  * `ingestao` (spec 006) — 2º _bounded context_ de domínio a ganhar entidade de
@@ -25,13 +30,20 @@ import { TmbCsvImportService } from './tmb/tmb-csv-import.service';
  * (ESLint `import/no-restricted-paths`). `CONTEXT_MODULES` segue com 11.
  *
  * **Exporta `RegistrarEventoService`** — a porta (etapa 0) que os adapters das
- * specs 019–022 injetam. A spec 019 adiciona o **adapter da conta `TMB`**
- * (`adapters/tmb/` — parsers puros + `TmbApiClient`) e a superfície de _delivery_
- * `tmb/` (webhooks públicos `/webhooks/tmb/*` + `/ingestao/tmb/{sincronizar,
- * importar-csv}` sob `evento:ingerir`).
+ * specs 019–022 injetam. A spec 019 adicionou o **adapter da conta `TMB`**; a
+ * spec 020 adiciona o **adapter das contas `ASAAS_PRD`/`ASAAS_SVC`**
+ * (`adapters/asaas/` — parsers puros + `AsaasApiClient`) e a superfície de
+ * _delivery_ `asaas/` (webhooks públicos por conta `/webhooks/asaas/{prd,svc}` +
+ * `/ingestao/asaas/{sincronizar,importar-csv}` sob `evento:ingerir`).
  */
 @Module({
-  controllers: [EventosController, TmbWebhooksController, TmbIngestaoController],
+  controllers: [
+    EventosController,
+    TmbWebhooksController,
+    TmbIngestaoController,
+    AsaasWebhooksController,
+    AsaasIngestaoController,
+  ],
   providers: [
     EventoRepository,
     IngestaoAuditService,
@@ -46,6 +58,9 @@ import { TmbCsvImportService } from './tmb/tmb-csv-import.service';
     TmbSyncService,
     TmbCsvImportService,
     { provide: TMB_API_CLIENT, useClass: TmbApiClientHttp },
+    AsaasSyncService,
+    AsaasCsvImportService,
+    { provide: ASAAS_API_CLIENT, useClass: AsaasApiClientHttp },
   ],
   exports: [RegistrarEventoService, WorkerService],
 })
@@ -61,7 +76,8 @@ export class IngestaoModule implements OnModuleInit {
       : 'sob demanda (laço desligado)';
     this.logger.log(
       `ingestao.ready worker=${worker} permissoes=${evento.length} (${evento.join(', ')}) ` +
-        `adapters=[tmb: /webhooks/tmb/{vendas,financeiro}, /ingestao/tmb/{sincronizar,importar-csv}]`,
+        `adapters=[tmb: /webhooks/tmb/{vendas,financeiro}, /ingestao/tmb/{sincronizar,importar-csv}; ` +
+        `asaas: /webhooks/asaas/{prd,svc}, /ingestao/asaas/{sincronizar,importar-csv}]`,
     );
   }
 }

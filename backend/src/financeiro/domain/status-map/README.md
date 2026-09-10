@@ -10,7 +10,7 @@ canônico mora aqui, **versionada por fonte**.
 | spec | plataforma(s) | arquivo | fontes |
 | --- | --- | --- | --- |
 | **019** ✅ | `TMB` | [`tmb.ts`](./tmb.ts) | `tmb.webhook-vendas`, `tmb.webhook-financeiro`, `tmb.api`, `tmb.csv` |
-| 020 | `ASAAS_PRD`, `ASAAS_SVC` | `asaas.ts` | — |
+| **020** ✅ | `ASAAS_PRD`, `ASAAS_SVC` | [`asaas.ts`](./asaas.ts) | `asaas.webhook`, `asaas.api`, `asaas.csv` (vocabulário compartilhado) |
 | 021 | `GURU_PRD`, `GURU_SVC` | `guru.ts` | — |
 | 022 | `HOTMART_PRD`, `HOTMART_SVC` | `hotmart.ts` | — |
 

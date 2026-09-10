@@ -1,0 +1,32 @@
+{
+  "id": "evt_27c3d4e5f6a7b8c9d0e1",
+  "event": "PAYMENT_REFUNDED",
+  "dateCreated": "2026-04-02 15:41:07",
+  "payment": {
+    "object": "payment",
+    "id": "pay_9f8e7d6c5b4a30291817",
+    "dateCreated": "2026-03-08",
+    "customer": "cus_000006241593",
+    "subscription": null,
+    "installment": null,
+    "value": 197.0,
+    "netValue": 190.13,
+    "description": "Pos em Nutricao Clinica - matricula",
+    "billingType": "PIX",
+    "status": "REFUNDED",
+    "dueDate": "2026-03-10",
+    "paymentDate": "2026-03-09",
+    "confirmedDate": "2026-03-09",
+    "externalReference": "",
+    "deleted": false,
+    "refunds": [
+      {
+        "dateCreated": "2026-04-02 15:41:00",
+        "status": "DONE",
+        "value": 197.0,
+        "description": "Solicitacao da aluna",
+        "transactionReceiptUrl": "https://www.asaas.com/comprovantes/9f8e7d6c5b4a"
+      }
+    ]
+  }
+}
