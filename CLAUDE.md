@@ -439,7 +439,85 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/018-financeiro-transacao-ledger/plan.md`](specs/018-financeiro-transacao-ledger/plan.md)
+Plano ativo: [`specs/019-adapter-tmb/plan.md`](specs/019-adapter-tmb/plan.md)
+(Fase 2 · spec 019 — **Adaptadores de borda da TMB**: 1ª das 4 specs de adaptadores da Fase
+2 (019 TMB, 020 Asaas, 021 Guru, 022 Hotmart). Materializa o **Princípio III** (bordas
+finas, núcleo canônico) para a conta única **`TMB`**: 4 funções **puras** `parse*()`
+(webhook Vendas achatado `status_pedido` / webhook Financeiro **array** `[{dados}]` nível de
+parcela `status_pagamento` / API `GET /api/pedidos` paginada / CSV) transformam os payloads
+crus em **`EventoCanonico`** do `core` — o contrato validado que o pipeline da 006/018 já
+processa —, testadas contra **fixtures reais sem tocar o banco**. Vivem em
+**`src/ingestao/adapters/tmb/`** (visão Apêndice C); **não importam `financeiro`** — o
+**`financeiro/domain/status-map/tmb.ts`** (vocabulário bruto → `StatusTransacaoCanonico`,
+por fonte `tmb.webhook-vendas`/`tmb.webhook-financeiro`/`tmb.api`/`tmb.csv`) mora no
+`financeiro` (dono de `status_canonico`) e é consumido lá pela etapa 3 da 018;
+registrado via `Object.assign(MAPAS_STATUS, { TMB })` — a 018 deixou `MAPAS_STATUS` vazio
+"para as specs 019–022 popularem". **Superfície HTTP fina**: **2 webhooks públicos**
+`POST /webhooks/tmb/{vendas,financeiro}` (o prefixo `/webhooks/` já é allowlist pública da
+003 — `JwtAuthGuard`/`PermissionGuard` liberam por path; a auth real é o `TMB_WEBHOOK_TOKEN`
+verificado em tempo constante pelo **`WebhookAuthenticator`** da 003, header
+`x-tmb-webhook-token` | `authorization: Bearer`; token errado/ausente → **401**, 0 evento) +
+**2 endpoints** `POST /ingestao/tmb/{sincronizar,importar-csv}` sob a permissão **já
+existente** `evento:ingerir` (CSV como **texto no corpo JSON** — 0 dep de upload binário,
+precedente da 015). Todos são invólucros finos que só chamam
+**`RegistrarEventoService.registrarEvento`** (a porta da etapa 0 que a 006 exportou "para os
+adapters 019–022 injetarem") — o worker da 006 faz classificar → resolver pessoa (018) →
+upsert transação (018). **Nenhum `INSERT` direto, nenhum `commit()` de remendo, nenhuma
+etapa nova no pipeline — `worker.service.ts`/`etapas.ts`/`pipeline-wiring.module.ts` sem
+diff.** **`TmbApiClient`** atrás de interface + token DI (`TMB_API_CLIENT`), impl com
+**`fetch` nativo do Node 24** (0 dep — padrão `GraphApiClient`/011, `SugestaoIaClient`/013),
+pagina `pageNumber`/`pageSize` (default 50) até esgotar; **dublê nos e2e**
+(`overrideProvider`); sem `TMB_API_BASE_URL`/`TMB_API_KEY` → `TmbApiIndisponivelError` →
+`/sincronizar` responde **422** (não 500). Controllers em `src/ingestao/tmb/`;
+`WebhookAuthenticator` é providido pelo próprio `IngestaoModule` (stateless — evita importar
+`AuthModule`, que registra `APP_GUARD`). **Decisões com o dono do produto (2026-09-10)** —
+019 não está `⚠ clarify` no ROADMAP, mas as 3 decisões de fato ambíguas foram levadas ao
+dono: **D-01** chave natural `id_origem` = `pedido`/`pedido_id` (inteiro→string, consistente
+nas 4 fontes; `id_externo` — ref de checkout externo, pode ser vazio — só no `payload_bruto`;
+os 2 webhooks + API + CSV de um pedido resolvem para `(TMB, "<pedido>")`, Regra Inviolável
+nº 1 por construção); **D-02** webhook Financeiro (nível de parcela) **colapsa para o
+pedido, último evento vence** (cada notificação de parcela vira um `EventoCanonico` próprio
+com `hash` distinto → `evento_origem` imutável, histórico completo preservado; o
+`UPSERT_TRANSACAO` da 018 já faz upsert por `(plataforma, id_origem)` e o `status_canonico`
+reflete o último evento processado; refino "estado da carteira de parcelas" fica p/ spec
+futura de cobranças; `status_financeiro` de pedido `Adimplente`/`Inadimplente` **não** é
+status de transação — não entra no `status-map`); **D-03** escopo = parser puro + endpoints
+finos `/ingestao/tmb/*` (a superfície `admin/` completa da visão fica p/ a spec de migração
+— o `AdminModule` está vazio desde a 001). Defaults documentados **D-04..D-15** no `spec.md`
+(§Clarifications) — zero `NEEDS CLARIFICATION`. **Melhoria colateral** (regra local, sem
+adapter — não toca pipeline/worker/schema, FR-025): o `RE_ESTORNO` de `classificar.ts` (006)
+foi ampliado de `estorno` para `estorn[oa]|reembols|refund|chargeback|charge_back|devolu[cç]`
+para casar os particípios pt-BR (`Estornado`/`Estornada`/`Reembolsado`/`Devolução`) que a
+TMB manda em `status_pagamento` — beneficia todos os adapters. **TMB não tem** conceito de
+assinatura/recorrência (`assinatura` nunca preenchido) nem papel de afiliada (`ehAfiliada`
+nunca emitido — `classificar` assume não-afiliada); moeda não exposta → `BRL` cravado na
+borda (default explícito, `Dinheiro.deDecimal` do `core`, escala ×10000, sem `float`);
+método de pagamento e vencimento não expostos → só no `payload_bruto`. `valores.bruto` =
+`valor_principal`, `valores.taxas` = `taxa_administracao`, `valores.liquido` = derivado só
+quando `0 < bruto−taxas < bruto` (webhook Financeiro **não emite `valores`** — FR-012,
+evita que `camposAlterados` da 018 zere o valor da venda já gravado). `ocorridoEm` =
+`data_efetivado`\|\|`criado_em` (Vendas/API) / `data_pagamento`\|\|`vencimento_parcela`
+(Financeiro), string crua repassada — a etapa 3 (018) aplica `parseInstante` do `core`.
+Parser de CSV **à mão** (0 dep — detecta separador `,`/`;` no cabeçalho, tira BOM, mini
+state-machine de aspas). **0 migração, 0 tabela, 0 dependência nova, 0 chave `.env` nova**
+(`TMB_API_BASE_URL`/`TMB_API_KEY`/`TMB_WEBHOOK_TOKEN` já em `accountConfig('TMB')` da 003),
+**0 porta nova, 0 permissão nova, 0 frontend** (os eventos aparecem no painel **Eventos**/006,
+as transações em **Financeiro · Transações**/018 sem mudança de frontend). `CONTEXT_MODULES`
+segue **11** — o adapter é subdiretório do `ingestao`. 656 testes unitários backend (+47 vs.
+a 018 — domínio puro: helpers de normalização, os 4 parsers contra fixtures reais,
+`TmbApiClient` com dublê de `fetch`, `status-map/tmb` com varredura de cobertura de
+vocabulário, +4 casos de particípio pt-BR em `classificar.spec.ts`) + 360 e2e (20 suítes,
++13 — Postgres real, container isolado **`pandora-db-spec019` na porta 55436**, já que
+55432/55433/55435 estavam em uso por outras sessões: US1 webhook Vendas → transação + 401,
+US2 webhook Financeiro colapsa no pedido + dedup por hash + status inédito → revisão, US3
+sincronização com dublê de 2 páginas + 422 sem config, US4 import CSV, `grep` de fronteira,
+catálogo RBAC inalterado, `/health` = 11), todos verdes; lint/typecheck/build limpos no
+backend; frontend inalterado. Artefatos: `research.md`, `data-model.md`, `contracts/` (4),
+`quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 018 — Financeiro · ledger de transações (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/018-financeiro-transacao-ledger/plan.md`](specs/018-financeiro-transacao-ledger/plan.md)
 (Fase 2 · spec 018 — **Financeiro · ledger de transações**: primeira fatia da **Fase 2**
 (Financeiro), visão Partes 1–6. O _bounded context_ **`financeiro`** (vazio desde a 001)
 vira dono de **`transacao`** — a projeção normalizada de um evento financeiro, **1 linha por
@@ -515,6 +593,8 @@ typecheck/build limpos nos dois workspaces. 2 asserções da suíte e2e da 006 a
 (RESOLVER_PESSOA/UPSERT_TRANSACAO agora reais; fixture `montarEventoCanonico` passou de
 `statusOrigem: 'approved'` para `'PAGO'` — valor canônico que um adapter produziria).
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 017 — CRM · Dashboard (implementada, resumo arquivado)</summary>
 
