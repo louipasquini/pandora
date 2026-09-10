@@ -28,6 +28,15 @@ describe('classificar (spec 006, etapa 1)', () => {
     expect(classificar(c(), 'webhook_reembolso').classificacao).toBe(Classificacao.REEMBOLSO);
   });
 
+  it.each(['Estornado', 'estornada', 'Reembolsado', 'Devolução'])(
+    'particípio pt-BR "%s" por statusOrigem → REEMBOLSO (spec 019)',
+    (bruto) => {
+      expect(classificar(c({ statusOrigem: bruto }), 'webhook_venda').classificacao).toBe(
+        Classificacao.REEMBOLSO,
+      );
+    },
+  );
+
   it('referência externa a outra plataforma → DESCONHECIDO + revisar (spec 024)', () => {
     const r = classificar(
       c({ referenciaExterna: { plataforma: 'ASAAS_PRD', idOrigem: 'pay_9' } }),

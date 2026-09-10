@@ -8,7 +8,11 @@ export interface ResultadoClassificacao {
   motivo?: string;
 }
 
-const RE_ESTORNO = /(reembolso|estorno|refund|chargeback|charge_back|devolucao|devolução)/i;
+// `estorn[oa]` cobre "estorno" e os particípios "estornado"/"estornada" (a TMB
+// manda `status_pagamento: "Estornado"` — spec 019); `reembols` cobre
+// "reembolso"/"reembolsado".
+const RE_ESTORNO =
+  /(reembols|estorn[oa]|refund|chargeback|charge_back|devolu[cç])/i;
 
 /**
  * Etapa 1 do pipeline (spec 006). **Função pura e determinística** de

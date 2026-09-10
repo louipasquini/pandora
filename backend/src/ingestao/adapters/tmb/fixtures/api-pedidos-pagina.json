@@ -1,0 +1,62 @@
+{
+  "itens": [
+    {
+      "produtor": "Amor em Nutrir",
+      "lancamento": "Pós em Nutrição Esportiva",
+      "pedido_id": 501010,
+      "status_pedido": "Efetivado",
+      "cliente": "Carla Souza Dias",
+      "documento": "16899535009",
+      "email": "carla.dias@example.invalid",
+      "valor_total": 3800.0,
+      "valor_principal": 3800.0,
+      "parcelas": 10,
+      "valor_entrada": 300.0,
+      "valor_parcela": 350.0,
+      "taxa_administracao": 190.0,
+      "criado_em": "2026-03-05T08:00:00.000000-03:00",
+      "data_efetivado": "2026-03-05T08:20:11.500000",
+      "telefone": "+5531988880000",
+      "produto_id": 44,
+      "produtor_id": 7,
+      "status_financeiro": "Adimplente",
+      "pais": "BR",
+      "cep": "30140-071",
+      "endereco_estado": "MG",
+      "endereco_cidade": "Belo Horizonte",
+      "endereco_bairro": "Funcionários",
+      "endereco_logradouro": "Rua da Bahia",
+      "endereco_numero": "1500"
+    },
+    {
+      "pedido_id": 501011,
+      "status_pedido": "Efetivado",
+      "cliente": "Rafael Nunes",
+      "documento": "11144477735",
+      "email": "rafael.nunes@example.invalid",
+      "valor_total": 3800.0,
+      "taxa_administracao": 190.0,
+      "criado_em": "2026-03-05T09:10:00.000000-03:00",
+      "data_efetivado": "2026-03-05T09:30:00.000000",
+      "telefone": "+5541999991111",
+      "produto_id": 44,
+      "pais": "BR",
+      "cep": "80010-010",
+      "endereco_estado": "PR",
+      "endereco_cidade": "Curitiba"
+    },
+    {
+      "pedido_id": 501012,
+      "status_pedido": "Efetivado",
+      "cliente": "Beatriz Andrade",
+      "email": "beatriz.andrade@example.invalid",
+      "valor_principal": 3800.0,
+      "taxa_administracao": 190.0,
+      "criado_em": "2026-03-06T14:00:00.000000-03:00",
+      "data_efetivado": "2026-03-06T14:12:00.000000",
+      "telefone": "+5511955553333",
+      "produto_id": 44,
+      "pais": "BR"
+    }
+  ]
+}

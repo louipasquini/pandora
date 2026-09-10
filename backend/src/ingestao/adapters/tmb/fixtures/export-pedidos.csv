@@ -1,0 +1,6 @@
+﻿pedido_id;status_pedido;cliente;documento;email;valor_principal;taxa_administracao;criado_em;data_efetivado;endereco_logradouro;endereco_cidade;endereco_estado;endereco_cep;titulo
+502001;Efetivado;"Lopes, Mariana";52998224725;m.lopes@example.invalid;4200.00;210.00;2026-03-02T10:14:07-03:00;2026-03-02T10:41:55-03:00;"Rua das Acácias, 1200";São Paulo;SP;03310-000;PCN Turma 48
+502002;Cancelado;Joao Ramos;39053344705;j.ramos@example.invalid;4200.00;210.00;2026-03-03T09:02:11-03:00;;Rua Barata Ribeiro;Rio de Janeiro;RJ;22011-001;PCN Turma 48
+502003;Efetivado;Carla Dias;16899535009;c.dias@example.invalid;3800;190;2026-03-05T08:00:00-03:00;2026-03-05T08:20:11-03:00;Rua da Bahia;Belo Horizonte;MG;30140-071;PNE Turma 12
+;Efetivado;Sem Pedido;11144477735;x@example.invalid;100;5;2026-03-01T00:00:00-03:00;;;;;;
+502004;Efetivado;"Andrade, Beatriz";;b.andrade@example.invalid;3800;190;2026-03-06T14:00:00-03:00;2026-03-06T14:12:00-03:00;;;;;

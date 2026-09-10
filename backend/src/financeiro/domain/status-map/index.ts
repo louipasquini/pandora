@@ -3,6 +3,7 @@ import {
   paraStatusTransacaoCanonico,
   type ResolucaoStatus,
 } from '../../../core/core.module';
+import { TMB } from './tmb';
 
 /**
  * Tradução do **vocabulário bruto de status** de cada plataforma para
@@ -22,6 +23,9 @@ export const MAPAS_STATUS: Record<
   string,
   Record<string, Record<string, StatusTransacaoCanonico>>
 > = {};
+
+// spec 019 — conta única `TMB` (webhook Vendas/Financeiro, API, CSV).
+Object.assign(MAPAS_STATUS, { TMB });
 
 export interface ResultadoStatusMapeado extends ResolucaoStatus {
   motivo?: string;
