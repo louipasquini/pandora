@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "product": { "id": 2125820, "ucode": "839F1A4F-43DC-F60F-13FE-6C8BD23F0020", "name": "Comunidade AEN — Assinatura" },
+      "buyer": { "name": "Aline Souza", "ucode": "839F1A4F-43DC-F60F-13FE-6C8BD23F6790", "email": "aline.souza@example.com" },
+      "producer": { "name": "Amor em Nutrir", "ucode": "252A74C5-4A97-143A-9349-E45D871C6018" },
+      "purchase": {
+        "transaction": "HP12455690120050",
+        "order_date": 1717459200000,
+        "approved_date": 1717462800000,
+        "status": "APPROVED",
+        "recurrency_number": 3,
+        "is_subscription": true,
+        "commission_as": "PRODUCER",
+        "price": { "value": 89.9, "currency_code": "BRL" },
+        "payment": { "method": "CREDIT_CARD", "installments_number": 1, "type": "CREDIT_CARD" },
+        "offer": { "payment_mode": "CREDIT_CARD", "code": "com_mensal" },
+        "hotmart_fee": { "total": 8.9, "currency_code": "BRL", "base": 81.0, "percentage": 9.9 }
+      }
+    }
+  ],
+  "page_info": { "total_results": 1, "next_page_token": "", "results_per_page": 5 }
+}

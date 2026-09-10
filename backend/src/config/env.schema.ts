@@ -135,6 +135,24 @@ export const envSchema = z
 
     // --- Contas de origem (7 blocos, 21 chaves, todas opcionais na 001) ---
     ...accountsShape,
+
+    // --- Adapter Hotmart (spec 022) — OAuth2 client_credentials ---
+    // O `accountConfig` (3 slots por conta) não comporta OAuth2. `HOTMART_<conta>_API_KEY`
+    // guarda o token **Basic** (entregue pelo painel do dev); estas 2 guardam o par
+    // `client_id`/`client_secret`. Opcionais em todo `NODE_ENV` (ausência → 422 claro no
+    // `/ingestao/hotmart/sincronizar`, nunca crash).
+    HOTMART_PRD_CLIENT_ID: z.string().min(1).optional(),
+    HOTMART_PRD_CLIENT_SECRET: z.string().min(1).optional(),
+    HOTMART_SVC_CLIENT_ID: z.string().min(1).optional(),
+    HOTMART_SVC_CLIENT_SECRET: z.string().min(1).optional(),
+    /**
+     * Liga as rotas `POST /webhooks/hotmart/{prd,svc}` (stub — a Hotmart não tem
+     * webhook na v1). Desligado → **503**. Ligado → autentica `hottok` e registra.
+     */
+    HOTMART_WEBHOOK_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'test' && !env.TEST_DATABASE_URL) {

@@ -26,6 +26,11 @@ import { GuruWebhooksController } from './guru/guru-webhooks.controller';
 import { GuruIngestaoController } from './guru/guru-ingestao.controller';
 import { GuruSyncService } from './guru/guru-sync.service';
 import { GuruCsvImportService } from './guru/guru-csv-import.service';
+import { HotmartApiClientHttp, HOTMART_API_CLIENT } from './adapters/hotmart';
+import { HotmartWebhooksController } from './hotmart/hotmart-webhooks.controller';
+import { HotmartIngestaoController } from './hotmart/hotmart-ingestao.controller';
+import { HotmartSyncService } from './hotmart/hotmart-sync.service';
+import { HotmartCsvImportService } from './hotmart/hotmart-csv-import.service';
 
 /**
  * `ingestao` (spec 006) — 2º _bounded context_ de domínio a ganhar entidade de
@@ -44,7 +49,12 @@ import { GuruCsvImportService } from './guru/guru-csv-import.service';
  * parsers puros + `GuruApiClient` com paginação por cursor) e a superfície
  * `guru/` (webhooks públicos por conta `/webhooks/guru/{prd,svc}`, token
  * `api_token` **no corpo** + `/ingestao/guru/{sincronizar,importar-csv}` sob
- * `evento:ingerir`).
+ * `evento:ingerir`); a spec 022 adiciona o **adapter das contas
+ * `HOTMART_PRD`/`HOTMART_SVC`** (`adapters/hotmart/` — parsers puros +
+ * `HotmartApiClient` com OAuth2 `client_credentials` e paginação por cursor) e a
+ * superfície `hotmart/` (`/ingestao/hotmart/{sincronizar,importar-csv}` sob
+ * `evento:ingerir`; webhooks `/webhooks/hotmart/{prd,svc}` são **stub desligado**
+ * — `HOTMART_WEBHOOK_ENABLED=false` → 503).
  */
 @Module({
   controllers: [
@@ -55,6 +65,8 @@ import { GuruCsvImportService } from './guru/guru-csv-import.service';
     AsaasIngestaoController,
     GuruWebhooksController,
     GuruIngestaoController,
+    HotmartWebhooksController,
+    HotmartIngestaoController,
   ],
   providers: [
     EventoRepository,
@@ -76,6 +88,9 @@ import { GuruCsvImportService } from './guru/guru-csv-import.service';
     GuruSyncService,
     GuruCsvImportService,
     { provide: GURU_API_CLIENT, useClass: GuruApiClientHttp },
+    HotmartSyncService,
+    HotmartCsvImportService,
+    { provide: HOTMART_API_CLIENT, useClass: HotmartApiClientHttp },
   ],
   exports: [RegistrarEventoService, WorkerService],
 })
@@ -93,7 +108,10 @@ export class IngestaoModule implements OnModuleInit {
       `ingestao.ready worker=${worker} permissoes=${evento.length} (${evento.join(', ')}) ` +
         `adapters=[tmb: /webhooks/tmb/{vendas,financeiro}, /ingestao/tmb/{sincronizar,importar-csv}; ` +
         `asaas: /webhooks/asaas/{prd,svc}, /ingestao/asaas/{sincronizar,importar-csv}; ` +
-        `guru: /webhooks/guru/{prd,svc}, /ingestao/guru/{sincronizar,importar-csv}]`,
+        `guru: /webhooks/guru/{prd,svc}, /ingestao/guru/{sincronizar,importar-csv}; ` +
+        `hotmart: /ingestao/hotmart/{sincronizar,importar-csv}, /webhooks/hotmart/{prd,svc} (${
+          this.cfg.get('HOTMART_WEBHOOK_ENABLED', { infer: true }) ? 'ligado' : 'stub 503'
+        })]`,
     );
   }
 }

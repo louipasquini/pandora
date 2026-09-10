@@ -12,7 +12,7 @@ canônico mora aqui, **versionada por fonte**.
 | **019** ✅ | `TMB` | [`tmb.ts`](./tmb.ts) | `tmb.webhook-vendas`, `tmb.webhook-financeiro`, `tmb.api`, `tmb.csv` |
 | **020** ✅ | `ASAAS_PRD`, `ASAAS_SVC` | [`asaas.ts`](./asaas.ts) | `asaas.webhook`, `asaas.api`, `asaas.csv` (vocabulário compartilhado) |
 | **021** ✅ | `GURU_PRD`, `GURU_SVC` | [`guru.ts`](./guru.ts) | `guru.webhook`, `guru.api`, `guru.csv` (vocabulário compartilhado) |
-| 022 | `HOTMART_PRD`, `HOTMART_SVC` | `hotmart.ts` | — |
+| **022** ✅ | `HOTMART_PRD`, `HOTMART_SVC` | [`hotmart.ts`](./hotmart.ts) | `hotmart.webhook`, `hotmart.api`, `hotmart.csv` (vocabulário compartilhado) |
 
 ## Como as specs 020–022 populam (a 019/TMB já seguiu este molde)
 

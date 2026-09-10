@@ -1,0 +1,28 @@
+{
+  "id": "0d7aa966-b887-4617-8c56-9e865bfc0003",
+  "creation_date": 1717376400100,
+  "event": "PURCHASE_APPROVED",
+  "version": "2.0.0",
+  "data": {
+    "product": { "id": 2125814, "ucode": "2e9c43a9-0aeb-48ed-9464-630f845c0003", "name": "Masterclass Internacional" },
+    "affiliates": [{ "affiliate_code": "Q58388177J", "name": "Amor em Nutrir (afiliada)" }],
+    "buyer": { "email": "carla.dias@example.com", "name": "Carla Dias", "checkout_phone": "988887777", "checkout_phone_code": "21" },
+    "producer": { "name": "Outro Produtor" },
+    "commissions": [
+      { "value": 20.0, "currency_value": "USD", "source": "AFFILIATE" },
+      { "value": 34.0, "currency_value": "USD", "source": "PRODUCER" }
+    ],
+    "purchase": {
+      "approved_date": 1717376400000,
+      "order_date": 1717372800000,
+      "price": { "value": 60.0, "currency_value": "USD" },
+      "offer": { "code": "mstr_intl", "name": "Masterclass — USD" },
+      "recurrence_number": 1,
+      "commission_as": "AFFILIATE",
+      "is_subscription": false,
+      "status": "APPROVED",
+      "transaction": "HP12455690120003",
+      "payment": { "installments_number": 1, "type": "CREDIT_CARD" }
+    }
+  }
+}

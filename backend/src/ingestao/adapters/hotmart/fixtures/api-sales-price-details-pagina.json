@@ -1,0 +1,21 @@
+{
+  "items": [
+    {
+      "transaction": "HP12455690120001",
+      "product": { "id": 2125812, "name": "Curso Nutrição Clínica Sistêmica" },
+      "base": { "value": 135.7, "currency_code": "BRL" },
+      "total": { "value": 150.6, "currency_code": "BRL" },
+      "vat": { "value": 0, "currency_code": "BRL" },
+      "fee": { "value": 14.9, "currency_code": "BRL" },
+      "coupon": { "code": "ABC10", "value": 0.1 },
+      "real_conversion_rate": 1
+    },
+    {
+      "transaction": "HP99999999999999",
+      "product": { "id": 999999, "name": "Detalhe órfão (sem venda correspondente)" },
+      "base": { "value": 10, "currency_code": "BRL" },
+      "total": { "value": 10, "currency_code": "BRL" }
+    }
+  ],
+  "page_info": { "total_results": 2, "next_page_token": "", "results_per_page": 10 }
+}

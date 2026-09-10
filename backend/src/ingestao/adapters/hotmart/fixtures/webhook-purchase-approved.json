@@ -1,0 +1,46 @@
+{
+  "id": "0d7aa966-b887-4617-8c56-9e865bfc0001",
+  "creation_date": 1717203600100,
+  "event": "PURCHASE_APPROVED",
+  "version": "2.0.0",
+  "hottok": "HOTTOK-FIXTURE-NAO-PERSISTIR",
+  "campo_novo_2027": "o parser ignora chaves inéditas",
+  "data": {
+    "product": { "id": 213344, "ucode": "2e9c43a9-0aeb-48ed-9464-630f845c0001", "name": "Curso Nutrição Clínica Sistêmica", "has_co_production": false },
+    "affiliates": [],
+    "buyer": {
+      "email": "marta.nogueira@example.com",
+      "name": "Marta Nogueira",
+      "first_name": "Marta",
+      "last_name": "Nogueira",
+      "checkout_phone": "991234567",
+      "checkout_phone_code": "11",
+      "document": "39053344705",
+      "document_type": "CPF",
+      "address": { "zipcode": "01310000", "country": "Brasil", "number": "120", "address": "Avenida Paulista", "city": "São Paulo", "state": "SP", "neighborhood": "Bela Vista", "complement": "ap 42", "country_iso": "BR" }
+    },
+    "producer": { "name": "Amor em Nutrir", "legal_nature": "Pessoa Jurídica", "document": "12345678000199" },
+    "commissions": [
+      { "value": 0.65, "currency_value": "BRL", "source": "MARKETPLACE" },
+      { "value": 135.05, "currency_value": "BRL", "source": "PRODUCER" }
+    ],
+    "purchase": {
+      "approved_date": 1717203600000,
+      "order_date": 1717200000000,
+      "full_price": { "value": 150.6, "currency_value": "BRL" },
+      "original_offer_price": { "value": 150.6, "currency_value": "BRL" },
+      "price": { "value": 150.6, "currency_value": "BRL" },
+      "offer": { "code": "k2pasun0", "coupon_code": "ABC10", "name": "Oferta Anual" },
+      "recurrence_number": 1,
+      "commission_as": "PRODUCER",
+      "is_subscription": false,
+      "subscription_anticipation_purchase": false,
+      "checkout_country": { "name": "Brasil", "iso": "BR" },
+      "order_bump": { "is_order_bump": false },
+      "status": "APPROVED",
+      "transaction": "HP12455690120001",
+      "payment": { "installments_number": 1, "type": "PIX" },
+      "warranty_expire_date": 1719795600000
+    }
+  }
+}

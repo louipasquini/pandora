@@ -1,0 +1,25 @@
+{
+  "id": "0d7aa966-b887-4617-8c56-9e865bfc0002",
+  "creation_date": 1717900000000,
+  "event": "PURCHASE_REFUNDED",
+  "version": "2.0.0",
+  "hottok": "HOTTOK-FIXTURE-NAO-PERSISTIR",
+  "data": {
+    "product": { "id": 213344, "ucode": "2e9c43a9-0aeb-48ed-9464-630f845c0001", "name": "Curso Nutrição Clínica Sistêmica" },
+    "buyer": { "email": "marta.nogueira@example.com", "name": "Marta Nogueira", "document": "39053344705", "document_type": "CPF" },
+    "producer": { "name": "Amor em Nutrir" },
+    "commissions": [{ "value": 135.05, "currency_value": "BRL", "source": "PRODUCER" }],
+    "purchase": {
+      "approved_date": 1717203600000,
+      "order_date": 1717200000000,
+      "price": { "value": 150.6, "currency_value": "BRL" },
+      "offer": { "code": "k2pasun0" },
+      "recurrence_number": 1,
+      "commission_as": "PRODUCER",
+      "is_subscription": false,
+      "status": "REFUNDED",
+      "transaction": "HP12455690120001",
+      "payment": { "type": "PIX" }
+    }
+  }
+}
