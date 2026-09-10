@@ -253,6 +253,17 @@ export const PERMISSOES = Object.freeze([
     rotulo: 'Ver apenas as próprias tarefas e as tarefas gerais (sem responsável)',
   },
   { id: 'tarefa:delegar', recurso: 'tarefa', rotulo: 'Delegar/reatribuir tarefas' },
+  // --- Dashboard do CRM (spec 017) ---
+  {
+    id: 'dashboard:ver',
+    recurso: 'dashboard',
+    rotulo: 'Ver o dashboard do CRM e seus painéis',
+  },
+  {
+    id: 'dashboard:gerir_metas',
+    recurso: 'dashboard',
+    rotulo: 'Criar, editar e remover metas comerciais',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

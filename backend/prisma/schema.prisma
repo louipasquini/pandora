@@ -57,6 +57,9 @@ model Usuario {
   tarefaDelegacoesDe          TarefaDelegacao[]          @relation("TarefaDelegacaoDe")
   tarefaDelegacoesPara        TarefaDelegacao[]          @relation("TarefaDelegacaoPara")
   tarefaDelegacoesAutor       TarefaDelegacao[]          @relation("TarefaDelegacaoAutor")
+  metasComerciaisResponsavel  MetaComercial[]            @relation("MetaComercialResponsavel")
+  metasComerciaisCriadas      MetaComercial[]            @relation("MetaComercialCriadoPor")
+  dashboardVisoes             DashboardVisao[]           @relation("DashboardVisaoDono")
 
   @@map("usuario")
 }
@@ -71,6 +74,8 @@ model Perfil {
 
   permissoes PerfilPermissao[]
   usuarios   UsuarioPerfil[]
+
+  dashboardVisoesCompartilhadas DashboardVisao[]
 
   @@map("perfil")
 }
@@ -525,6 +530,7 @@ model Equipe {
   atendimentos       Atendimento[]
   transferenciasDe   TransferenciaAtendimento[] @relation("TransferenciaDeEquipe")
   transferenciasPara TransferenciaAtendimento[] @relation("TransferenciaParaEquipe")
+  metasComerciais    MetaComercial[]
 
   @@index([ativo])
   @@map("equipe")
@@ -1909,4 +1915,77 @@ model CrmTarefaAudit {
 
   @@index([entidade, entidadeId])
   @@map("crm_tarefa_audit")
+}
+
+// ============================================================================
+// CRM · Dashboard (spec 017) — métricas derivadas por query (Princípio V):
+// NENHUMA tabela de métrica/rollup. Só 2 entidades de escrita — `meta_comercial`
+// (alvo de objetivo; atingimento é derivado, nunca coluna) e `dashboard_visao`
+// (preferência de leitura do usuário) — + a auditoria canônica.
+// ============================================================================
+
+enum MetaComercialPeriodo {
+  MES
+  TRIMESTRE
+}
+
+model MetaComercial {
+  id            String               @id @db.Uuid
+  metrica       String
+  periodo       MetaComercialPeriodo
+  referencia    DateTime             @db.Date
+  alvoInt       BigInt               @map("alvo_int")
+  alvoMoeda     String?              @map("alvo_moeda") @db.Char(3)
+  equipeId      String?              @map("equipe_id") @db.Uuid
+  responsavelId String?              @map("responsavel_id") @db.Uuid
+  descricao     String?
+  criadoPorId   String?              @map("criado_por_id") @db.Uuid
+  criadoEm      DateTime             @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime             @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  equipe      Equipe?  @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  responsavel Usuario? @relation("MetaComercialResponsavel", fields: [responsavelId], references: [id], onDelete: Cascade)
+  criadoPor   Usuario? @relation("MetaComercialCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  // DELETE físico permitido (D-06 — configuração de baixo valor histórico,
+  // como feriado/007). Sem unicidade de recorte (edge case do spec).
+  @@index([periodo, referencia])
+  @@index([equipeId])
+  @@index([responsavelId])
+  @@map("meta_comercial")
+}
+
+model DashboardVisao {
+  id                    String   @id @db.Uuid
+  nome                  String
+  filtros               Json
+  paineis               Json
+  donoUsuarioId         String   @map("dono_usuario_id") @db.Uuid
+  perfilCompartilhadoId String?  @map("perfil_compartilhado_id") @db.Uuid
+  criadoEm              DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm          DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  dono               Usuario @relation("DashboardVisaoDono", fields: [donoUsuarioId], references: [id], onDelete: Cascade)
+  perfilCompartilhado Perfil? @relation(fields: [perfilCompartilhadoId], references: [id], onDelete: SetNull)
+
+  @@index([donoUsuarioId])
+  @@index([perfilCompartilhadoId])
+  @@map("dashboard_visao")
+}
+
+model CrmDashboardAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("crm_dashboard_audit")
 }
