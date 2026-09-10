@@ -107,7 +107,11 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  /webhooks/tmb/* + /ingestao/tmb/{sincronizar,importar-csv}) — spec 019;
                  adapters/asaas/ (parsers puros das 3 fontes, por conta, + AsaasApiClient) + asaas/
                  (webhooks públicos por conta /webhooks/asaas/{prd,svc} +
-                 /ingestao/asaas/{sincronizar,importar-csv}) — spec 020
+                 /ingestao/asaas/{sincronizar,importar-csv}) — spec 020;
+                 adapters/guru/ (parsers puros das 3 fontes, por conta, + GuruApiClient com
+                 paginação por cursor) + guru/ (webhooks públicos por conta
+                 /webhooks/guru/{prd,svc} — token api_token NO CORPO +
+                 /ingestao/guru/{sincronizar,importar-csv}) — spec 021
     crm/         Administração do CRM (spec 007) + Lead: entidade compartilhada, scoring,
                  campos personalizados, conversão (spec 008) + Interação/Tag/Segmento:
                  timeline unificada, tag compartilhada, query salva (spec 009) + Pipeline/
@@ -690,7 +694,39 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   `BRL` na borda; **comprador só vem no CSV** (o `payment` traz só `cus_…`). **0 migração, 0
   tabela, 0 dep nova, 0 chave `.env` nova, 0 porta nova, 0 permissão nova, 0 frontend.**
   `CONTEXT_MODULES` = 11. Ver [`docs/020-adapter-asaas.md`](docs/020-adapter-asaas.md).
-- Próxima: **021 — adapter-guru** (Fase 2 — Financeiro).
+- ✅ **021 — adapter-guru** — 3ª das 4 specs de adaptadores da Fase 2 (molde da 019/020).
+  Borda de entrada das **duas contas Guru** (`GURU_PRD`, `GURU_SVC`): 3 `parse*()` puros
+  (webhook de Vendas — objeto de transação / API `GET /api/v2/transactions` **paginação por
+  cursor**, janela ≤ 180 dias / CSV), **recebendo a `conta` como parâmetro**, testados
+  contra **fixtures reais sem tocar o banco**. Vive em `src/ingestao/adapters/guru/`; **não
+  importa `financeiro`** — o `status-map/guru.ts` (`approved`/`completed`→`PAGO`,
+  `waiting_payment`/`pending`/`billet_printed`/`processing`/`analysis`/`charging`→`PENDENTE`,
+  `delayed`/`in_recovery`→`EM_ATRASO`, `refunded`/`dispute`→`ESTORNADO`,
+  `chargeback`→`CHARGEBACK`, `canceled`/`expired`→`CANCELADO`,
+  `rejected`/`failed`/`blocked`→`RECUSADO`; ambíguos → revisão) mora no `financeiro`;
+  `Object.assign(MAPAS_STATUS, { GURU_PRD: GURU, GURU_SVC: GURU })`. **2 webhooks públicos
+  por conta** `POST /webhooks/guru/{prd,svc}` (auth = **campo `api_token` NO CORPO do JSON**
+  — equivale ao Account Token, verificado pelo `WebhookAuthenticator`; diferente do header
+  de TMB/Asaas; token errado/da outra conta → 401; `api_token` removido do `payload_bruto`
+  — segredo) + **2 endpoints** `POST /ingestao/guru/{sincronizar,importar-csv}` sob
+  `evento:ingerir` (`conta` obrigatória no corpo). Todos só chamam `RegistrarEventoService`
+  (etapa 0) — **`worker.service.ts`/`etapas.ts`/`pipeline-wiring`/`classificar.ts`/`schema`
+  sem diff**. `GuruApiClient` atrás de interface (`fetch` nativo, 0 dep; header
+  `Authorization: Bearer`; base default `https://digitalmanager.guru/api/v2`; **cursor** —
+  segue `next_cursor` enquanto `has_more_pages`; dublê nos e2e); sem `GURU_<conta>_API_KEY`
+  → `/sincronizar` responde **422**; janela > 180 dias → **422** no DTO. Decisões com o dono
+  do produto (2026-09-10): G-01 chave natural `id_origem` = `transaction.id` (UUID, por
+  conta); G-02 o adapter Guru **NÃO emite `referenciaExterna`** (a Guru é a venda de
+  registro — o vínculo Asaas↔Guru é da spec 024, que casa `asaas.externalReference` →
+  `guru.transaction.id`); G-03 escopo = parser + endpoints finos `/ingestao/guru/*`. Oferta
+  nativa (`product.offer.id`/`name`/`qty` → `oferta.*`); assinatura nativa (`product.type ===
+  "plan"` + `subscription` preenchido → `assinatura`; `invoice.cycle` → `numeroCiclo`);
+  **moeda exposta** (`payment.currency` ISO 4217 validado; ausente/inválida → `BRL`); papel
+  de afiliada (`type === "affiliate"` → `VENDA_AFILIADA`); comprador rico do objeto
+  `contact`. **0 migração, 0 tabela, 0 dep nova, 0 chave `.env` nova, 0 porta nova, 0
+  permissão nova, 0 frontend.** `CONTEXT_MODULES` = 11. Ver
+  [`docs/021-adapter-guru.md`](docs/021-adapter-guru.md).
+- Próxima: **022 — adapter-hotmart** (Fase 2 — Financeiro).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
