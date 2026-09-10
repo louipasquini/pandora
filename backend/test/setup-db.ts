@@ -68,6 +68,17 @@ export default function setupDb(): void {
   if (!process.env.GURU_SVC_WEBHOOK_TOKEN) {
     process.env.GURU_SVC_WEBHOOK_TOKEN = 'guru-svc-webhook-token-e2e';
   }
+  // Adapter Hotmart (spec 022): a Hotmart não tem webhook na v1 — a rota
+  // `/webhooks/hotmart/*` é um stub que só liga com `HOTMART_WEBHOOK_ENABLED=true`
+  // (default `false` — não é setado aqui). Quando um teste liga o flag (2ª
+  // instância do app), o `WebhookAuthenticator` precisa dos tokens `hottok` por
+  // conta. `test/support/hotmart.ts` lê os mesmos valores.
+  if (!process.env.HOTMART_PRD_WEBHOOK_TOKEN) {
+    process.env.HOTMART_PRD_WEBHOOK_TOKEN = 'hotmart-prd-webhook-token-e2e';
+  }
+  if (!process.env.HOTMART_SVC_WEBHOOK_TOKEN) {
+    process.env.HOTMART_SVC_WEBHOOK_TOKEN = 'hotmart-svc-webhook-token-e2e';
+  }
   const base = process.env.TEST_DATABASE_URL;
   if (!base) {
     throw new Error(
