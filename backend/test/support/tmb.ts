@@ -19,8 +19,13 @@ export function fixtureCsv(nome: string): string {
   return readFileSync(join(FIX, nome), 'utf8');
 }
 
-/** Token de webhook do `.env` de teste (`TMB_WEBHOOK_TOKEN`, default `placeholder`). */
-export const TMB_WEBHOOK_TOKEN = process.env.TMB_WEBHOOK_TOKEN ?? 'placeholder';
+/**
+ * Token de webhook TMB. `setup-db.ts` (globalSetup) garante `TMB_WEBHOOK_TOKEN`
+ * no ambiente (fixture `tmb-webhook-token-e2e` quando o `.env`/CI não define) —
+ * este helper lê o mesmo valor que o `WebhookAuthenticator` valida.
+ */
+export const TMB_WEBHOOK_TOKEN =
+  process.env.TMB_WEBHOOK_TOKEN ?? 'tmb-webhook-token-e2e';
 
 /** Dublê do `TmbApiClient` — devolve páginas pré-configuradas. */
 export class TmbApiClientFake implements TmbApiClient {

@@ -43,6 +43,12 @@ export default function setupDb(): void {
     process.env.CRM_INTEGRACAO_CIFRA_KEY =
       '5+QVNu/w2yAj7wkHW4Kq+6bG9v3RE3+rurMCorQFnR0=';
   }
+  // Adapter TMB (spec 019): fixture do token de webhook — sem ele o
+  // `WebhookAuthenticator` recusa `POST /webhooks/tmb/*` com 401. Usa o do .env
+  // se houver; o helper `test/support/tmb.ts` lê o mesmo valor.
+  if (!process.env.TMB_WEBHOOK_TOKEN) {
+    process.env.TMB_WEBHOOK_TOKEN = 'tmb-webhook-token-e2e';
+  }
   const base = process.env.TEST_DATABASE_URL;
   if (!base) {
     throw new Error(
