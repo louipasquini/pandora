@@ -1,0 +1,36 @@
+{
+  "api_token": "GURU-TOKEN-FIXTURE-NAO-PERSISTIR",
+  "webhook_type": "transaction",
+  "id": "9081534a-7512-4dab-9172-218c1dc10003",
+  "status": "chargeback",
+  "type": "producer",
+  "dates": {
+    "created_at": "2026-02-10T10:00:00Z",
+    "ordered_at": "2026-02-10T10:00:20Z",
+    "confirmed_at": "2026-02-10T10:05:00Z"
+  },
+  "contact": {
+    "name": "Bianca Prado",
+    "email": "bianca.prado@example.com",
+    "doc": "16899535009"
+  },
+  "payment": {
+    "currency": "BRL",
+    "method": "credit_card",
+    "gross": 897,
+    "net": 845.6,
+    "total": 897,
+    "tax": { "value": 51.4 }
+  },
+  "product": {
+    "id": "1587151003",
+    "name": "Formação Completa AEN",
+    "type": "product",
+    "qty": 1,
+    "total_value": 897,
+    "unit_value": 897,
+    "offer": { "id": "of_form_completa", "name": "Formação — 12x" }
+  },
+  "items": [],
+  "subscription": []
+}

@@ -834,11 +834,71 @@ montado aqui, etapa por etapa.
   [`specs/020-adapter-asaas/`](specs/020-adapter-asaas/) e
   [`docs/020-adapter-asaas.md`](docs/020-adapter-asaas.md).
 
-- [ ] **021 — adapter-guru**
-  Adapters Guru (contas PRD e SVC): webhook por conta, API `GET /transactions` (janelas
-  ≤180d, cursor), CSV. Datas em formatos variados (parser tolerante da 002). Oferta, cupom,
-  garantia, assinatura nativos. `status_map/guru/{api,csv}`. Webhooks
-  `POST /webhooks/guru/{prd,svc}`. Sem frontend.
+- [x] **021 — adapter-guru** — ✅ implementada e validada (2026-09-10)
+  Terceira das 4 specs de adaptadores da Fase 2 (molde direto da 019/020). Borda de entrada
+  das **duas contas Guru** (`GURU_PRD`, `GURU_SVC`): 3 funções puras `parse*()` (webhook de
+  Vendas — objeto de transação `{ id, status, dates, payment, contact, product,
+  subscription, type, api_token }` / API `GET /api/v2/transactions` **paginação por cursor**,
+  janela ≤ 180 dias / CSV de export) → `EventoCanonico` do `core`, **recebendo a `conta`
+  como parâmetro**, testadas contra **fixtures reais sem tocar o banco** (Princípio III).
+  Vive em `src/ingestao/adapters/guru/`; **não importa `financeiro`** — o `status-map/guru.ts`
+  (`approved`/`completed`→`PAGO`, `waiting_payment`/`pending`/`billet_printed`/`processing`/
+  `analysis`/`charging`→`PENDENTE`, `delayed`/`in_recovery`→`EM_ATRASO`, `refunded`/
+  `dispute`→`ESTORNADO`, `chargeback`→`CHARGEBACK`, `canceled`/`expired`→`CANCELADO`,
+  `rejected`/`failed`/`blocked`→`RECUSADO`; `trial`/`started`/`abandoned`/`scheduled`/
+  `pending_transfer`/`transferred` **fora do mapa de propósito** → revisão) mora no
+  `financeiro` e é registrado via `Object.assign(MAPAS_STATUS, { GURU_PRD: GURU, GURU_SVC:
+  GURU })`. **Superfície HTTP fina**: 2 webhooks **públicos por conta**
+  `POST /webhooks/guru/{prd,svc}` (prefixo `/webhooks/` já é allowlist da 003; **auth real =
+  campo `api_token` NO CORPO do JSON** — equivale ao Account Token da conta, verificado em
+  tempo constante pelo `WebhookAuthenticator` da 003, diferente do header de TMB/Asaas;
+  token errado/ausente/da outra conta → 401, 0 evento; `api_token` **removido** do
+  `payload_bruto` antes de persistir — segredo; **não** HMAC) + 2 endpoints
+  `POST /ingestao/guru/{sincronizar,importar-csv}` sob a permissão **já existente**
+  `evento:ingerir` (`conta` obrigatória no corpo). Todos só chamam
+  `RegistrarEventoService.registrarEvento` (a porta da etapa 0 que a 006 exportou "para os
+  adapters 019–022"); o worker faz o resto — **nenhuma etapa nova; `worker.service.ts` /
+  `etapas.ts` / `pipeline-wiring.module.ts` / `classificar.ts` / `schema.prisma` sem diff**.
+  `GuruApiClient` atrás de interface (`fetch` nativo do Node 24, **0 dep**; header
+  `Authorization: Bearer`; base default `https://digitalmanager.guru/api/v2`; **paginação
+  por cursor** — segue `next_cursor` enquanto `has_more_pages`; dublê nos e2e); sem
+  `GURU_<conta>_API_KEY` → `GuruApiIndisponivelError` → `/sincronizar` responde **422**;
+  janela > 180 dias → **422** no DTO (API não chamada). **Decisões com o dono do produto
+  (2026-09-10)**: G-01 chave natural `id_origem` = `transaction.id` (UUID, por conta — a
+  `PlataformaOrigem` desambigua; os N webhooks de uma venda colapsam na mesma transação,
+  último evento vence); G-02 o adapter Guru **NÃO emite `referenciaExterna`** (a Guru é a
+  venda de registro — Regra Inviolável nº 2; `payment.marketplace_id` fica só no
+  `payload_bruto`; o vínculo Asaas↔Guru é da **spec 024**, que casa
+  `asaas.externalReference` → `guru.transaction.id`); G-03 escopo = parser puro + endpoints
+  finos `/ingestao/guru/*`. Defaults documentados G-04..G-18 no `spec.md`. **Oferta nativa**
+  (`product.offer.id`/`name`/`qty` → `oferta.{codigoOrigem,nomeOrigem,quantidade}`);
+  **assinatura nativa** (`product.type === "plan"` + `subscription` preenchido →
+  `assinatura.ehRecorrencia`; `invoice.cycle` → `numeroCiclo`; plano negado com
+  `subscription` vazio → sem bloco); **moeda exposta** (`payment.currency` ISO 4217 validado
+  pelo `core`; ausente/inválida → `BRL` cravado); **papel de afiliada** (`type ===
+  "affiliate"` → `ehAfiliada = true` → `VENDA_AFILIADA`); **comprador rico** do objeto
+  `contact` (nome/e-mail/documento/telefone/endereço); cupom/garantia só no `payload_bruto`.
+  `ocorridoEm` = `dates.confirmed_at`??`ordered_at`??`created_at`??`updated_at`, string crua
+  — a etapa 3 aplica `parseInstante`. Parser de CSV **à mão** (0 dep — cópia da 020). **0
+  migração, 0 tabela, 0 dependência nova, 0 chave `.env` nova** (`GURU_PRD_*`/`GURU_SVC_*` já
+  em `accountConfig`), **0 porta nova, 0 permissão nova, 0 frontend** (eventos no painel
+  **Eventos**/006, transações em **Financeiro · Transações**/018 sem mudança).
+  `CONTEXT_MODULES` segue **11**. 777 testes unitários backend (+66 vs. a 020 — domínio
+  puro: helpers de normalização + moeda parametrizada, os 3 parsers contra fixtures reais,
+  `GuruApiClient` com dublê de `fetch` e encadeamento por cursor, `status-map/guru` com
+  varredura de cobertura) + 394 e2e (22 suítes, +18 — Postgres real, container isolado
+  `pandora-db-spec021` na porta **55438**, já que 55432/55433/55435/55436 estavam em uso por
+  outras sessões: US1 webhook por conta → transação + `payload_bruto` sem `api_token` +
+  `waiting_payment`/`chargeback` + 401 + webhook de assinatura ignorado, US2 `affiliate` →
+  `VENDA_AFILIADA` + `invoice.cycle` → `RECORRENCIA` + plano negado + `approved`+`refunded`
+  colapsa no `id` → 1 transação `ESTORNADO`/`REEMBOLSO` + dedup por hash + `trial` → revisão,
+  US3 sincronização com dublê de 2 páginas por cursor + `conta` inválida → 422 + janela >
+  180d → 422 + sem chave → 422, US4 import CSV com comprador, SC-015 isolamento PRD/SVC → 2
+  transações, `grep` de fronteira, catálogo RBAC inalterado, `/health` = 11), todos verdes;
+  lint/typecheck/build limpos no backend; frontend inalterado. Artefatos: `research.md`,
+  `data-model.md`, `contracts/` (4), `quickstart.md`. Detalhe:
+  [`specs/021-adapter-guru/`](specs/021-adapter-guru/) e
+  [`docs/021-adapter-guru.md`](docs/021-adapter-guru.md).
 
 - [ ] **022 — adapter-hotmart**
   Adapters Hotmart (contas PRD e SVC): OAuth2 client_credentials, API `GET /sales/history`

@@ -21,6 +21,11 @@ import { AsaasWebhooksController } from './asaas/asaas-webhooks.controller';
 import { AsaasIngestaoController } from './asaas/asaas-ingestao.controller';
 import { AsaasSyncService } from './asaas/asaas-sync.service';
 import { AsaasCsvImportService } from './asaas/asaas-csv-import.service';
+import { GuruApiClientHttp, GURU_API_CLIENT } from './adapters/guru';
+import { GuruWebhooksController } from './guru/guru-webhooks.controller';
+import { GuruIngestaoController } from './guru/guru-ingestao.controller';
+import { GuruSyncService } from './guru/guru-sync.service';
+import { GuruCsvImportService } from './guru/guru-csv-import.service';
 
 /**
  * `ingestao` (spec 006) — 2º _bounded context_ de domínio a ganhar entidade de
@@ -34,7 +39,12 @@ import { AsaasCsvImportService } from './asaas/asaas-csv-import.service';
  * spec 020 adiciona o **adapter das contas `ASAAS_PRD`/`ASAAS_SVC`**
  * (`adapters/asaas/` — parsers puros + `AsaasApiClient`) e a superfície de
  * _delivery_ `asaas/` (webhooks públicos por conta `/webhooks/asaas/{prd,svc}` +
- * `/ingestao/asaas/{sincronizar,importar-csv}` sob `evento:ingerir`).
+ * `/ingestao/asaas/{sincronizar,importar-csv}` sob `evento:ingerir`); a spec 021
+ * adiciona o **adapter das contas `GURU_PRD`/`GURU_SVC`** (`adapters/guru/` —
+ * parsers puros + `GuruApiClient` com paginação por cursor) e a superfície
+ * `guru/` (webhooks públicos por conta `/webhooks/guru/{prd,svc}`, token
+ * `api_token` **no corpo** + `/ingestao/guru/{sincronizar,importar-csv}` sob
+ * `evento:ingerir`).
  */
 @Module({
   controllers: [
@@ -43,6 +53,8 @@ import { AsaasCsvImportService } from './asaas/asaas-csv-import.service';
     TmbIngestaoController,
     AsaasWebhooksController,
     AsaasIngestaoController,
+    GuruWebhooksController,
+    GuruIngestaoController,
   ],
   providers: [
     EventoRepository,
@@ -61,6 +73,9 @@ import { AsaasCsvImportService } from './asaas/asaas-csv-import.service';
     AsaasSyncService,
     AsaasCsvImportService,
     { provide: ASAAS_API_CLIENT, useClass: AsaasApiClientHttp },
+    GuruSyncService,
+    GuruCsvImportService,
+    { provide: GURU_API_CLIENT, useClass: GuruApiClientHttp },
   ],
   exports: [RegistrarEventoService, WorkerService],
 })
@@ -77,7 +92,8 @@ export class IngestaoModule implements OnModuleInit {
     this.logger.log(
       `ingestao.ready worker=${worker} permissoes=${evento.length} (${evento.join(', ')}) ` +
         `adapters=[tmb: /webhooks/tmb/{vendas,financeiro}, /ingestao/tmb/{sincronizar,importar-csv}; ` +
-        `asaas: /webhooks/asaas/{prd,svc}, /ingestao/asaas/{sincronizar,importar-csv}]`,
+        `asaas: /webhooks/asaas/{prd,svc}, /ingestao/asaas/{sincronizar,importar-csv}; ` +
+        `guru: /webhooks/guru/{prd,svc}, /ingestao/guru/{sincronizar,importar-csv}]`,
     );
   }
 }

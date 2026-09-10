@@ -5,6 +5,7 @@ import {
 } from '../../../core/core.module';
 import { TMB } from './tmb';
 import { ASAAS } from './asaas';
+import { GURU } from './guru';
 
 /**
  * Tradução do **vocabulário bruto de status** de cada plataforma para
@@ -29,6 +30,8 @@ export const MAPAS_STATUS: Record<
 Object.assign(MAPAS_STATUS, { TMB });
 // spec 020 — contas `ASAAS_PRD` / `ASAAS_SVC` (webhook por conta, API v3, CSV).
 Object.assign(MAPAS_STATUS, { ASAAS_PRD: ASAAS, ASAAS_SVC: ASAAS });
+// spec 021 — contas `GURU_PRD` / `GURU_SVC` (webhook por conta, API v2 cursor, CSV).
+Object.assign(MAPAS_STATUS, { GURU_PRD: GURU, GURU_SVC: GURU });
 
 export interface ResultadoStatusMapeado extends ResolucaoStatus {
   motivo?: string;

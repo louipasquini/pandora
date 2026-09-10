@@ -58,6 +58,16 @@ export default function setupDb(): void {
   if (!process.env.ASAAS_SVC_WEBHOOK_TOKEN) {
     process.env.ASAAS_SVC_WEBHOOK_TOKEN = 'asaas-svc-webhook-token-e2e';
   }
+  // Adapter Guru (spec 021): fixtures dos tokens de webhook por conta — a Guru
+  // envia o token no campo `api_token` do corpo; sem eles o `WebhookAuthenticator`
+  // recusa `POST /webhooks/guru/{prd,svc}` com 401. `test/support/guru.ts` lê os
+  // mesmos valores.
+  if (!process.env.GURU_PRD_WEBHOOK_TOKEN) {
+    process.env.GURU_PRD_WEBHOOK_TOKEN = 'guru-prd-webhook-token-e2e';
+  }
+  if (!process.env.GURU_SVC_WEBHOOK_TOKEN) {
+    process.env.GURU_SVC_WEBHOOK_TOKEN = 'guru-svc-webhook-token-e2e';
+  }
   const base = process.env.TEST_DATABASE_URL;
   if (!base) {
     throw new Error(

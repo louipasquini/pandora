@@ -439,7 +439,115 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/020-adapter-asaas/plan.md`](specs/020-adapter-asaas/plan.md)
+Plano ativo: [`specs/021-adapter-guru/plan.md`](specs/021-adapter-guru/plan.md)
+(Fase 2 · spec 021 — **Adaptadores de borda da Guru**: 3ª das 4 specs de adaptadores da
+Fase 2 (019 TMB ✅, 020 Asaas ✅, 021 Guru, 022 Hotmart) — molde direto da 019/020.
+Materializa o **Princípio III** para as **duas contas Guru** `GURU_PRD` / `GURU_SVC`
+(`PlataformaOrigem` do `core`): 3 funções **puras** `parse*()` (webhook de Vendas — objeto
+de transação `{ id, status, dates, payment, contact, product, subscription, type, api_token,
+webhook_type }` / API `GET /api/v2/transactions` **paginação por cursor** — `next_cursor`
+enquanto `has_more_pages`, janela obrigatória ≤ 180 dias / CSV de export) transformam os
+payloads crus em **`EventoCanonico`** do `core` — **recebendo a `conta` como parâmetro** (o
+payload da Guru nunca a determina — vem do path `/prd`\|`/svc` ou do corpo do endpoint),
+testadas contra **fixtures reais sem tocar o banco**. Vivem em
+**`src/ingestao/adapters/guru/`** (visão Apêndice C); **não importam
+`financeiro`/`clientes`** — o **`financeiro/domain/status-map/guru.ts`** (vocabulário bruto →
+`StatusTransacaoCanonico`: `approved`/`completed`→`PAGO`,
+`waiting_payment`/`pending`/`billet_printed`/`processing`/`analysis`/`charging`→`PENDENTE`,
+`delayed`/`in_recovery`→`EM_ATRASO`, `refunded`/`dispute`→`ESTORNADO`,
+`chargeback`→`CHARGEBACK`, `canceled`/`expired`→`CANCELADO`,
+`rejected`/`failed`/`blocked`→`RECUSADO`; `trial`/`started`/`abandoned`/`scheduled`/
+`pending_transfer`/`transferred` **fora do mapa de propósito** → `DESCONHECIDO`+revisão;
+**compartilhado** entre PRD/SVC e entre as 3 fontes `guru.webhook`/`guru.api`/`guru.csv` — o
+CSV espelha o enum da API, Assumption) mora no `financeiro` e é consumido lá pela etapa 3 da
+018; registrado via `Object.assign(MAPAS_STATUS, { GURU_PRD: GURU, GURU_SVC: GURU })` —
+`mapearStatus` (018) é chamado com `plataforma = "GURU_PRD"`\|`"GURU_SVC"`, as duas apontam
+para o mesmo objeto. **Superfície HTTP fina**: **2 webhooks públicos por conta**
+`POST /webhooks/guru/{prd,svc}` (prefixo `/webhooks/` já é allowlist da 003; **auth real =
+campo `api_token` NO CORPO do JSON** — equivale ao Account Token da conta, verificado em
+tempo constante pelo **`WebhookAuthenticator`** da 003, **diferente do header de TMB/Asaas**;
+token errado/ausente/**da outra conta** → **401**, 0 evento; **não** HMAC; o `api_token` é
+**removido** do `payload_bruto` antes de registrar o evento — segredo, `grep` do valor no
+`evento_origem` = 0) + **2 endpoints** `POST /ingestao/guru/{sincronizar,importar-csv}` sob
+a permissão **já existente** `evento:ingerir` (`conta` **obrigatória** no corpo; CSV como
+texto no corpo JSON, 0 dep de upload binário). Todos são invólucros finos que só chamam
+**`RegistrarEventoService.registrarEvento`** (a porta da etapa 0 que a 006 exportou "para os
+adapters 019–022") — o worker faz classificar → resolver pessoa (018) → upsert transação
+(018). **Nenhum `INSERT` direto, nenhuma etapa nova —
+`worker.service.ts`/`etapas.ts`/`pipeline-wiring.module.ts`/`classificar.ts`/`schema.prisma`
+sem diff.** Payload de webhook **sem `id` de transação** (webhook de
+assinatura/contrato/eticket que a Guru manda para a mesma URL, ou lixo) → conta em
+`ignorados`, é logado, e **não** é registrado; `200 { registrados: 0, ignorados: n }` — a
+Guru espera 2xx e **suprime retentativas em 4xx** (`0/401/403/404/406/410/422/505/506/510/
+511`), por isso erro de parse é **200**, nunca 4xx. **`GuruApiClient`** atrás de interface +
+token DI (`GURU_API_CLIENT`), impl com **`fetch` nativo do Node 24** (0 dep — padrão
+`TmbApiClient`/019, `AsaasApiClient`/020): header **`Authorization: Bearer <GURU_<conta>
+_API_KEY>`** (Account Token) + `Accept` + `User-Agent`, base `GURU_<conta>_API_BASE_URL` ??
+`https://digitalmanager.guru/api/v2`; **paginação por cursor** (segue `next_cursor` enquanto
+`has_more_pages` é `1`/`true`), `<campoData>_ini`/`<campoData>_end` (`ordered_at` default);
+**dublê nos e2e** (`overrideProvider(GURU_API_CLIENT)`); sem `GURU_<conta>_API_KEY` →
+`GuruApiIndisponivelError(conta)` → `/sincronizar` responde **422** (não 500); janela >
+180 dias → **422** no DTO (`superRefine`, API não chamada). Controllers em
+`src/ingestao/guru/`; `WebhookAuthenticator` já vem do próprio `IngestaoModule` (desde a
+019). **Decisões com o dono do produto (2026-09-10)** — 021 não está `⚠ clarify` no ROADMAP,
+mas as 3 decisões de fato ambíguas foram levadas ao dono: **G-01** chave natural `id_origem`
+= `transaction.id` (UUID, consistente nas 3 fontes; **por conta** — só único dentro de
+`(<conta>, id)`, a `PlataformaOrigem` desambigua; os N webhooks de uma venda — aprovada →
+reembolsada → chargeback… — resolvem para `(<conta>, <id>)`, o `UPSERT_TRANSACAO` da 018
+mantém 1 linha, último evento vence, Regra Inviolável nº 1 por construção; ciclos de
+assinatura têm `id` próprio); **G-02** o adapter Guru **NÃO emite `referenciaExterna`** — a
+Guru é a **venda de registro** (Regra Inviolável nº 2 — "uma venda Guru+Asaas conta 1×; só a
+Guru soma receita"); `payment.marketplace_id`/`payment.marketplace_name` (id da cobrança no
+processador — pode ser a cobrança Asaas) ficam só no `payload_bruto`; nem toda venda Guru
+terceiriza para a Asaas (cartão via mundipagg, pix nativo…), então deduzir a ponte no
+adapter marcaria toda venda como `DESCONHECIDO`; a **spec 024** (`RESOLVER_VINCULO`, etapa
+4) casa `asaas.payment.externalReference` → `guru.transaction.id` com contexto
+cross-transação; **G-03** escopo = parser puro + endpoints finos `/ingestao/guru/*`
+(superfície `admin/` completa fica p/ a spec de migração). Defaults documentados
+**G-04..G-18** no `spec.md` (§Clarifications) — zero `NEEDS CLARIFICATION`. **`statusOrigem`
+= `transaction.status` cru** (sem ajuste sintético — não há caso `deleted` como na Asaas);
+`webhook_type` só no `payload_bruto`. **Oferta nativa**: `product.offer.id`/`name` /
+`items[0].offer.id` → `oferta.codigoOrigem`/`nomeOrigem`, `product.qty` → `quantidade` (a
+resolução `(tag AEN, plataforma)` é da spec 023); **cupom/garantia** (`payment.coupon.*`,
+`dates.warranty_until`) sem slot canônico → só `payload_bruto`. **Assinatura nativa**:
+`product.type === "plan"` **e** `subscription.id` presente → `assinatura.ehRecorrencia =
+true`; `invoice.cycle` → `numeroCiclo`; `plan` com `subscription` vazio (1ª venda negada) →
+sem bloco `assinatura`. **Moeda exposta** (diferente de TMB/Asaas): `payment.currency`
+validado por `ehMoeda` do `core`; ausente/inválida → `BRL` cravado (erro não-fatal em
+`erros`). **Papel de afiliada**: `type === "affiliate"` → `ehAfiliada = true` →
+`classificar` → `VENDA_AFILIADA`; `producer`/`co_producer` → `VENDA_PROPRIA`. **Comprador
+rico** do objeto `contact` (nome, e-mail, `doc` → documento, `phone_local_code` +
+`phone_number` → telefones, `address*` → endereço). `valores.bruto` = `payment.gross`,
+`valores.liquido` = `payment.net`, `valores.taxas` = `payment.tax.value` (ou `gross − net`)
+só quando `0 < taxa < bruto`; `payment.total`/`discount_value`/`affiliate_value`/
+`installments.*` só no `payload_bruto`. `ocorridoEm` = `dates.confirmed_at` ?? `.ordered_at`
+?? `.created_at` ?? `.updated_at` (webhook/API) / `data_aprovacao` ?? `data_pedido` ??
+`data_criacao` (CSV), string crua — a etapa 3 (018) aplica `parseInstante` do `core` (tolera
+`"2023-09-19T09:19:04Z"`, date-only, epoch). Parser de CSV **à mão** (0 dep — cópia da 020:
+detecta `,`/`;` no cabeçalho, tira BOM, mini state-machine de aspas; mapa de colunas com
+aliases inglês/pt-BR). **0 migração, 0 tabela, 0 dependência nova, 0 chave `.env` nova**
+(`GURU_PRD_*`/`GURU_SVC_*` já em `accountConfig` da 001/003), **0 porta nova, 0 permissão
+nova, 0 frontend** (os eventos aparecem no painel **Eventos**/006, as transações em
+**Financeiro · Transações**/018 sem mudança de frontend). `CONTEXT_MODULES` segue **11** — o
+adapter é subdiretório do `ingestao`. 777 testes unitários backend (+66 vs. a 020 — domínio
+puro: helpers de normalização + `moedaDeGuru`/`dinheiroDeValorGuru` com moeda parametrizada,
+os 3 parsers contra fixtures reais, `GuruApiClient` com dublê de `fetch` e encadeamento por
+cursor, `status-map/guru` com varredura de cobertura de vocabulário contra as fixtures) +
+394 e2e (22 suítes, +18 — Postgres real, container isolado **`pandora-db-spec021` na porta
+55438**, já que 55432/55433/55435/55436 estavam em uso por outras sessões: US1 webhook por
+conta → transação + `payload_bruto` sem `api_token` + `waiting_payment`/`chargeback` + 401 +
+webhook de assinatura ignorado, US2 `type: "affiliate"` → `VENDA_AFILIADA` + `invoice.cycle`
+→ `RECORRENCIA` + plano negado sem `subscription` + `approved`+`refunded` colapsa no `id` →
+1 transação `ESTORNADO`/`REEMBOLSO` + dedup por hash + `trial` → revisão, US3 sincronização
+com dublê de 2 páginas encadeadas por cursor + `conta` fora do enum → 422 + janela > 180d →
+422 (API não chamada) + sem chave → 422, US4 import CSV com comprador, SC-015 isolamento
+PRD/SVC → 2 transações, `grep` de fronteira, catálogo RBAC inalterado, `/health` = 11),
+todos verdes; lint/typecheck/build limpos no backend; frontend inalterado. Artefatos:
+`research.md`, `data-model.md`, `contracts/` (4), `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 020 — Adaptadores de borda da Asaas (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/020-adapter-asaas/plan.md`](specs/020-adapter-asaas/plan.md)
 (Fase 2 · spec 020 — **Adaptadores de borda da Asaas**: 2ª das 4 specs de adaptadores da
 Fase 2 (019 TMB ✅, 020 Asaas, 021 Guru, 022 Hotmart) — molde direto da 019. Materializa o
 **Princípio III** para as **duas contas Asaas** `ASAAS_PRD` / `ASAAS_SVC` (`PlataformaOrigem`
@@ -538,6 +646,8 @@ enum → 422 + sem chave → 422, US4 import CSV com comprador, SC-015 isolament
 transações, `grep` de fronteira, catálogo RBAC inalterado, `/health` = 11), todos verdes;
 lint/typecheck/build limpos no backend; frontend inalterado. Artefatos: `research.md`,
 `data-model.md`, `contracts/` (4), `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 019 — Adaptadores de borda da TMB (implementada, resumo arquivado)</summary>
 
