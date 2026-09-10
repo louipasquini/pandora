@@ -1,0 +1,41 @@
+{
+  "items": [
+    {
+      "product": { "id": 2125830, "ucode": "839F1A4F-43DC-F60F-13FE-6C8BD23F0030", "name": "Formação Completa AEN" },
+      "buyer": { "name": "Bianca Prado", "ucode": "839F1A4F-43DC-F60F-13FE-6C8BD23F6795", "email": "bianca.prado@example.com" },
+      "producer": { "name": "Amor em Nutrir", "ucode": "252A74C5-4A97-143A-9349-E45D871C6018" },
+      "purchase": {
+        "transaction": "HP12455690120090",
+        "order_date": 1716000000000,
+        "approved_date": 1716003600000,
+        "status": "APPROVED",
+        "recurrency_number": 1,
+        "is_subscription": false,
+        "commission_as": "PRODUCER",
+        "price": { "value": 897.0, "currency_code": "BRL" },
+        "payment": { "method": "CREDIT_CARD", "installments_number": 12, "type": "CREDIT_CARD" },
+        "offer": { "code": "form_completa" },
+        "hotmart_fee": { "total": 88.8, "currency_code": "BRL" }
+      }
+    },
+    {
+      "product": { "id": 2125830, "ucode": "839F1A4F-43DC-F60F-13FE-6C8BD23F0030", "name": "Formação Completa AEN" },
+      "buyer": { "name": "Bianca Prado", "ucode": "839F1A4F-43DC-F60F-13FE-6C8BD23F6795", "email": "bianca.prado@example.com" },
+      "producer": { "name": "Amor em Nutrir", "ucode": "252A74C5-4A97-143A-9349-E45D871C6018" },
+      "purchase": {
+        "transaction": "HP12455690120090",
+        "order_date": 1716000000000,
+        "approved_date": 1716003600000,
+        "status": "PARTIALLY_REFUNDED",
+        "recurrency_number": 1,
+        "is_subscription": false,
+        "commission_as": "PRODUCER",
+        "price": { "value": 897.0, "currency_code": "BRL" },
+        "payment": { "method": "CREDIT_CARD", "installments_number": 12, "type": "CREDIT_CARD" },
+        "offer": { "code": "form_completa" },
+        "hotmart_fee": { "total": 88.8, "currency_code": "BRL" }
+      }
+    }
+  ],
+  "page_info": { "total_results": 2, "next_page_token": "", "results_per_page": 5 }
+}

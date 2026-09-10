@@ -1,0 +1,29 @@
+{
+  "id": "0d7aa966-b887-4617-8c56-9e865bfc0004",
+  "creation_date": 1717462800100,
+  "event": "PURCHASE_APPROVED",
+  "version": "2.0.0",
+  "data": {
+    "product": { "id": 2125820, "ucode": "2e9c43a9-0aeb-48ed-9464-630f845c0020", "name": "Comunidade AEN — Assinatura" },
+    "buyer": { "email": "aline.souza@example.com", "name": "Aline Souza", "document": "11144477735", "document_type": "CPF" },
+    "producer": { "name": "Amor em Nutrir" },
+    "commissions": [{ "value": 81.0, "currency_value": "BRL", "source": "PRODUCER" }],
+    "purchase": {
+      "approved_date": 1717462800000,
+      "order_date": 1717459200000,
+      "price": { "value": 89.9, "currency_value": "BRL" },
+      "offer": { "code": "com_mensal" },
+      "recurrence_number": 3,
+      "commission_as": "PRODUCER",
+      "is_subscription": true,
+      "status": "APPROVED",
+      "transaction": "HP12455690120050",
+      "payment": { "installments_number": 1, "type": "CREDIT_CARD" }
+    },
+    "subscription": {
+      "status": "ACTIVE",
+      "plan": { "id": 460805, "name": "Plano Mensal" },
+      "subscriber": { "code": "QO4THU04" }
+    }
+  }
+}

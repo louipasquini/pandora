@@ -6,6 +6,7 @@ import {
 import { TMB } from './tmb';
 import { ASAAS } from './asaas';
 import { GURU } from './guru';
+import { HOTMART } from './hotmart';
 
 /**
  * Tradução do **vocabulário bruto de status** de cada plataforma para
@@ -32,6 +33,8 @@ Object.assign(MAPAS_STATUS, { TMB });
 Object.assign(MAPAS_STATUS, { ASAAS_PRD: ASAAS, ASAAS_SVC: ASAAS });
 // spec 021 — contas `GURU_PRD` / `GURU_SVC` (webhook por conta, API v2 cursor, CSV).
 Object.assign(MAPAS_STATUS, { GURU_PRD: GURU, GURU_SVC: GURU });
+// spec 022 — contas `HOTMART_PRD` / `HOTMART_SVC` (sales/history + price/details, CSV, webhook stub).
+Object.assign(MAPAS_STATUS, { HOTMART_PRD: HOTMART, HOTMART_SVC: HOTMART });
 
 export interface ResultadoStatusMapeado extends ResolucaoStatus {
   motivo?: string;

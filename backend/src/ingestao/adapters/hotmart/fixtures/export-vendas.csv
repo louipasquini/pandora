@@ -1,0 +1,7 @@
+﻿transacao;status;valor;valor_liquido;taxa;moeda;data_pedido;data_aprovacao;oferta;codigo_oferta;tipo;assinatura;ciclo;nome;email;documento;telefone
+HP12455690121001;APPROVED;150.60;135.70;14.90;BRL;2026-06-01;2026-06-01;"Curso NMX; turma anual";k2pasun0;PRODUCER;nao;;Marta Nogueira;marta.nogueira@example.com;390.533.447-05;(11) 99123-4567
+HP12455690121002;WAITING_PAYMENT;47.00;;;BRL;2026-06-02;;Ebook Nutrição;ebk1abcd;PRODUCER;nao;;Renato Aguiar;renato.aguiar@example.com;52998224725;21988887777
+HP12455690121003;REFUNDED;897.00;808.20;88.80;BRL;2026-05-10;2026-05-10;Formacao Completa;form_completa;PRODUCER;nao;;Bianca Prado;bianca.prado@example.com;16899535009;
+;APPROVED;100.00;95.00;5.00;BRL;2026-06-04;2026-06-04;Linha sem id;of_x;PRODUCER;nao;;Sem Id;sem.id@example.com;;
+HP12455690121005;APPROVED;89.90;81.00;8.90;BRL;2026-06-12;2026-06-12;Assinatura Comunidade;com_mensal;PRODUCER;sim;3;Aline Souza;aline.souza@example.com;11144477735;31977776666
+HP12455690121006;APPROVED;60.00;54.00;6.00;USD;2026-06-03;2026-06-03;Masterclass Internacional;mstr_intl;AFFILIATE;nao;;Carla Dias;carla.dias@example.com;39860211062;
