@@ -122,14 +122,19 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  rating sob demanda (spec 015 — subpasta disparos/) + Tarefas: checklist,
                  cronômetro, comentários append-only, dependência sem ciclos, delegação,
                  pontos/ranking derivados, notificações in-app, ação CRIAR_TAREFA no
-                 Workflow (spec 016 — subpasta tarefa/)
+                 Workflow (spec 016 — subpasta tarefa/) + Dashboard: métricas derivadas por
+                 query (catálogo fechado de painéis, benchmark período-a-período, funil,
+                 ranking, qualidade de atendimento), metas com atingimento derivado +
+                 alerta in-app, visões salvas, export CSV client-side (spec 017 — subpasta
+                 dashboard/)
     financeiro/ catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
                  007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
                  whatsapp 011 + atendimento 012 + faq/sugestao_ia/campo_personalizado_pessoa
-                 013 + workflow 014 + disparos 015 + tarefa 016) + migrações + seed.ts
+                 013 + workflow 014 + disparos 015 + tarefa 016 + dashboard: meta_comercial
+                 / dashboard_visao / crm_dashboard_audit 017) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -162,6 +167,9 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
                  quality rating sob demanda (spec 015)
     tarefas/     CRM · Tarefas — abas Minhas/Gerais/Todas, agenda, detalhe com checklist/
                  cronômetro/comentários/dependências/delegação, ranking de pontos (spec 016)
+    dashboard/   CRM · Dashboard — seletor de período + filtros, painéis com comparação
+                 período-a-período (gráficos SVG à mão), metas comerciais + alerta,
+                 visões salvas, export CSV + Imprimir/PDF (spec 017)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -206,7 +214,8 @@ npm run db:up
 #    fluxo_modelo/fluxo_cursor_fonte na 12ª; spec 015 acrescenta execucao_disparo/
 #    disparo_contato_importado/mensagem_disparo na 13ª; spec 016 acrescenta tarefa/
 #    tarefa_checklist_item/tarefa_cronometro_periodo/tarefa_nota/tarefa_dependencia/
-#    tarefa_delegacao/crm_tarefa_audit na 14ª — todas sem seed de negócio, exceto a
+#    tarefa_delegacao/crm_tarefa_audit na 14ª; spec 017 acrescenta meta_comercial/
+#    dashboard_visao/crm_dashboard_audit na 15ª — todas sem seed de negócio, exceto a
 #    014, que semeia 3 fluxo_modelo de partida)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" + a biblioteca de modelos de fluxo (idempotente)
@@ -578,7 +587,32 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   de ranking; `CRM · Workflow` ganha o formulário da ação Criar tarefa. **0 dep nova**, **1
   migração (2 arquivos)**, **0 chave `.env` nova**. Ver
   [`docs/016-crm-tarefas.md`](docs/016-crm-tarefas.md).
-- ⏭️ Próxima: **017 — crm-dashboard** (Fase 1 — CRM).
+- ✅ **017 — crm-dashboard**: dashboard comercial e de atendimento (visão Parte 8) —
+  **última fatia da Fase 1 (CRM)**. Métricas **100% derivadas por query** (Princípio V é o
+  cerne — 0 tabela de rollup, 0 contador, 0 job). **Catálogo fechado de painéis no código**
+  `PAINEIS_DASHBOARD` (mesmo modelo do catálogo RBAC/004 e de `ACAO_TIPOS`/014) — 6 painéis:
+  visão geral, funil de conversão (reusa `agregarMetricas`/010, nunca soma moedas), ranking
+  do comercial (por responsável — ganhas + valor por moeda + conversão + pontos de tarefa/
+  016), qualidade de atendimento (tempo méd. 1ª resposta / % SLA / CSAT / taxa de resolução
+  — reusa SLA·CSAT de 012), leads por origem, série temporal. Cada painel exige
+  `dashboard:ver` + a permissão do recurso que expõe; sujeito só com `dashboard:ver` →
+  página 200 restrita, nunca 403. Todo painel reusa o `escopoDe(req)` do `*ConsultaService`
+  já existente — o dashboard **nunca amplia** o que o sujeito já vê. **Comparação
+  período-a-período** (`resolverPeriodo` + `calcularDelta`, puros). **`meta_comercial`**
+  (alvo numérico para uma métrica de um catálogo fechado, período MES/TRIMESTRE, escopo
+  opcional equipe/responsável); atingimento (`realizado`/`percentual`/`status`) **sempre
+  derivado** por `statusMeta(...)` puro — nunca coluna. **`GET /crm/dashboard/notificacoes`**
+  — metas do sujeito em alerta, só in-app. **`dashboard_visao`** — recorte de leitura salvo
+  (só o dono edita; compartilhada = read-only + clonável). Export **100% client-side, 0
+  dep**: CSV via `Blob` + `window.print()`/`@media print`; gráficos em **SVG à mão**.
+  **15ª migração Prisma** (`meta_comercial` + `dashboard_visao` + `crm_dashboard_audit` +
+  enum `MetaComercialPeriodo`; só índices comuns). Catálogo RBAC ganha `dashboard:{ver,
+  gerir_metas}` (+2). ~14 endpoints, 0 endpoint público novo. Painel: **CRM · Dashboard** —
+  seletor de período + filtros, painéis com delta período-a-período, metas + alerta, visões
+  salvas, Exportar CSV / Imprimir-PDF. **0 dep nova**, **1 migração**, **0 porta nova**,
+  **0 chave `.env` nova**. Ver [`docs/017-crm-dashboard.md`](docs/017-crm-dashboard.md).
+- 🎉 **Fase 1 (CRM) completa** — specs 007–017. Próxima: **018 — financeiro-transacao-ledger**
+  (Fase 2 — Financeiro).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

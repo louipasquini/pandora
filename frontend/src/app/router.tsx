@@ -28,6 +28,7 @@ import { DisparosPage } from '../disparos/DisparosPage';
 import { DisparoDetalhePage } from '../disparos/DisparoDetalhePage';
 import { TarefasPage } from '../tarefas/TarefasPage';
 import { TarefaDetalhePage } from '../tarefas/TarefaDetalhePage';
+import { DashboardPage } from '../dashboard/DashboardPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -234,6 +235,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao anyOf={['tarefa:ver_todas', 'tarefa:ver_proprias']}>
                 <TarefaDetalhePage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'crm/dashboard',
+            element: (
+              <RequirePermissao perm="dashboard:ver">
+                <DashboardPage />
               </RequirePermissao>
             ),
           },

@@ -388,7 +388,11 @@ recálculo do contrato a cada aditivo; reimportação nunca desfaz vínculo (só
   `tarefa:ver_todas`\|`ver_proprias`, abas Minhas/Gerais/Todas + agenda, detalhe com
   checklist/cronômetro/comentários/dependências/delegação atrás de `tarefa:editar`\|
   `tarefa:delegar`, ranking de pontos derivado; formulário da ação **Criar tarefa** dentro
-  do editor de fluxo do Workflow). `vite.config.ts` lê o
+  do editor de fluxo do Workflow); **CRM · Dashboard** (017, `dashboard:ver`, seletor de
+  período + filtros equipe/responsável/pipeline, 6 painéis com comparação período-a-período
+  — gráficos SVG à mão, 0 dep —, metas comerciais com atingimento derivado + CRUD atrás de
+  `dashboard:gerir_metas`, badge de alerta de meta, visões salvas/compartilhadas/clonáveis,
+  export CSV client-side e Imprimir/PDF via `@media print`). `vite.config.ts` lê o
   `.env` da raiz (`envDir: '..'`). Tokens da marca num ponto único:
   `frontend/src/theme/tokens.css`.
 - **Monorepo:** npm workspaces (`backend`, `frontend`), Node 24. **Portas** (configuráveis,
@@ -426,7 +430,82 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/016-crm-tarefas/plan.md`](specs/016-crm-tarefas/plan.md)
+Plano ativo: [`specs/017-crm-dashboard/plan.md`](specs/017-crm-dashboard/plan.md)
+(Fase 1 · spec 017 — **CRM · Dashboard**: décima-primeira e **última fatia da Fase 1 (CRM)**,
+visão Parte 8 — dashboard comercial e de atendimento. Mora no _bounded context_ **`crm`**
+(já não-vazio desde 007–016; `CONTEXT_MODULES` segue **11** — nenhum bounded context novo).
+**Métricas 100% derivadas por query** (Princípio V é o cerne — **0 tabela de rollup, 0
+contador persistido, 0 job**; a alternativa "tabela de métrica materializada" foi
+considerada e rejeitada, D-09). Cobre **só dados do `crm`** (o Financeiro/018+ não existe):
+`lead` (008), `oportunidade`/pipeline (010), `atendimento`/chat (012), `tarefa` (016),
+`interacao` (009). **Catálogo fechado de painéis no código** `PAINEIS_DASHBOARD`
+(`backend/src/crm/domain/dashboard/paineis.ts`, mesmo modelo do catálogo RBAC/004 e de
+`ACAO_TIPOS`/014; `assertCatalogoPaineisCoerente()` aborta no boot do `CrmModule`) — 6
+painéis: `visao_geral` (números + delta período-a-período), `funil_pipeline` (reusa
+`agregarMetricas`/010, nunca soma moedas), `ranking_comercial` (por responsável — ganhas +
+valor ganho por moeda + conversão + pontos de tarefa/016), `qualidade_atendimento` (tempo
+méd. 1ª resposta / % SLA / CSAT / distribuição / taxa de resolução / por atendente / por
+dia — reusa SLA·CSAT de 012), `leads_por_origem` (tabela), `serie_oportunidades` (série
+temporal, bucket dia/semana/mês derivado da duração). Cada painel exige `dashboard:ver` +
+(quando aplicável) uma permissão do recurso que expõe; sujeito só com `dashboard:ver` →
+página 200 com painéis restritos, **nunca 403 na página inteira** (FR-006). **Escopo de
+visão** de todo painel reusa o `escopoDe(req)` do `*ConsultaService` já existente
+(`Oportunidade`/`Tarefa`/`Lead`/`Atendimento` — 010/016/008/012); o dashboard **nunca
+amplia** o que o sujeito já vê (`PaineisService.resolverEscopos` tolera `Forbidden` → "não
+enxerga nada" via `criadoEm < epoch`, não 500). **Comparação período-a-período** (benchmark
+CL-04): `resolverPeriodo(de, ate)` (puro, `Date`/ISO simples — não o `parseInstante` de
+borda; lixo → 400) devolve `{de, ate, anteriorDe, anteriorAte, duracaoDias, bucket}`;
+`calcularDelta(valor, anterior)` → `{delta, deltaPercentual: anterior===0 ? null : …}`. **2
+tabelas de escrita novas** (justificadas no gate VIII, análogas a `janela_atendimento`/
+`feriado`/007): **`meta_comercial`** (alvo numérico para uma `metrica` de `METRICAS_META`
+— catálogo fechado —, `periodo MES|TRIMESTRE` + `referencia @db.Date` normalizada,
+escopo opcional `equipe_id`/`responsavel_id`, `alvo_int bigint` + `alvo_moeda char(3)?`
+obrigatório sse a métrica é monetária; **`DELETE` físico** permitido, D-06); o atingimento
+(`realizado`/`percentual`/`status ∈ {no_caminho,em_risco,batida,estourada}`/`noRitmo`) é
+**sempre derivado** na leitura via `statusMeta(...)` puro sobre a mesma query da métrica
+(CL-02, FR-011). **`dashboard_visao`** (recorte de leitura salvo — `nome`, `filtros`/
+`paineis` jsonb validados por zod fechado, `dono_usuario_id`, `perfil_compartilhado_id?`;
+só o dono edita/exclui, visão compartilhada = somente-leitura + clonável, D-07; credencial
+de serviço não é `Usuario` real → 400 ao criar). **`GET /crm/dashboard/notificacoes`** —
+metas do sujeito em risco/batidas/estouradas no período corrente, **só in-app** (mesmo
+padrão de `NotificacaoService` de tarefa/016, CL-02 — sem worker, sem envio externo).
+**Export 100% client-side, 0 dep** (CL-03/D-R9): painéis `tabela`/`ranking` aceitam
+`?formato=csv` (`serializarCsv` puro no backend + `Blob` no frontend, mesmo padrão de
+Disparos/015); "PDF" = `window.print()` + folha `@media print`. **Gráficos em SVG à mão**
+(D-08 — funil = barras, série temporal = polyline; `@hello-pangea/dnd`/lib de chart
+rejeitadas, mesmo precedente do Kanban HTML5 de 010). **15ª migração Prisma**
+(`20260910113633_crm_dashboard`): `meta_comercial`, `dashboard_visao`, `crm_dashboard_audit`
+(forma canônica do core, append-only, só delta real — 1 linha por campo, espelha
+`crm_tarefa_audit`/016) + enum `MetaComercialPeriodo`; **só índices comuns**, nenhum `CHECK`/
+índice parcial. **RBAC 004 estendido**: **+2** permissões (`dashboard:ver`,
+`dashboard:gerir_metas`, recurso novo `dashboard`; `administrador`/credencial de serviço de
+graça, **0 migração de dados/seed**). **~14 endpoints** `/crm/dashboard/**` (montar 1,
+painel/catálogo 2, metas CRUD+listar 4, notificações 1, visões CRUD+clonar 5), **0 endpoint
+público novo**. Frontend `frontend/src/dashboard/` — item **CRM · Dashboard** atrás de
+`dashboard:ver` — `DashboardPage.tsx` (seletor de período default "últimos 30 dias" +
+filtros equipe/responsável/pipeline + botão Imprimir/PDF + folha `@media print` inline),
+`Paineis.tsx` (um renderer por formato — cartões com seta ▲/▼ do delta, funil SVG, tabela,
+série SVG), `MetasPanel.tsx` (lista com barra de progresso + badge de status + CRUD atrás
+de `dashboard:gerir_metas`), `NotificacoesMetaBadge.tsx` (`refetchInterval` 60s),
+`exportar-csv.ts` (`Blob`). Hooks TanStack Query inline (padrão `whatsapp/WhatsappAdminPage.tsx`).
+**0 dep nova** (backend e frontend), **1 migração**, **0 porta nova no `core`**, **0 chave
+`.env` nova**. As 4 clarificações que definiam o escopo desta spec — alcance de
+"configurável por perfil", metas dentro/fora, mecânica de export, escopo de dados /
+profundidade de benchmark — foram resolvidas com o dono do produto **antes** da escrita do
+`plan.md`, 2026-09-10 (spec.md, seção Clarifications). 589 testes unitários backend (44
+novos, domínio puro — sem banco) + 325 e2e (18 novos, Postgres real — schema isolado num
+container próprio na porta 55434, já que 55432/55433 estavam em uso por outras sessões;
+suíte 003–017 completa) + 120 frontend (7 novos, 2 arquivos), todos verdes; lint/typecheck/
+build limpos nos dois workspaces; validado também manualmente no navegador de ponta a ponta
+(seed de leads/pipeline/oportunidade ganha/metas via API, abrir o dashboard, ver os 6
+painéis com o delta período-a-período, o funil SVG com valor por moeda, a tabela de leads
+por origem com "Exportar CSV", as 2 metas com atingimento derivado + status "Em risco" + o
+badge "2 metas em alerta", e o formulário "Nova meta" inline).
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 016 — CRM · Tarefas (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/016-crm-tarefas/plan.md`](specs/016-crm-tarefas/plan.md)
 (Fase 1 · spec 016 — **CRM · Tarefas**: décima fatia da Fase 1 (CRM), visão Parte 8.10 —
 gestor de tarefas do time, pessoal e geral. Mora no _bounded context_ **`crm`** (já
 não-vazio desde 007–015; `CONTEXT_MODULES` segue **11**). **`Tarefa`** — título, prazo,
@@ -509,6 +588,8 @@ ranking de pontos refletindo a conclusão, e a ação `CRIAR_TAREFA` publicada n
 Workflow gerando automaticamente uma tarefa — via o worker de fundo real, sem chamada
 manual de `/processar` — ao criar um lead novo).
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 015 — CRM · Disparos (WhatsApp) (implementada, resumo arquivado)</summary>
 
