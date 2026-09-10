@@ -29,6 +29,8 @@ import { DisparoDetalhePage } from '../disparos/DisparoDetalhePage';
 import { TarefasPage } from '../tarefas/TarefasPage';
 import { TarefaDetalhePage } from '../tarefas/TarefaDetalhePage';
 import { DashboardPage } from '../dashboard/DashboardPage';
+import { TransacoesListPage } from '../transacoes/TransacoesListPage';
+import { TransacaoDetailPage } from '../transacoes/TransacaoDetailPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -243,6 +245,22 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="dashboard:ver">
                 <DashboardPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'financeiro/transacoes',
+            element: (
+              <RequirePermissao perm="transacao:ver">
+                <TransacoesListPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'financeiro/transacoes/:id',
+            element: (
+              <RequirePermissao perm="transacao:ver">
+                <TransacaoDetailPage />
               </RequirePermissao>
             ),
           },
