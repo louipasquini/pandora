@@ -80,6 +80,11 @@ export const NAV_ITEMS: NavItem[] = [
     requerPermissao: 'dashboard:ver',
   },
   { label: 'CRM', to: '/crm', soon: true },
+  {
+    label: 'Financeiro · Transações',
+    to: '/financeiro/transacoes',
+    requerPermissao: 'transacao:ver',
+  },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Marketing', to: '/marketing', soon: true },
   { label: 'Central de Clientes', to: '/central', soon: true },

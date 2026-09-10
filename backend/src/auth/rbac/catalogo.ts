@@ -264,6 +264,12 @@ export const PERMISSOES = Object.freeze([
     recurso: 'dashboard',
     rotulo: 'Criar, editar e remover metas comerciais',
   },
+  // --- Ledger de transações do Financeiro (spec 018) ---
+  {
+    id: 'transacao:ver',
+    recurso: 'transacao',
+    rotulo: 'Ver o ledger de transações do Financeiro',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

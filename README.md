@@ -127,14 +127,19 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  ranking, qualidade de atendimento), metas com atingimento derivado +
                  alerta in-app, visões salvas, export CSV client-side (spec 017 — subpasta
                  dashboard/)
-    financeiro/ catalogo/ contratos/ marketing/ central/
+    financeiro/  transacao normalizada (1 por (plataforma_origem, id_origem)), pipeline
+                 etapas 2–3 plugadas no worker da 006 (resolver pessoa via PortaIdentidade
+                 da 005; upsert transação com status_map por fonte), leitura-só
+                 GET /financeiro/transacoes[/:id] (spec 018 — subpasta transacoes/ no front)
+    catalogo/ contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
                  007 + lead 008 + interacao/tag/segmento 009 + pipeline/oportunidade 010 +
                  whatsapp 011 + atendimento 012 + faq/sugestao_ia/campo_personalizado_pessoa
                  013 + workflow 014 + disparos 015 + tarefa 016 + dashboard: meta_comercial
-                 / dashboard_visao / crm_dashboard_audit 017) + migrações + seed.ts
+                 / dashboard_visao / crm_dashboard_audit 017 + transacao +
+                 StatusTransacaoCanonico 018) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -215,8 +220,9 @@ npm run db:up
 #    disparo_contato_importado/mensagem_disparo na 13ª; spec 016 acrescenta tarefa/
 #    tarefa_checklist_item/tarefa_cronometro_periodo/tarefa_nota/tarefa_dependencia/
 #    tarefa_delegacao/crm_tarefa_audit na 14ª; spec 017 acrescenta meta_comercial/
-#    dashboard_visao/crm_dashboard_audit na 15ª — todas sem seed de negócio, exceto a
-#    014, que semeia 3 fluxo_modelo de partida)
+#    dashboard_visao/crm_dashboard_audit na 15ª; spec 018 acrescenta transacao +
+#    enum StatusTransacaoCanonico na 16ª (1ª migração do financeiro) — todas sem seed
+#    de negócio, exceto a 014, que semeia 3 fluxo_modelo de partida)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" + a biblioteca de modelos de fluxo (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
@@ -611,8 +617,28 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   seletor de período + filtros, painéis com delta período-a-período, metas + alerta, visões
   salvas, Exportar CSV / Imprimir-PDF. **0 dep nova**, **1 migração**, **0 porta nova**,
   **0 chave `.env` nova**. Ver [`docs/017-crm-dashboard.md`](docs/017-crm-dashboard.md).
-- 🎉 **Fase 1 (CRM) completa** — specs 007–017. Próxima: **018 — financeiro-transacao-ledger**
-  (Fase 2 — Financeiro).
+- ✅ **018 — financeiro-transacao-ledger** — 1ª fatia da **Fase 2 (Financeiro)**. `financeiro`
+  (vazio desde a 001) vira dono de **`transacao`** — projeção normalizada de um evento
+  financeiro, **1 linha por `(plataforma_origem, id_origem)`** (Regra Inviolável nº 1),
+  valores como `Dinheiro` do `core` (4 pares `bigint ×10000 + char(3)`, sem `float`),
+  `status_canonico`, `classificacao` e FKs opcionais (só `pessoa`/`evento_origem` com FK
+  ativa). **Pluga as etapas 2–3 do pipeline da 006** sem tocar o `WorkerService`:
+  `RESOLVER_PESSOA` (reusa a engine da 005 pela `PortaIdentidade`; `criar: false` sse
+  `VENDA_AFILIADA`) e `UPSERT_TRANSACAO` (`ResultadoIngestao{transacao, foi_criada,
+  campos_alterados}` em `evento_etapa.resultado` — nunca `_houve_mudanca` no ORM). Etapas
+  4–6 seguem `pulada`. `EventoCanonico` **movido para `core/pipeline/`** + contrato
+  `ExecutorEtapaExterno`; a plugagem é um **módulo de composição na raiz**
+  (`src/pipeline-wiring.module.ts`). **Status sem adapter:** `financeiro/domain/status-map/`
+  (`MAPAS_STATUS` vazio na 018 — specs 019–022 populam por fonte); bruto não catalogado →
+  `DESCONHECIDO` + revisão (Regra nº 15). **16ª migração Prisma**
+  (`20260910123742_financeiro_transacao`): `transacao` + enum `StatusTransacaoCanonico`;
+  só índices comuns, **0 `CHECK`/índice parcial/tabela `_audit`**. Catálogo RBAC ganha
+  `transacao:ver` (+1). **~2 endpoints de leitura** `/financeiro/transacoes[/:id]`, **0
+  endpoint de escrita** (Princípio VIII), 0 público novo. Painel: **Financeiro · Transações**
+  (lista + filtros + detalhe com valores por moeda + link p/ o evento de origem). **0 dep
+  nova**, **1 migração**, **0 porta nova**, **0 chave `.env` nova**. `CONTEXT_MODULES` = 11.
+  Ver [`docs/018-financeiro-transacao-ledger.md`](docs/018-financeiro-transacao-ledger.md).
+- Próxima: **019 — adapter-tmb** (Fase 2 — Financeiro).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

@@ -153,21 +153,23 @@ describe('ingestao — evento_origem e worker (e2e)', () => {
   // --------------------------------------------------------------- worker
 
   describe('worker + etapas', () => {
-    it('processa evento com canônico → ok, CLASSIFICAR ok, 2–6 pulada', async () => {
+    it('processa evento com canônico → ok; CLASSIFICAR + etapas 2–3 reais (spec 018); 4–6 pulada', async () => {
       const ev = await h.ingerir({ eventoCanonico: montarEventoCanonico() });
       const resumo = await h.processar();
       expect(resumo).toMatchObject({ selecionados: 1, ok: 1, erro: 0, revisar: 0 });
       const det = await h.detalhe(ev.body.eventoId);
       expect(det.body.status).toBe('ok');
       expect(det.body.classificacao).toBe('VENDA_PROPRIA');
+      const st = (nome: string) =>
+        det.body.etapas.find((e: { etapa: string }) => e.etapa === nome).status;
+      // spec 018 plugou RESOLVER_PESSOA + UPSERT_TRANSACAO
+      expect(st('RESOLVER_PESSOA')).toBe('ok');
+      expect(st('UPSERT_TRANSACAO')).toBe('ok');
+      // 4–6 seguem pulada (specs 24/23/25)
       const puladas = det.body.etapas.filter(
         (e: { status: string }) => e.status === 'pulada',
       );
-      expect(puladas).toHaveLength(5);
-      expect(
-        det.body.etapas.find((e: { etapa: string }) => e.etapa === 'RESOLVER_PESSOA')
-          .resultado,
-      ).toMatchObject({ implementadaNa: 18 });
+      expect(puladas).toHaveLength(3);
     });
 
     it('idempotente: 2ª e 3ª passadas não selecionam nada', async () => {
@@ -399,8 +401,8 @@ describe('ingestao — evento_origem e worker (e2e)', () => {
 
   // ------------------------------------------------------------- plugável
 
-  describe('etapas 2–6 plugáveis (US5 / SC-012)', () => {
-    it('2–6 são pulada com o nº da spec dona e não tocam outros contextos', async () => {
+  describe('etapas plugáveis (US5 / SC-012)', () => {
+    it('2–3 reais (spec 018), 4–6 pulada com o nº da spec dona, sem tocar outros contextos', async () => {
       const ev = await h.ingerir({});
       await h.processar();
       const det = await h.detalhe(ev.body.eventoId);
@@ -410,8 +412,10 @@ describe('ingestao — evento_origem e worker (e2e)', () => {
           e.resultado,
         ]),
       );
-      expect(por.RESOLVER_PESSOA).toMatchObject({ implementadaNa: 18 });
-      expect(por.UPSERT_TRANSACAO).toMatchObject({ implementadaNa: 18 });
+      // etapas reais não carregam mais o marcador `implementadaNa`
+      expect(por.RESOLVER_PESSOA).not.toHaveProperty('implementadaNa');
+      expect(por.UPSERT_TRANSACAO).toMatchObject({ foi_criada: expect.any(Boolean) });
+      // 4–6 seguem no-op
       expect(por.RESOLVER_VINCULO).toMatchObject({ implementadaNa: 24 });
       expect(por.RESOLVER_OFERTA).toMatchObject({ implementadaNa: 23 });
       expect(por.PROJETAR_CONTRATO).toMatchObject({ implementadaNa: 25 });

@@ -6,6 +6,7 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { IngestaoModule } from './ingestao/ingestao.module';
 import { FinanceiroModule } from './financeiro/financeiro.module';
+import { PipelineWiringModule } from './pipeline-wiring.module';
 import { CatalogoModule } from './catalogo/catalogo.module';
 import { ContratosModule } from './contratos/contratos.module';
 import { ClientesModule } from './clientes/clientes.module';
@@ -35,6 +36,7 @@ import { AdminModule } from './admin/admin.module';
     ContratosModule,
     ClientesModule,
     ClientesWiringModule,
+    PipelineWiringModule,
     CrmModule,
     MarketingModule,
     CentralModule,
