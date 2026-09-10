@@ -36,16 +36,18 @@ describe('financeiro — ledger de transações (e2e)', () => {
   });
 
   afterEach(async () => {
+    // Só `financeiro` (018) e `ingestao` (006) escrevem estas tabelas e a suíte
+    // roda serial (maxWorkers:1) → deleteMany({}) é seguro. **Não** tocamos
+    // `pessoa`/`lead` (compartilhadas, podem ter linhas de outras suítes com FKs);
+    // os testes abaixo se ancoram em e-mails/ids únicos e em deltas de contagem.
     await prisma.transacao.deleteMany({});
     await prisma.eventoEtapa.deleteMany({});
     await prisma.eventoOrigem.deleteMany({});
-    // pessoas criadas pela etapa 2
-    await prisma.pessoaOrigemRef.deleteMany({});
-    await prisma.pessoaEmail.deleteMany({});
-    await prisma.pessoaTelefone.deleteMany({});
-    await prisma.pessoaDocumento.deleteMany({});
-    await prisma.pessoa.deleteMany({});
   });
+
+  /** e-mail único por teste — evita casar com pessoas deixadas por outros testes/suítes. */
+  const uniqEmail = (tag: string) =>
+    `fin-${tag}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 
   // ------------------------------------------------------------ migração
 
@@ -162,26 +164,28 @@ describe('financeiro — ledger de transações (e2e)', () => {
 
   describe('US2 — resolver a pessoa do comprador', () => {
     it('2 eventos de contas diferentes, mesmo e-mail → 1 pessoa, 2 transações', async () => {
+      const email = uniqEmail('mesmo');
       await h.ingerirEProcessar({
         plataformaOrigem: 'GURU_PRD',
         idOrigem: 'a1',
-        canonicoOver: { comprador: { nome: 'X', emails: ['mesmo@example.com'] } },
+        canonicoOver: { comprador: { nome: 'X', emails: [email] } },
       });
       await h.ingerirEProcessar({
         plataformaOrigem: 'HOTMART_PRD',
         tipoOrigem: 'hotmart.api',
         idOrigem: 'b1',
-        canonicoOver: { comprador: { nome: 'X', emails: ['mesmo@example.com'] } },
+        canonicoOver: { comprador: { nome: 'X', emails: [email] } },
       });
 
-      const pessoas = await prisma.pessoa.findMany();
-      expect(pessoas).toHaveLength(1);
-      const ts = await prisma.transacao.findMany();
+      const emails = await prisma.pessoaEmail.findMany({ where: { valor: email } });
+      const pessoaIds = new Set(emails.map((e) => e.pessoaId));
+      expect(pessoaIds.size).toBe(1);
+      const pessoaId = [...pessoaIds][0];
+
+      const ts = await prisma.transacao.findMany({ where: { idOrigem: { in: ['a1', 'b1'] } } });
       expect(ts).toHaveLength(2);
-      expect(new Set(ts.map((t) => t.pessoaId))).toEqual(new Set([pessoas[0].id]));
-      const refs = await prisma.pessoaOrigemRef.findMany({
-        where: { pessoaId: pessoas[0].id },
-      });
+      expect(new Set(ts.map((t) => t.pessoaId))).toEqual(new Set([pessoaId]));
+      const refs = await prisma.pessoaOrigemRef.findMany({ where: { pessoaId } });
       expect(new Set(refs.map((r) => r.plataformaOrigem))).toEqual(
         new Set(['GURU_PRD', 'HOTMART_PRD']),
       );
@@ -190,9 +194,10 @@ describe('financeiro — ledger de transações (e2e)', () => {
     it('afiliada + comprador desconhecido → pessoaId null, count(pessoa) inalterado', async () => {
       const antes = await prisma.pessoa.count();
       const { eventoId } = await h.ingerirEProcessar({
+        idOrigem: 'aff_desc_1',
         canonicoOver: {
           ehAfiliada: true,
-          comprador: { nome: 'Nova Pessoa', emails: ['afiliada-nova@example.com'] },
+          comprador: { nome: 'Nova Pessoa', emails: [uniqEmail('aff-nova')] },
         },
       });
       expect(await prisma.pessoa.count()).toBe(antes);
@@ -200,17 +205,22 @@ describe('financeiro — ledger de transações (e2e)', () => {
       const rp = ev.body.etapas.find((e: { etapa: string }) => e.etapa === 'RESOLVER_PESSOA');
       expect(rp.status).toBe('ok');
       expect(rp.resultado).toMatchObject({ pessoaId: null });
-      const t = await prisma.transacao.findFirst();
+      const t = await prisma.transacao.findFirst({ where: { idOrigem: 'aff_desc_1' } });
       expect(t).toMatchObject({ ehAfiliada: true, pessoaId: null, classificacao: 'VENDA_AFILIADA' });
     });
 
     it('afiliada + comprador já existente → transação liga à pessoa (sem oferta/contrato)', async () => {
+      const email = uniqEmail('recorrente');
+      const antes = await prisma.pessoa.count();
       // 1) venda própria cria a pessoa
       await h.ingerirEProcessar({
         idOrigem: 'own_1',
-        canonicoOver: { comprador: { nome: 'Recorrente', emails: ['recorrente@example.com'] } },
+        canonicoOver: { comprador: { nome: 'Recorrente', emails: [email] } },
       });
-      const pessoa = await prisma.pessoa.findFirst();
+      const tOwn = await prisma.transacao.findFirst({ where: { idOrigem: 'own_1' } });
+      const pessoaId = tOwn?.pessoaId;
+      expect(pessoaId).toEqual(expect.any(String));
+      expect(await prisma.pessoa.count()).toBe(antes + 1);
 
       // 2) venda de afiliada com o mesmo e-mail
       await h.ingerirEProcessar({
@@ -219,13 +229,13 @@ describe('financeiro — ledger de transações (e2e)', () => {
         idOrigem: 'aff_1',
         canonicoOver: {
           ehAfiliada: true,
-          comprador: { nome: 'Recorrente', emails: ['recorrente@example.com'] },
+          comprador: { nome: 'Recorrente', emails: [email] },
         },
       });
 
-      expect(await prisma.pessoa.count()).toBe(1);
+      expect(await prisma.pessoa.count()).toBe(antes + 1); // não criou outra
       const tAff = await prisma.transacao.findFirst({ where: { idOrigem: 'aff_1' } });
-      expect(tAff?.pessoaId).toBe(pessoa?.id);
+      expect(tAff?.pessoaId).toBe(pessoaId);
       expect(tAff?.ofertaId).toBeNull();
       expect(tAff?.contratoId).toBeNull();
     });
@@ -318,13 +328,20 @@ describe('financeiro — ledger de transações (e2e)', () => {
 
   describe('idempotência / concorrência', () => {
     it('reprocessar não duplica transação nem pessoa; campos_alterados vazio', async () => {
-      const { eventoId } = await h.ingerirEProcessar({ idOrigem: 'idem_1' });
+      const email = uniqEmail('idem');
+      const antesPessoa = await prisma.pessoa.count();
+      const { eventoId } = await h.ingerirEProcessar({
+        idOrigem: 'idem_1',
+        canonicoOver: { comprador: { nome: 'Idem', emails: [email] } },
+      });
+      expect(await prisma.pessoa.count()).toBe(antesPessoa + 1);
+
       const rep = await h.reprocessar(eventoId, true);
       expect(rep.status).toBe(200);
       await h.processar();
 
       expect(await prisma.transacao.count({ where: { idOrigem: 'idem_1' } })).toBe(1);
-      expect(await prisma.pessoa.count()).toBe(1);
+      expect(await prisma.pessoa.count()).toBe(antesPessoa + 1); // reprocessar não duplicou
       const ev = await h.eventoDetalhe(eventoId);
       const upsert = ev.body.etapas.find(
         (e: { etapa: string }) => e.etapa === 'UPSERT_TRANSACAO',
