@@ -146,6 +146,21 @@ import { DependenciaService } from './application/tarefa/dependencia.service';
 import { DelegacaoService } from './application/tarefa/delegacao.service';
 import { RankingService } from './application/tarefa/ranking.service';
 import { NotificacaoService } from './application/tarefa/notificacao.service';
+import { DashboardController } from './dashboard.controller';
+import {
+  DashboardMetricaRepository,
+  MetaComercialRepository,
+  DashboardVisaoRepository,
+} from './infra/dashboard';
+import {
+  CrmDashboardAuditService,
+  DashboardService,
+  DashboardVisaoService,
+  MetaComercialService,
+  MetaNotificacaoService,
+  PaineisService,
+} from './application/dashboard';
+import { assertCatalogoPaineisCoerente, PAINEIS_DASHBOARD } from './domain/dashboard';
 
 /**
  * `crm` — bounded context de domínio (specs 007 + 008 + 009 + 010 + 011 +
@@ -204,6 +219,7 @@ import { NotificacaoService } from './application/tarefa/notificacao.service';
     WorkflowController,
     DisparoController,
     TarefaController,
+    DashboardController,
   ],
   providers: [
     // 007
@@ -327,6 +343,16 @@ import { NotificacaoService } from './application/tarefa/notificacao.service';
     DelegacaoService,
     RankingService,
     NotificacaoService,
+    // 017
+    DashboardMetricaRepository,
+    MetaComercialRepository,
+    DashboardVisaoRepository,
+    CrmDashboardAuditService,
+    PaineisService,
+    DashboardService,
+    MetaComercialService,
+    MetaNotificacaoService,
+    DashboardVisaoService,
   ],
   exports: [
     RegistrarLeadService,
@@ -339,6 +365,7 @@ export class CrmModule implements OnModuleInit {
   private readonly logger = new Logger('CrmModule');
 
   onModuleInit(): void {
+    assertCatalogoPaineisCoerente();
     const admin = PERMISSOES.filter((p) => p.recurso === 'crm_admin').map((p) => p.id);
     const lead = PERMISSOES.filter((p) => p.recurso === 'lead').map((p) => p.id);
     const interacao = PERMISSOES.filter((p) => p.recurso === 'interacao').map((p) => p.id);
@@ -350,8 +377,9 @@ export class CrmModule implements OnModuleInit {
     const atendimento = PERMISSOES.filter((p) => p.recurso === 'atendimento').map((p) => p.id);
     const disparo = PERMISSOES.filter((p) => p.recurso === 'disparo').map((p) => p.id);
     const tarefa = PERMISSOES.filter((p) => p.recurso === 'tarefa').map((p) => p.id);
+    const dashboard = PERMISSOES.filter((p) => p.recurso === 'dashboard').map((p) => p.id);
     this.logger.log(
-      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length} whatsapp=${whatsapp.length} atendimento=${atendimento.length} disparo=${disparo.length} tarefa=${tarefa.length}`,
+      `crm.ready crm_admin=${admin.length} lead=${lead.length} interacao=${interacao.length} segmento=${segmento.length} oportunidade=${oportunidade.length} whatsapp=${whatsapp.length} atendimento=${atendimento.length} disparo=${disparo.length} tarefa=${tarefa.length} dashboard=${dashboard.length} paineis=${PAINEIS_DASHBOARD.length}`,
     );
   }
 }

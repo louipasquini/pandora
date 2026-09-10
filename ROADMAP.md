@@ -634,12 +634,64 @@ o Financeiro preenche esses eventos de verdade na fase 2.
   Detalhe: [`specs/016-crm-tarefas/`](specs/016-crm-tarefas/) e
   [`docs/016-crm-tarefas.md`](docs/016-crm-tarefas.md).
 
-- [ ] **017 — crm-dashboard**
-  Métricas **derivadas por query** (nunca contador): gráficos, benchmarks, correlação,
-  rank por integrante do comercial, filtro por data/período, dashboards configuráveis por
-  perfil, export PDF/Excel, alertas de meta, funil de conversão visual, métricas de
-  qualidade de atendimento (tempo médio de resposta, CSAT, taxa de resolução).
-  Frontend: dashboards.
+- [x] **017 — crm-dashboard** — ✅ implementada e validada (2026-09-10)
+  Décima-primeira e **última fatia da Fase 1 (CRM)**, visão Parte 8 — dashboard comercial e
+  de atendimento. Mora no `crm` (`CONTEXT_MODULES` segue **11**). **Métricas 100% derivadas
+  por query** (Princípio V é o cerne — **0 tabela de rollup, 0 contador persistido, 0 job**;
+  a alternativa "métrica materializada" foi considerada e rejeitada). Cobre **só dados do
+  `crm`** (o Financeiro/018+ não existe): `lead` (008), `oportunidade`/pipeline (010),
+  `atendimento`/chat (012), `tarefa` (016), `interacao` (009). **Catálogo fechado de
+  painéis no código** `PAINEIS_DASHBOARD` (mesmo modelo do catálogo RBAC/004 e de
+  `ACAO_TIPOS`/014; `assertCatalogoPaineisCoerente()` aborta no boot) — 6 painéis:
+  `visao_geral` (números + delta período-a-período), `funil_pipeline` (reusa
+  `agregarMetricas`/010, **nunca soma moedas**), `ranking_comercial` (por responsável —
+  ganhas + valor ganho por moeda + conversão + pontos de tarefa/016), `qualidade_atendimento`
+  (tempo méd. 1ª resposta / % SLA / CSAT / distribuição / taxa de resolução / por atendente
+  / por dia — reusa SLA·CSAT de 012), `leads_por_origem` (tabela), `serie_oportunidades`
+  (série temporal, bucket dia/semana/mês derivado da duração). Cada painel exige
+  `dashboard:ver` + (quando aplicável) a permissão do recurso que expõe; sujeito só com
+  `dashboard:ver` → página 200 com painéis restritos, **nunca 403 na página** (FR-006).
+  Todo painel resolve o **escopo de visão** reusando o `escopoDe(req)` do `*ConsultaService`
+  já existente (010/016/008/012) — o dashboard **nunca amplia** o que o sujeito já vê.
+  **Comparação período-a-período** (benchmark, CL-04): `resolverPeriodo` puro (`Date`/ISO
+  simples, lixo → 400) + `calcularDelta` (`deltaPercentual: null` quando o anterior é 0).
+  **`meta_comercial`** (alvo numérico para uma `metrica` de `METRICAS_META` — catálogo
+  fechado —, `periodo MES|TRIMESTRE` + `referencia` normalizada, escopo opcional equipe/
+  responsável, `alvo_int bigint` + `alvo_moeda` obrigatório sse monetária; **`DELETE`
+  físico**, D-06); atingimento (`realizado`/`percentual`/`status ∈ {no_caminho,em_risco,
+  batida,estourada}`/`noRitmo`) **sempre derivado** na leitura por `statusMeta(...)` puro
+  sobre a mesma query da métrica (CL-02). **`dashboard_visao`** (recorte de leitura salvo —
+  `filtros`/`paineis` jsonb validados por zod fechado; só o dono edita/exclui, compartilhada
+  = somente-leitura + clonável, D-07; credencial de serviço → 400 ao criar).
+  **`GET /crm/dashboard/notificacoes`** — metas do sujeito em risco/batidas/estouradas no
+  período corrente, **só in-app** (mesmo padrão de tarefa/016, sem worker, sem envio
+  externo). **Export 100% client-side, 0 dep** (CL-03): `?formato=csv` nos painéis
+  `tabela`/`ranking` (`serializarCsv` puro + `Blob` no frontend, padrão de Disparos/015);
+  "PDF" = `window.print()` + `@media print`. **Gráficos em SVG à mão** (D-08 — funil =
+  barras, série = polyline; lib de chart rejeitada, precedente do Kanban HTML5 de 010).
+  **15ª migração Prisma** (`20260910113633_crm_dashboard`): `meta_comercial`,
+  `dashboard_visao`, `crm_dashboard_audit` (forma canônica do core, append-only, só delta
+  real — espelha `crm_tarefa_audit`/016) + enum `MetaComercialPeriodo`; **só índices
+  comuns**, nenhum `CHECK`/índice parcial. **RBAC 004 estendido**: **+2** permissões
+  (`dashboard:ver`, `dashboard:gerir_metas`; `administrador`/credencial de serviço de graça,
+  **0 migração de dados/seed**). **~14 endpoints** `/crm/dashboard/**`, **0 endpoint
+  público novo**. Frontend `frontend/src/dashboard/`: item **CRM · Dashboard** atrás de
+  `dashboard:ver` — `DashboardPage` (seletor de período default 30d + filtros + Imprimir/
+  PDF), `Paineis` (renderer por formato — cartões com seta ▲/▼, funil/série SVG),
+  `MetasPanel` (barra de progresso + badge de status + CRUD atrás de `dashboard:gerir_metas`),
+  `NotificacoesMetaBadge` (`refetchInterval` 60s), `exportar-csv` (`Blob`). **0 dep nova**
+  (backend e frontend), **1 migração**, **0 porta nova no `core`**, **0 chave `.env` nova**.
+  As 4 clarificações — alcance de "configurável por perfil", metas dentro/fora, mecânica de
+  export, escopo de dados / profundidade de benchmark — resolvidas com o dono do produto
+  **antes** do `plan.md`, 2026-09-10. 589 testes unitários backend (44 novos, domínio puro)
+  + 325 e2e (18 novos, Postgres real — schema isolado num container próprio na porta 55434,
+  já que 55432/55433 estavam em uso por outras sessões) + 120 frontend (7 novos), todos
+  verdes; lint/typecheck/build limpos nos dois workspaces; validado também manualmente no
+  navegador de ponta a ponta. Detalhe:
+  [`specs/017-crm-dashboard/`](specs/017-crm-dashboard/) e
+  [`docs/017-crm-dashboard.md`](docs/017-crm-dashboard.md).
+
+  **✅ Fase 1 (CRM) completa — specs 007–017.**
 
 ---
 
