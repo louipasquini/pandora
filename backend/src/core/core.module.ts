@@ -102,3 +102,12 @@ export {
   type PortaCampoPersonalizadoPessoa,
   PORTA_CAMPO_PERSONALIZADO_PESSOA,
 } from './campo-personalizado-pessoa/porta-campo-personalizado-pessoa';
+
+// --- pipeline de ingestão (006/018) — contrato canônico compartilhado
+// `ingestao` (etapa 0/1) ↔ `financeiro`/`catalogo`/`contratos` (etapas 2–6) ---
+export { eventoCanonicoSchema, type EventoCanonico } from './pipeline/evento-canonico';
+export {
+  type EntradaEtapaExterna,
+  type SaidaEtapaExterna,
+  type ExecutorEtapaExterno,
+} from './pipeline/executor-externo';

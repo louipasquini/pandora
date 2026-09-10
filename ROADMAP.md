@@ -700,14 +700,49 @@ o Financeiro preenche esses eventos de verdade na fase 2.
 Reconstrução do núcleo já existente (Partes 1–6). O pipeline canônico de ingestão (5.3) é
 montado aqui, etapa por etapa.
 
-- [ ] **018 — financeiro-transacao-ledger**
-  `transacao` normalizada (1 por `(plataforma_origem, id_origem)`), campos financeiros como
-  `Dinheiro` + `status_canonico` + FKs opcionais (oferta, contrato, cliente,
-  `transacao_vinculada`). Pipeline etapas 1–3: classificar `tipo`
-  (`VENDA_PROPRIA` | `VENDA_AFILIADA` | `COBRANCA_TERCEIRIZADA` | `REEMBOLSO` | …) antes de
-  qualquer efeito colateral; resolver pessoa (usa 005); upsert transação retornando
-  `ResultadoIngestao{transacao, foi_criada, campos_alterados}`. `GET /transacoes` (muitos
-  filtros), `GET /transacoes/{id}`. Frontend: lista/detalhe de transações.
+- [x] **018 — financeiro-transacao-ledger** — ✅ implementada e validada (2026-09-10)
+  1ª fatia da **Fase 2 (Financeiro)**. O _bounded context_ `financeiro` (vazio desde a 001)
+  vira dono de **`transacao`** — projeção normalizada de um evento financeiro, **1 linha por
+  `(plataforma_origem, id_origem)`** (Regra Inviolável nº 1), valores como `Dinheiro` do
+  `core` (4 pares `bigint ×10000 + char(3)`, nunca float), `status_canonico`,
+  `classificacao` e FKs opcionais (só `pessoa` + `evento_origem` com FK ativa; `oferta_id`/
+  `contrato_id`/`transacao_vinculada_id` são colunas nuas — specs 023/025/024 ligam).
+  **Pluga as etapas 2–3 do pipeline canônico da 006** sem tocar o `WorkerService`:
+  `RESOLVER_PESSOA` (reusa a engine da 005 pela `PortaIdentidade` do `core`; `criar: false`
+  sse `VENDA_AFILIADA` — Regra nº 8) e `UPSERT_TRANSACAO` (upsert pela chave natural,
+  devolve `ResultadoIngestao{transacao, foi_criada, campos_alterados}` em
+  `evento_etapa.resultado` — **nunca `_houve_mudanca` no ORM**, corrige a gambiarra 4.9/4.10).
+  Etapas 4–6 seguem `pulada`. **`EventoCanonico` movido para `core/pipeline/`** (contrato
+  compartilhado `ingestao` ↔ `financeiro`; `ingestao/domain` re-exporta) + contrato
+  `ExecutorEtapaExterno` no `core`; a plugagem é um **módulo de composição na raiz**
+  (`src/pipeline-wiring.module.ts`, fora dos dirs de contexto — único lugar que pode
+  importar `ingestao` **e** `financeiro`, análogo ao `AppModule`) que chama
+  `WorkerService.definirExecutor(...)`. **Status sem adapter:** `financeiro/domain/status-map/`
+  traz `MAPAS_STATUS` (vazio na 018 — specs 019–022 populam por fonte); `mapearStatus` só
+  faz _match_ canônico exato + consulta o mapa da fonte → senão `DESCONHECIDO` + revisão
+  (Regra nº 15, nunca um palpite), `transacao.precisa_revisao = true`, `evento_origem =
+  revisar`. **16ª migração Prisma** (`20260910123742_financeiro_transacao`): `transacao` +
+  enum `StatusTransacaoCanonico` (8 valores, paridade com o enum TS do `core` travada por
+  teste); só índices comuns, **0 `CHECK`, 0 índice parcial, 0 tabela `_audit`** (não há
+  escrita curada/manual — o rastro é `evento_origem` + `evento_etapa`). **RBAC 004
+  estendido:** +1 permissão (`transacao:ver`, recurso novo `transacao`; `administrador`/
+  credencial de serviço de graça, 0 migração de dados/seed). **~2 endpoints** de **leitura**
+  `/financeiro/transacoes[/:id]` (filtros conta/status/classificação/`pagoDeFato` —
+  derivado de `contaComoReceita`—/pessoa/revisão/período/`q`; paginação teto 100);
+  **0 endpoint de escrita** (Princípio VIII — `transacao` só é escrita pelo pipeline),
+  0 endpoint público novo. Frontend `frontend/src/transacoes/`: item **Financeiro ·
+  Transações** atrás de `transacao:ver` — lista com filtros + paginação + `formatarDinheiro`,
+  detalhe com valores por moeda + link "ver evento" (`/eventos/:id`) e cliente
+  (`/pessoas/:id`). **0 dep nova** (backend e frontend), **1 migração**, **0 chave `.env`
+  nova**, **0 porta nova**. `CONTEXT_MODULES` segue **11**. Decisões D-01..D-08 resolvidas
+  como defaults documentados no `spec.md` (não marcada `⚠ clarify`) — 2026-09-10. 609 testes
+  unitários backend (20 novos, domínio puro) + 347 e2e (19 suítes, 22 novos, Postgres real —
+  container isolado `pandora-db-spec018` na porta 55435, já que 55432/55433/55434 estavam em
+  uso) + 123 frontend (3 novos), todos verdes; lint/typecheck/build limpos nos dois
+  workspaces. 2 asserções da suíte e2e da 006 ajustadas (RESOLVER_PESSOA/UPSERT_TRANSACAO
+  agora reais; fixture `statusOrigem` `'approved'` → `'PAGO'`). Detalhe:
+  [`specs/018-financeiro-transacao-ledger/`](specs/018-financeiro-transacao-ledger/) e
+  [`docs/018-financeiro-transacao-ledger.md`](docs/018-financeiro-transacao-ledger.md).
 
 - [ ] **019 — adapter-tmb**
   Adapters TMB: webhook Vendas (payload achatado) + webhook Financeiro (nível de parcela,

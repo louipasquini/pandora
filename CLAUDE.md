@@ -430,7 +430,86 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/017-crm-dashboard/plan.md`](specs/017-crm-dashboard/plan.md)
+Plano ativo: [`specs/018-financeiro-transacao-ledger/plan.md`](specs/018-financeiro-transacao-ledger/plan.md)
+(Fase 2 · spec 018 — **Financeiro · ledger de transações**: primeira fatia da **Fase 2**
+(Financeiro), visão Partes 1–6. O _bounded context_ **`financeiro`** (vazio desde a 001)
+vira dono de **`transacao`** — a projeção normalizada de um evento financeiro, **1 linha por
+`(plataforma_origem, id_origem)`** (Regra Inviolável nº 1), valores como `Dinheiro` do `core`
+(4 pares `bigint ×10000 + char(3)`, `float` proibido), `status_canonico`, `classificacao` e
+FKs opcionais — só `pessoa` + `evento_origem` com FK ativa; `oferta_id`/`contrato_id`/
+`transacao_vinculada_id` são **colunas nuas, sem `@relation`** (specs 023/025/024 ligam via
+`ALTER TABLE`, não destrutivo). **Pluga as etapas 2–3 do pipeline canônico da 006** (que
+deixou o gancho — `especDona: 18` em `etapas.ts`, etapas 2–6 `pulada`) **sem tocar o
+`WorkerService` além do ponto de extensão já previsto** (`definirExecutor`): `RESOLVER_PESSOA`
+(reusa a engine de identidade/dedup da 005 pela **`PortaIdentidade`** do `core` — `crm`/
+`financeiro` nunca importam `src/clientes/**`; `criar: false` sse `VENDA_AFILIADA` — Regra
+Inviolável nº 8, nunca cria `pessoa`) e `UPSERT_TRANSACAO` (upsert pela chave natural,
+devolve `ResultadoIngestao{transacao, foi_criada, campos_alterados}` gravado **só** em
+`evento_etapa.resultado` — **nenhum `_houve_mudanca` no ORM, nenhum `commit()` de remendo**,
+corrige as gambiarras 4.9/4.10 da v1). Etapas 4–6 seguem `pulada` (specs 024/023/025).
+**Contrato compartilhado no `core`** (`core/pipeline/`): **`EventoCanonico` movido** de
+`ingestao/domain` para cá (`ingestao/domain/evento-canonico.ts` vira re-export — 0
+importador quebrado) + `ExecutorEtapaExterno` (`{ etapa, executar(entrada) }`, dados
+planos, sem `EtapaCtx`). A plugagem é um **módulo de composição na raiz**
+`src/pipeline-wiring.module.ts` (fora dos dirs de _bounded context_ — o único lugar
+autorizado a importar de `ingestao` **e** `financeiro`, análogo ao `AppModule`; a regra
+ESLint `import/no-restricted-paths` cobre só `src/<contexto>/`): no `onModuleInit` chama
+`worker.definirExecutor(svc.etapa, criarWrapperExterno(svc))` — `criarWrapperExterno` (em
+`ingestao/application/`) adapta `EtapaCtx` → `EntradaEtapaExterna` (monta `resultados`
+lendo `evento_etapa`) e `SaidaEtapaExterna` → `ResultadoEtapa`. Specs 023–025 acrescentam
+suas etapas aqui, **sem tocar o `WorkerService` de novo**. **NestJS 11 não tem
+multi-provider** — a 1ª tentativa (token DI multi + `@Global() FinanceiroWiringModule`,
+padrão `ClientesWiringModule`) foi trocada pelo wiring na raiz depois que `tsc` recusou
+`multi: true` no `Provider`. **Status sem adapter** (D-05): `financeiro/domain/status-map/`
+traz `MAPAS_STATUS` (por `plataforma × fonte`) — **vazio na 018**, populado pelos PRs das
+specs 019–022 (`status-map/{tmb,asaas,guru,hotmart}.ts` + `status-map/README.md`);
+`mapearStatus(plataforma, fonte, bruto)` tenta (1) valor canônico exato
+(`paraStatusTransacaoCanonico` do `core` — sem `trim`/`lowercase`/sinônimo), (2) o mapa da
+fonte; nada casou → `DESCONHECIDO` + `revisar` + `motivo` → `transacao.precisa_revisao =
+true` + `evento_origem.status = revisar` (Regra nº 15 — nunca um palpite). Divergência
+consciente da Apêndice C (que pôs `status_map` sob os adapters): `financeiro` é dono de
+`status_canonico` e não pode importar `ingestao` — o adapter faz a extração crua, o
+`financeiro` a tradução canônica. **Domínio puro** (`backend/src/financeiro/domain/`, sem
+banco): `status-map` (+ paridade enum Prisma `StatusTransacaoCanonico` × enum TS do `core`
+travada por teste), `dados-transacao.ts` (`extrairCanonicos(canonico) → DadosCanonicos` —
+valores por moeda como `Dinheiro`, quantidade, recorrência, códigos crus de oferta;
+ausência → `null`/`false`; + `SnapshotTransacao`), `diff-campos.ts` (`camposAlterados(
+anterior, novo)` puro — `Dinheiro` por `valorInt`+`moeda`, `Date` por instante; criação →
+campos preenchidos; nada mudou → `[]`), `deve-criar-pessoa.ts` (`false` só p/
+`VENDA_AFILIADA`). **16ª migração Prisma** (`20260910123742_financeiro_transacao`, a 1ª do
+`financeiro`): `transacao` (`@@unique([plataforma_origem, id_origem], name:
+"transacao_chave_natural")`; 6 índices comuns) + enum `StatusTransacaoCanonico` (8
+valores). **0 `CHECK`, 0 índice parcial, 0 tabela `_audit`** (não há escrita curada/
+manual — o rastro é `evento_origem` imutável + `evento_etapa.resultado`; specs 024/025
+introduzem `financeiro_audit`). Back-relations `Pessoa.transacoes`/`EventoOrigem.transacoes`
+são só schema (precedente 008/009 — a fronteira do Princípio VI é sobre import de módulo
+TS, não sobre o schema). **RBAC 004 estendido**: **+1** permissão (`transacao:ver`, recurso
+novo `transacao`; `administrador`/credencial de serviço de graça, **0 migração de dados/
+seed**). **~2 endpoints** de **leitura** `/financeiro/transacoes[/:id]` (filtros conta/
+status canônico CSV/classificação CSV/`pagoDeFato` — derivado de
+`STATUS_TRANSACAO_CANONICO.filter(contaComoReceita)`, nunca string hard-coded—/`pessoaId`/
+`precisaRevisao`/período/`q`; paginação default 25 teto 100; valores serializados como
+`{ valorInt: string, moeda }` — nunca `float`); **0 endpoint de escrita** (Princípio VIII —
+`transacao` só é escrita pelo pipeline), **0 endpoint público novo**. Frontend
+`frontend/src/transacoes/`: item **Financeiro · Transações** atrás de `transacao:ver`,
+rotas `/financeiro/transacoes[/:id]` sob `<RequirePermissao>`; `TransacoesListPage`
+(filtros + paginação + badge de status + `formatarDinheiro`), `TransacaoDetailPage`
+(campos + valores por moeda + link "ver evento" → `/eventos/:id` e cliente →
+`/pessoas/:id`); hooks TanStack Query inline, `apiFetch` já trata 401/403. **0 dep nova**
+(backend e frontend), **1 migração**, **0 chave `.env` nova**, **0 porta nova**.
+`CONTEXT_MODULES` segue **11**. Decisões D-01..D-08 resolvidas como defaults documentados
+no `spec.md` (não marcada `⚠ clarify`), 2026-09-10. 609 testes unitários backend (20 novos,
+domínio puro — sem banco) + 347 e2e (19 suítes, 22 novos, Postgres real — container
+isolado `pandora-db-spec018` na porta 55435, já que 55432/55433/55434 estavam em uso por
+outras sessões; suíte 003–018 completa) + 123 frontend (3 novos), todos verdes; lint/
+typecheck/build limpos nos dois workspaces. 2 asserções da suíte e2e da 006 ajustadas
+(RESOLVER_PESSOA/UPSERT_TRANSACAO agora reais; fixture `montarEventoCanonico` passou de
+`statusOrigem: 'approved'` para `'PAGO'` — valor canônico que um adapter produziria).
+Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 017 — CRM · Dashboard (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/017-crm-dashboard/plan.md`](specs/017-crm-dashboard/plan.md)
 (Fase 1 · spec 017 — **CRM · Dashboard**: décima-primeira e **última fatia da Fase 1 (CRM)**,
 visão Parte 8 — dashboard comercial e de atendimento. Mora no _bounded context_ **`crm`**
 (já não-vazio desde 007–016; `CONTEXT_MODULES` segue **11** — nenhum bounded context novo).
@@ -502,6 +581,8 @@ painéis com o delta período-a-período, o funil SVG com valor por moeda, a tab
 por origem com "Exportar CSV", as 2 metas com atingimento derivado + status "Em risco" + o
 badge "2 metas em alerta", e o formulário "Nova meta" inline).
 Artefatos: `research.md`, `data-model.md`, `contracts/`, `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 016 — CRM · Tarefas (implementada, resumo arquivado)</summary>
 

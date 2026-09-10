@@ -52,6 +52,9 @@ export interface EtapaCtx {
   tipoOrigem: string;
   canonico: EventoCanonico | null;
   tx: Tx;
+  /** dimensão de origem — usada pelos executores externos (spec 018+); os _noop_ ignoram. */
+  plataformaOrigem?: string;
+  idOrigem?: string;
 }
 
 export type Executor = (ctx: EtapaCtx) => Promise<ResultadoEtapa>;

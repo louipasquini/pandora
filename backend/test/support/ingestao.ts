@@ -21,7 +21,10 @@ export function montarEventoCanonico(
     plataformaOrigem: 'GURU_PRD',
     idOrigem: over.idOrigem ?? 'txn_default',
     tipoOrigem: 'webhook_venda',
-    statusOrigem: 'approved',
+    // valor canônico exato — um adapter (specs 019–022) traduziria o bruto da
+    // plataforma para cá; sem adapter, um bruto não-canônico vai para revisão
+    // (spec 018, `mapearStatus`).
+    statusOrigem: 'PAGO',
     ocorridoEm: '2026-09-03T12:00:00Z',
     ...over,
   };

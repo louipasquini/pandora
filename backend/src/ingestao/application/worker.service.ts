@@ -46,7 +46,11 @@ export class WorkerService {
     for (const [nome, exec] of EXECUTORES_NOOP) this.executores.set(nome, exec);
   }
 
-  /** Ponto de extensão: specs 018/023/024/025 (ou testes) plugam a etapa real. */
+  /**
+   * Ponto de extensão: specs 018/023/024/025 plugam a etapa real por um módulo de
+   * composição (`src/pipeline-wiring.module.ts`), que também é o que os testes
+   * usam para trocar por um _fake_. Sobrescreve o _no-op_ correspondente.
+   */
   definirExecutor(nome: EtapaIngestao, exec: Executor): void {
     this.executores.set(nome, exec);
   }
@@ -103,7 +107,13 @@ export class WorkerService {
   ): Promise<{ status: EventoOrigemStatus; bloqueadas: number }> {
     const evento = await this.prisma.eventoOrigem.findUnique({
       where: { id },
-      select: { id: true, tipoOrigem: true, eventoCanonico: true },
+      select: {
+        id: true,
+        tipoOrigem: true,
+        eventoCanonico: true,
+        plataformaOrigem: true,
+        idOrigem: true,
+      },
     });
     if (!evento) return { status: EventoOrigemStatus.ok, bloqueadas: 0 };
 
@@ -112,6 +122,8 @@ export class WorkerService {
       eventoId: id,
       tipoOrigem: evento.tipoOrigem,
       canonico: parsedC.success ? parsedC.data : null,
+      plataformaOrigem: evento.plataformaOrigem,
+      idOrigem: evento.idOrigem,
     };
 
     for (let i = 0; i < TETO_ITERACOES; i += 1) {

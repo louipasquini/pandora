@@ -187,6 +187,7 @@ model Pessoa {
   contatosImportadosDisparo DisparoContatoImportado[]
   mensagensDisparo          MensagemDisparo[]
   tarefas                   Tarefa[]
+  transacoes                Transacao[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -430,7 +431,8 @@ model EventoOrigem {
   criadoEm         DateTime           @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime           @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  etapas EventoEtapa[]
+  etapas     EventoEtapa[]
+  transacoes Transacao[]
 
   @@unique([plataformaOrigem, idOrigem, hash], name: "evento_origem_chave_natural")
   @@index([status, recebidoEm])
@@ -1988,4 +1990,80 @@ model CrmDashboardAudit {
 
   @@index([entidade, entidadeId])
   @@map("crm_dashboard_audit")
+}
+
+// ============================================================================
+// financeiro (spec 018) — 16ª migração de negócio; 1ª do `financeiro`.
+// `transacao` = projeção normalizada de um evento financeiro, 1 linha por
+// (plataforma_origem, id_origem) (Regra Inviolável nº 1). Escrita SÓ pelo
+// pipeline de ingestão (etapas 2–3, spec 006); nenhum endpoint de escrita
+// (Princípio VIII). Valores como par (bigint ×10000, char(3)) — nunca float.
+// FKs opcionais: só `pessoa` e `evento_origem` têm relação ativa; `oferta_id`/
+// `contrato_id`/`transacao_vinculada_id` são colunas nuas — specs 023/025/024
+// ligam a FK depois (ALTER TABLE, não destrutivo). Sem tabela `_audit` (não há
+// escrita curada/manual nesta fatia). Ver docs/018-financeiro-transacao-ledger.md.
+// ============================================================================
+
+enum StatusTransacaoCanonico {
+  PENDENTE
+  PAGO
+  EM_ATRASO
+  RECUSADO
+  CANCELADO
+  ESTORNADO
+  CHARGEBACK
+  DESCONHECIDO
+}
+
+model Transacao {
+  id               String                  @id @db.Uuid
+  plataformaOrigem PlataformaOrigem        @map("plataforma_origem")
+  idOrigem         String                  @map("id_origem")
+  tipoOrigem       String                  @map("tipo_origem")
+  statusOrigem     String                  @map("status_origem")
+  statusCanonico   StatusTransacaoCanonico @map("status_canonico")
+  classificacao    Classificacao
+  ocorridoEm       DateTime?               @map("ocorrido_em") @db.Timestamptz(6)
+
+  pessoaId             String? @map("pessoa_id") @db.Uuid
+  ofertaId             String? @map("oferta_id") @db.Uuid
+  contratoId           String? @map("contrato_id") @db.Uuid
+  transacaoVinculadaId String? @map("transacao_vinculada_id") @db.Uuid
+
+  valorBrutoInt     BigInt? @map("valor_bruto_int")
+  valorBrutoMoeda   String? @map("valor_bruto_moeda") @db.Char(3)
+  valorLiquidoInt   BigInt? @map("valor_liquido_int")
+  valorLiquidoMoeda String? @map("valor_liquido_moeda") @db.Char(3)
+  taxasInt          BigInt? @map("taxas_int")
+  taxasMoeda        String? @map("taxas_moeda") @db.Char(3)
+  reembolsoInt      BigInt? @map("reembolso_int")
+  reembolsoMoeda    String? @map("reembolso_moeda") @db.Char(3)
+
+  quantidade      Int?
+  ehAfiliada      Boolean @default(false) @map("eh_afiliada")
+  ehRecorrencia   Boolean @default(false) @map("eh_recorrencia")
+  assinaturaCiclo String? @map("assinatura_ciclo")
+  numeroCiclo     Int?    @map("numero_ciclo")
+
+  ofertaCodigoOrigem String? @map("oferta_codigo_origem")
+  ofertaNomeOrigem   String? @map("oferta_nome_origem")
+
+  precisaRevisao Boolean @default(false) @map("precisa_revisao")
+  motivoRevisao  String? @map("motivo_revisao")
+
+  eventoOrigemId String?  @map("evento_origem_id") @db.Uuid
+  criadoEm       DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa       Pessoa?       @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
+  eventoOrigem EventoOrigem? @relation(fields: [eventoOrigemId], references: [id], onDelete: SetNull)
+
+  @@unique([plataformaOrigem, idOrigem], name: "transacao_chave_natural")
+  @@index([statusCanonico])
+  @@index([classificacao])
+  @@index([pessoaId])
+  @@index([plataformaOrigem])
+  @@index([ocorridoEm])
+  @@index([precisaRevisao])
+  @@map("transacao")
 }
