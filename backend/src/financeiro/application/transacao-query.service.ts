@@ -23,6 +23,7 @@ export class TransacaoQueryService {
       pagoDeFato: q.pagoDeFato,
       pessoaId: q.pessoaId,
       precisaRevisao: q.precisaRevisao,
+      vinculoPendente: q.vinculoPendente,
       ocorridoDe: q.ocorridoDe,
       ocorridoAte: q.ocorridoAte,
       q: q.q,
@@ -46,6 +47,11 @@ export class TransacaoQueryService {
         valorBruto: par(r.valorBrutoInt, r.valorBrutoMoeda),
         valorLiquido: par(r.valorLiquidoInt, r.valorLiquidoMoeda),
         eventoOrigemId: r.eventoOrigemId,
+        transacaoVinculadaId: r.transacaoVinculadaId,
+        vinculoPendente:
+          (r.plataformaOrigem === 'ASAAS_PRD' || r.plataformaOrigem === 'ASAAS_SVC') &&
+          r.referenciaExternaIdOrigem != null &&
+          r.transacaoVinculadaId == null,
       })),
       pagina: q.pagina,
       tamanho: q.tamanho,
@@ -69,6 +75,13 @@ export class TransacaoQueryService {
       ofertaId: r.ofertaId,
       contratoId: r.contratoId,
       transacaoVinculadaId: r.transacaoVinculadaId,
+      vinculo: r.vinculoComoAsaas
+        ? {
+            transacaoVinculadaId: r.vinculoComoAsaas.transacaoGuruId,
+            origemRef: r.vinculoComoAsaas.origemRef,
+            resolvidoEm: r.vinculoComoAsaas.resolvidoEm.toISOString(),
+          }
+        : null,
       valorBruto: par(r.valorBrutoInt, r.valorBrutoMoeda),
       valorLiquido: par(r.valorLiquidoInt, r.valorLiquidoMoeda),
       taxas: par(r.taxasInt, r.taxasMoeda),

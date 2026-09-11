@@ -10,3 +10,5 @@ export {
 } from './dados-transacao';
 export { camposAlterados } from './diff-campos';
 export { deveCriarPessoa } from './deve-criar-pessoa';
+export { contaGuruParDe, contaAsaasParDe } from './vinculo/conta-pareada';
+export { pagoDeFatoTransacao } from './vinculo/receita';

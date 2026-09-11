@@ -284,6 +284,12 @@ export const PERMISSOES = Object.freeze([
     recurso: 'oferta',
     rotulo: 'Curar oferta e seus dados comerciais (oferta_catalogo), importar catálogo Hotmart',
   },
+  // --- Vínculo Asaas↔Guru (spec 024) ---
+  {
+    id: 'transacao:vincular',
+    recurso: 'transacao',
+    rotulo: 'Forçar retry de vínculo Asaas↔Guru numa transação ou em todas as pendentes',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */
