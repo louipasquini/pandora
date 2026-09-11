@@ -144,7 +144,16 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  etapas 2–3 plugadas no worker da 006 (resolver pessoa via PortaIdentidade
                  da 005; upsert transação com status_map por fonte), leitura-só
                  GET /financeiro/transacoes[/:id] (spec 018 — subpasta transacoes/ no front)
-    catalogo/ contratos/ marketing/ central/
+    catalogo/    produto (auto-criado, código de 3 letras) + oferta (resolvida por
+                 (tag AEN, plataforma) — decodificador puro + auto-criação; Hotmart só por
+                 catálogo importado via CSV, nunca por tag) + oferta_catalogo (ticket, preço
+                 de tabela, tempo de acesso, bônus, combo — 100% curado) + janela_lancamento
+                 (turma efetiva por data, só CSV); pipeline etapa 5 (RESOLVER_OFERTA)
+                 plugada via o mesmo ExecutorEtapaExterno da 018; curadoria
+                 PUT /produtos/:codigo + POST/PATCH /ofertas; import
+                 POST /catalogo/hotmart/importar-{produtos,ofertas,lancamentos} (spec 023 —
+                 subpastas produtos/ ofertas/ no front)
+    contratos/ marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
@@ -152,7 +161,9 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  whatsapp 011 + atendimento 012 + faq/sugestao_ia/campo_personalizado_pessoa
                  013 + workflow 014 + disparos 015 + tarefa 016 + dashboard: meta_comercial
                  / dashboard_visao / crm_dashboard_audit 017 + transacao +
-                 StatusTransacaoCanonico 018) + migrações + seed.ts
+                 StatusTransacaoCanonico 018 + produto/oferta/oferta_origem_ref/
+                 oferta_catalogo(+bonus/combo)/janela_lancamento/catalogo_audit 023) +
+                 migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -188,6 +199,10 @@ frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
     dashboard/   CRM · Dashboard — seletor de período + filtros, painéis com comparação
                  período-a-período (gráficos SVG à mão), metas comerciais + alerta,
                  visões salvas, export CSV + Imprimir/PDF (spec 017)
+    produtos/    Catálogo · Produtos — lista + curadoria de nome/assinatura (spec 023)
+    ofertas/     Catálogo · Ofertas — lista + detalhe com curadoria de identidade e de
+                 oferta_catalogo (ticket/tempo de acesso/bônus/combo), import dos 3 CSVs
+                 do catálogo Hotmart (spec 023)
     pages/       telas (login + placeholders)
 
 docs/          documentação por spec (ver docs/001-bootstrap-projeto.md)
@@ -234,8 +249,10 @@ npm run db:up
 #    tarefa_checklist_item/tarefa_cronometro_periodo/tarefa_nota/tarefa_dependencia/
 #    tarefa_delegacao/crm_tarefa_audit na 14ª; spec 017 acrescenta meta_comercial/
 #    dashboard_visao/crm_dashboard_audit na 15ª; spec 018 acrescenta transacao +
-#    enum StatusTransacaoCanonico na 16ª (1ª migração do financeiro) — todas sem seed
-#    de negócio, exceto a 014, que semeia 3 fluxo_modelo de partida)
+#    enum StatusTransacaoCanonico na 16ª (1ª migração do financeiro); spec 023 acrescenta
+#    produto/oferta/oferta_origem_ref/oferta_catalogo(+bonus/combo)/janela_lancamento/
+#    catalogo_audit na 17ª (1ª migração do catalogo) — todas sem seed de negócio, exceto
+#    a 014, que semeia 3 fluxo_modelo de partida)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" + a biblioteca de modelos de fluxo (idempotente)
 #    em dev, `npm run db:migrate` já roda o seed no fim
@@ -302,8 +319,8 @@ de verdade, pelos endpoints de curadoria da v2.
 
 ## Status
 
-Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) concluída — Fase 1
-(CRM) em andamento** (specs 007–016 entregues; próxima 017).
+Constituição ratificada em 2026-09-01 (v1.1.0). **Fases 0 (Fundações) e 1 (CRM) concluídas —
+Fase 2 (Financeiro) em andamento** (specs 018–023 entregues; próxima 024).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -770,7 +787,37 @@ Constituição ratificada em 2026-09-01 (v1.1.0). **Fase 0 (Fundações) conclu�
   permissão nova, 0 frontend.** Chaves `.env` novas: `HOTMART_{PRD,SVC}_CLIENT_{ID,SECRET}` +
   `HOTMART_WEBHOOK_ENABLED`. `CONTEXT_MODULES` = 11. Ver
   [`docs/022-adapter-hotmart.md`](docs/022-adapter-hotmart.md).
-- Próxima: **023 — catalogo-produto-oferta** (Fase 2 — Financeiro).
+- ✅ **023 — catalogo-produto-oferta** — 4ª fatia da Fase 2 (Financeiro). `catalogo` deixa de
+  ser vazio: dono de **`produto`** (auto-criado, código de 3 letras) e **`oferta`**
+  (resolvida por `(tag AEN, plataforma)` — a mesma oferta comercial em 2 plataformas vira 2
+  registros). Decodificador de tag **puro** (`PCS48XAV` → produto 3 + turma 2 + subproduto 1
+  + modelo de cobrança 1 + modelo de transação 1 — os 3 códigos de 1 char ficam **crus**, sem
+  tradução, já que o mapeamento de negócio não está documentado em lugar nenhum do projeto)
+  + 2 localizadores genéricos (âncora exata / texto livre `#TAG`) — **5 contas** resolvem por
+  tag com auto-criação; as **2 contas Hotmart** resolvem **só** por catálogo importado via
+  CSV (`price_code` exato, decisão de negócio já confirmada — nunca auto-cria, nunca cai pra
+  tag). Precedência **curado > derivado > null** por colunas distintas +
+  `marcarEditado`/`aplicarSeNaoEditado` (Princípio VII). **Etapa 5 do pipeline
+  (`RESOLVER_OFERTA`)** plugada via o mesmo `ExecutorEtapaExterno` do `core` que a 018 já
+  criou — **nenhuma mudança em `WorkerService`/`etapas.ts`**. `oferta_catalogo` (ticket,
+  preço de tabela, tempo de acesso, bônus, combo) é **100% curado** e **exclusivo por
+  oferta** (decisão do dono do produto — nunca compartilhado entre ofertas irmãs de
+  plataformas diferentes). **17ª migração Prisma** (1ª do `catalogo`): `produto`, `oferta`,
+  `oferta_origem_ref`, `oferta_catalogo` (+ `oferta_catalogo_bonus`/`_combo_item`, tabelas de
+  junção reais — nunca array), `janela_lancamento` (só CSV — Princípio VIII), `catalogo_audit`
+  (forma canônica do core, append-only) + `FK transacao.oferta_id → oferta.id`
+  (não-destrutiva, coluna já reservada desde a 018). Catálogo RBAC ganha
+  `produto:{ver,editar}` + `oferta:{ver,criar,editar}`. **~8 endpoints**:
+  `GET/PUT /produtos[/:codigo]`, `GET/POST/PATCH /ofertas[/:id]`,
+  `POST /catalogo/hotmart/importar-{produtos,ofertas,lancamentos}` (3 dos 4 CSVs da v1 —
+  `afiliados.csv` é escopo da spec 026). Painel: **Catálogo · Produtos** e
+  **Catálogo · Ofertas** (lista + detalhe com curadoria de identidade e de
+  `oferta_catalogo` + tela de import dos 3 CSVs). **0 dep nova**, 1 migração, `CONTEXT_MODULES`
+  segue 11. 1 decisão real (escopo de `oferta_catalogo` entre plataformas, explicitamente
+  sinalizada como não confirmada na própria visão) foi ao dono do produto em 2026-09-11; as
+  demais resolvidas como defaults documentados. Ver
+  [`docs/023-catalogo-produto-oferta.md`](docs/023-catalogo-produto-oferta.md).
+- Próxima: **024 — vinculo-asaas-guru** (Fase 2 — Financeiro).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
