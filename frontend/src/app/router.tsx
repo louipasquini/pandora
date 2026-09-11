@@ -31,6 +31,11 @@ import { TarefaDetalhePage } from '../tarefas/TarefaDetalhePage';
 import { DashboardPage } from '../dashboard/DashboardPage';
 import { TransacoesListPage } from '../transacoes/TransacoesListPage';
 import { TransacaoDetailPage } from '../transacoes/TransacaoDetailPage';
+import { ProdutosListPage } from '../produtos/ProdutosListPage';
+import { ProdutoDetailPage } from '../produtos/ProdutoDetailPage';
+import { OfertasListPage } from '../ofertas/OfertasListPage';
+import { OfertaDetailPage } from '../ofertas/OfertaDetailPage';
+import { ImportCatalogoHotmartPage } from '../ofertas/ImportCatalogoHotmartPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -261,6 +266,46 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="transacao:ver">
                 <TransacaoDetailPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'produtos',
+            element: (
+              <RequirePermissao perm="produto:ver">
+                <ProdutosListPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'produtos/:codigo',
+            element: (
+              <RequirePermissao perm="produto:ver">
+                <ProdutoDetailPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'ofertas',
+            element: (
+              <RequirePermissao perm="oferta:ver">
+                <OfertasListPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'ofertas/importar-hotmart',
+            element: (
+              <RequirePermissao perm="oferta:editar">
+                <ImportCatalogoHotmartPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'ofertas/:id',
+            element: (
+              <RequirePermissao perm="oferta:ver">
+                <OfertaDetailPage />
               </RequirePermissao>
             ),
           },

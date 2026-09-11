@@ -86,6 +86,8 @@ export const NAV_ITEMS: NavItem[] = [
     requerPermissao: 'transacao:ver',
   },
   { label: 'Financeiro', to: '/financeiro', soon: true },
+  { label: 'Catálogo · Produtos', to: '/produtos', requerPermissao: 'produto:ver' },
+  { label: 'Catálogo · Ofertas', to: '/ofertas', requerPermissao: 'oferta:ver' },
   { label: 'Marketing', to: '/marketing', soon: true },
   { label: 'Central de Clientes', to: '/central', soon: true },
   { label: 'Administração', to: '/admin', requerPermissao: 'perfil:administrar' },
