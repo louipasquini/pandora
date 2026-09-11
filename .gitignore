@@ -19,6 +19,9 @@ backend/src/generated/
 .env
 .env.*
 !.env.example
+# Sem segredo — fixa VITE_API_BASE_URL p/ o modo "test" do Vite/Vitest
+# (frontend), independente da porta que o `.env` de dev local estiver usando.
+!.env.test
 
 # Vite
 .vite/

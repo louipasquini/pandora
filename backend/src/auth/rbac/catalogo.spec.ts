@@ -186,6 +186,8 @@ describe('catálogo de permissões (spec 004)', () => {
       'tarefa',
       'dashboard',
       'transacao',
+      'produto',
+      'oferta',
     ]);
     expect(grupos[5].permissoes.map((p) => p.id)).toEqual([
       'crm_admin:ver',

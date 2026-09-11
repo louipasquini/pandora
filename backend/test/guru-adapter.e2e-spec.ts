@@ -117,7 +117,9 @@ describe('guru — adaptadores de borda (e2e)', () => {
       expect(txs[0].idOrigem).toBe('9081534a-7512-4dab-9172-218c1dc10001');
       expect(txs[0].statusCanonico).toBe('PAGO');
       expect(txs[0].classificacao).toBe('VENDA_PROPRIA');
-      expect(txs[0].precisaRevisao).toBe(false);
+      // spec 023: RESOLVER_OFERTA agora é real; `of_nmx_anual` não é uma tag AEN
+      // decodificável (o Guru desta fixture não usa a tag como offer.id) -> revisão.
+      expect(txs[0].precisaRevisao).toBe(true);
       expect(txs[0].ofertaCodigoOrigem).toBe('of_nmx_anual');
       expect(txs[0].valorBrutoMoeda).toBe('BRL');
       expect(txs[0].valorBrutoInt).toBe(4970000n);

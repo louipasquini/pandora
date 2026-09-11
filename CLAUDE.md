@@ -439,7 +439,88 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/022-adapter-hotmart/plan.md`](specs/022-adapter-hotmart/plan.md)
+Plano ativo: [`specs/023-catalogo-produto-oferta/plan.md`](specs/023-catalogo-produto-oferta/plan.md)
+(Fase 2 · spec 023 — **Catálogo · `produto` → `oferta`**: quarta fatia da Fase 2
+(Financeiro). O _bounded context_ **`catalogo`** (vazio desde a 001) passa a ser dono de
+**`produto`** ("o que se vende", auto-criado na 1ª transação com um código de 3 letras novo,
+`nome`/`assinatura` curados) e **`oferta`** ("a forma de vender", resolvida por `(tag AEN,
+plataforma)` — a mesma oferta comercial vendida em 2 plataformas vira **2 registros** que
+compartilham a tag, decisão já confirmada com o dono do produto na Parte 7 da visão).
+**Decodificador de tag puro** (`catalogo/domain/tag/`): `PCS48XAV` → produto (3) + turma
+(2: `X0`→evergreen, `00`→perpétuo, numérica→turma nº, resto→desconhecida) + subproduto/
+modelo de cobrança/modelo de transação (1 char cada, **armazenados crus, sem tradução** — o
+mapeamento de negócio desses 3 códigos não está documentado em lugar nenhum do projeto,
+`oferta_tag.py` da v1 não foi migrado; nunca um palpite, Regra Inviolável nº 15). **2
+localizadores genéricos, platform-agnostic** (não 1 por plataforma): "ancorada"
+(`EventoCanonico.oferta.codigoOrigem` casa o formato exato de 8 chars — cobre a Guru, que
+configura a própria tag como ID da oferta no checkout) e "texto livre" (`#TAG` em
+`codigoOrigem` depois `nomeOrigem` — cobre TMB/Asaas e a Guru quando o ID não é a tag).
+**Estratégia por conta é dado, não `if`** (`ESTRATEGIA_RESOLUCAO_OFERTA:
+Record<PlataformaOrigem, 'TAG'|'CATALOGO_HOTMART'>`, mesmo padrão do `MAPAS_STATUS` do
+`financeiro`/018, testado por varredura de cobertura das 7 contas): as **5 contas
+não-Hotmart** resolvem por tag **com auto-criação** de produto+oferta na 1ª venda de uma tag
+nova; as **2 contas Hotmart** resolvem **só** por `oferta_origem_ref` (`price.code` exato,
+catálogo importado via CSV) — **nunca** auto-cria, **nunca** cai para tag, mesmo que o texto
+pareça conter uma (decisão de negócio já resolvida na Parte 7: "exigir catálogo completo de
+`price.code`... sem match → oferta `null` + evento `REVISAR`"). **Pipeline etapa 5
+(`RESOLVER_OFERTA`)** plugada reusando **sem alteração** o contrato `ExecutorEtapaExterno`
+do `core` que a spec 018 já criou (`EntradaEtapaExterna`/`SaidaEtapaExterna`) + o
+`src/pipeline-wiring.module.ts` (só ganha o 3º import, `CatalogoModule`) — **nenhuma
+mudança em `WorkerService`/`etapas.ts`**; o executor lê só `entrada.canonico`/
+`entrada.plataformaOrigem`/`entrada.resultados.UPSERT_TRANSACAO.transacaoId` (sem
+reconsultar `transacao`) e grava `transacao.oferta_id` direto (coluna já reservada desde a
+018) + acumula `motivoRevisao` sem sobrescrever o que a etapa 3 já tenha gravado.
+**Precedência curado > derivado > null** (Princípio VII): colunas distintas por campo
+curável de `produto`/`oferta` (`*Curado`/`*Derivado`) + `camposEditados: string[]` + 2
+helpers puros `marcarEditado`/`aplicarSeNaoEditado` (`catalogo/domain/precedencia.ts`) —
+nunca sobrescrita destrutiva de um pelo outro; a leitura projeta sempre o **valor efetivo**
+(`catalogo/domain/projecao.ts`, `turmaEfetivaDeOferta` nunca mistura tipo curado com número
+derivado). **`oferta_catalogo`** (ticket, preço de tabela, tempo de acesso, bônus, combo) é
+**100% curado** — sem par derivado — e **exclusivo por oferta** (1:1 direto, nunca
+compartilhado entre ofertas irmãs de plataformas diferentes; 1 decisão de fato ambígua,
+sinalizada como não confirmada no próprio documento de visão, foi levada ao dono do produto
+em 2026-09-11 e resolvida assim). `bonus`/`produtos_do_combo` como **tabelas de junção
+reais**, nunca array-coluna. **`janela_lancamento`** resolve a "turma efetiva" só para
+**exibição** por data — só populada via import de CSV, **sem endpoint de escrita dedicado**
+(Princípio VIII). **Import do catálogo Hotmart**: 3 dos 4 CSVs da v1 (`produtos.csv`,
+`ofertas.csv`, `lancamentos.csv` — `afiliados.csv` é escopo da spec 026), cada um com o
+**schema de colunas validado por completo antes de processar qualquer linha** (arquivo
+inválido → `422` atômico); `ofertas.csv` exige `price_code` **por linha** — linha sem ele é
+só ignorada. **17ª migração Prisma** (1ª do `catalogo`): `produto`, `oferta`,
+`oferta_origem_ref`, `oferta_catalogo` (+ `oferta_catalogo_bonus`/`_combo_item`),
+`janela_lancamento`, `catalogo_audit` + enums `TurmaTipo`/`OfertaOrigemRefTipo` + `ALTER
+TABLE transacao ADD CONSTRAINT` ligando `oferta_id` (coluna já existia desde a 018) a
+`oferta.id` — não-destrutivo. **RBAC 004 estendido**: `+5` permissões —
+`produto:{ver,editar}` + `oferta:{ver,criar,editar}`. **~8 endpoints**:
+`GET/PUT /produtos[/{codigo}]`, `GET/POST/PATCH /ofertas[/{id}]` (sem
+`PUT /ofertas/{codigo}` — simplificação documentada), `POST /catalogo/hotmart/importar-
+{produtos,ofertas,lancamentos}` (reusa `oferta:editar`). **Frontend**
+`frontend/src/{produtos,ofertas}/`: **Catálogo · Produtos** (`produto:ver`) e **Catálogo ·
+Ofertas** (`oferta:ver`, curadoria de identidade e de `oferta_catalogo` atrás de
+`oferta:editar` + tela de import dos 3 CSVs). **0 dep nova**, **1 migração**, **0 chave
+`.env` nova**, **0 porta nova**. `CONTEXT_MODULES` segue **11**. 81 testes unitários backend
++ 23 e2e (24 suítes, Postgres real — `pandora-db` já existente nesta sessão, sem container
+novo: US1 tag ancorada Guru → auto-cria produto+oferta + idempotência + mesma tag em
+Hotmart via catálogo → 2ª oferta distinta + Asaas texto livre/turma perpétua + TMB sem tag
+→ revisão + Hotmart sem `price_code` catalogado → revisão sem cair pra tag +
+reprocessamento idempotente, US2 curadoria + audit + `oferta_catalogo`+bônus+combo +
+400/404 em referência inválida, US3 import válido + schema inválido → 422 atômico + linha
+sem `price_code` ignorada + `lancamentos.csv`+turma efetiva, concorrência, guard 401/403/2xx,
+fronteira, catálogo RBAC, `/health` = 11) + 7 frontend (35 arquivos), todos verdes;
+lint/typecheck/build limpos nos dois workspaces; validado também manualmente no navegador
+de ponta a ponta. Regressão: `montarEventoCanonico` (helper de teste da spec 006) ganhou
+uma tag AEN válida por padrão; 2 asserções da suíte e2e da 006 e 6 asserções
+`precisaRevisao` nas suítes das specs 019–022 atualizadas de `false` para `true` — as
+fixtures daquelas specs não carregam tag AEN decodificável nem catálogo Hotmart importado,
+então a resolução de oferta agora ativada corretamente as marca para revisão (comportamento
+novo e correto, não regressão). Corrigido também um vazamento pré-existente do `.env` de
+desenvolvimento para o modo "test" do Vite/Vitest que já quebrava 22 suítes de frontend
+antes desta spec (`.env.test` novo, sem segredo, versionado). Artefatos: `research.md`,
+`data-model.md`, `contracts/` (3), `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 022 — Adaptadores de borda da Hotmart (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/022-adapter-hotmart/plan.md`](specs/022-adapter-hotmart/plan.md)
 (Fase 2 · spec 022 — **Adaptadores de borda da Hotmart**: 4ª e **última** das 4 specs de
 adaptadores da Fase 2 (019 TMB ✅, 020 Asaas ✅, 021 Guru ✅, 022 Hotmart) — molde direto da
 019/020/021. Materializa o **Princípio III** para as **duas contas Hotmart** `HOTMART_PRD` /
@@ -559,6 +640,8 @@ instância com `HOTMART_WEBHOOK_ENABLED=true` → 200 + 1 `evento_origem` `hotma
 transações, segredo (`grep` = 0), `grep` de fronteira, catálogo RBAC inalterado, `/health` =
 11), todos verdes; lint/typecheck/build limpos no backend; frontend inalterado. Artefatos:
 `research.md`, `data-model.md`, `contracts/` (4), `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 021 — Adaptadores de borda da Guru (implementada, resumo arquivado)</summary>
 

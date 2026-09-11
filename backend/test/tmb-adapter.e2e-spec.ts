@@ -93,7 +93,9 @@ describe('tmb — adaptadores de borda (e2e)', () => {
       expect(txs[0].statusCanonico).toBe('PAGO');
       expect(txs[0].classificacao).toBe('VENDA_PROPRIA');
       expect(txs[0].pessoaId).not.toBeNull();
-      expect(txs[0].precisaRevisao).toBe(false);
+      // spec 023: RESOLVER_OFERTA agora é real; o título do pedido desta fixture
+      // não carrega uma tag AEN decodificável -> revisão (Regra nº 15, nunca chuta).
+      expect(txs[0].precisaRevisao).toBe(true);
     });
 
     it('"Cancelado" → transacao CANCELADO', async () => {

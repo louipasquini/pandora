@@ -125,7 +125,9 @@ describe('hotmart — adaptadores de borda (e2e)', () => {
       });
       expect(paga?.statusCanonico).toBe('PAGO');
       expect(paga?.classificacao).toBe('VENDA_PROPRIA');
-      expect(paga?.precisaRevisao).toBe(false);
+      // spec 023: Hotmart resolve oferta só por catálogo importado (nunca por
+      // tag); sem import nesta suíte, `price_code` não catalogado -> revisão.
+      expect(paga?.precisaRevisao).toBe(true);
       expect(paga?.ofertaCodigoOrigem).toBe('k2pasun0');
       expect(paga?.valorBrutoMoeda).toBe('BRL');
       expect(paga?.valorBrutoInt).toBe(1506000n);
@@ -296,7 +298,9 @@ describe('hotmart — adaptadores de borda (e2e)', () => {
         // um status mapeado (CHARGEBACK) do mesmo lote → CHARGEBACK sem revisão
         const cb = await p2.transacao.findFirst({ where: { idOrigem: 'HPVOC0000000009' } });
         expect(cb?.statusCanonico).toBe('CHARGEBACK');
-        expect(cb?.precisaRevisao).toBe(false);
+        // spec 023: sem catálogo Hotmart importado nesta suíte, `price_code` não
+        // catalogado -> revisão (independente do status já estar mapeado).
+        expect(cb?.precisaRevisao).toBe(true);
       } finally {
         await app2.close();
       }

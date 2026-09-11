@@ -105,7 +105,9 @@ describe('asaas — adaptadores de borda (e2e)', () => {
       expect(txs[0].idOrigem).toBe('pay_9f8e7d6c5b4a30291817');
       expect(txs[0].statusCanonico).toBe('PAGO');
       expect(txs[0].classificacao).toBe('VENDA_PROPRIA');
-      expect(txs[0].precisaRevisao).toBe(false);
+      // spec 023: RESOLVER_OFERTA agora é real; a descrição da cobrança desta
+      // fixture não carrega uma tag AEN decodificável -> revisão (Regra nº 15).
+      expect(txs[0].precisaRevisao).toBe(true);
     });
 
     it('PAYMENT_OVERDUE → EM_ATRASO; PAYMENT_DELETED → CANCELADO', async () => {
@@ -182,7 +184,9 @@ describe('asaas — adaptadores de borda (e2e)', () => {
       // O ponto (A-02): o `externalReference` **sozinho**, sem `plataforma`, NÃO
       // dispara a regra 2 de `classificar` → nunca `DESCONHECIDO`/revisão aqui.
       expect(tx?.classificacao).toBe('RECORRENCIA');
-      expect(tx?.precisaRevisao).toBe(false);
+      // spec 023: RESOLVER_OFERTA agora é real; sem tag AEN decodificável na
+      // descrição desta fixture -> revisão (independente do ponto A-02 acima).
+      expect(tx?.precisaRevisao).toBe(true);
       expect(tx?.statusCanonico).toBe('PAGO');
     });
 
