@@ -85,6 +85,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/financeiro/transacoes',
     requerPermissao: 'transacao:ver',
   },
+  {
+    label: 'Financeiro · Contratos',
+    to: '/contratos',
+    requerPermissao: 'contrato:ver',
+  },
   { label: 'Financeiro', to: '/financeiro', soon: true },
   { label: 'Catálogo · Produtos', to: '/produtos', requerPermissao: 'produto:ver' },
   { label: 'Catálogo · Ofertas', to: '/ofertas', requerPermissao: 'oferta:ver' },

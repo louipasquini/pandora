@@ -188,6 +188,7 @@ model Pessoa {
   mensagensDisparo          MensagemDisparo[]
   tarefas                   Tarefa[]
   transacoes                Transacao[]
+  contratos                 Contrato[]
 
   @@index([contaId])
   @@index([mergedPara])
@@ -2064,10 +2065,12 @@ model Transacao {
   pessoa             Pessoa?           @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
   eventoOrigem       EventoOrigem?     @relation(fields: [eventoOrigemId], references: [id], onDelete: SetNull)
   oferta             Oferta?           @relation(fields: [ofertaId], references: [id], onDelete: SetNull)
+  contrato           Contrato?         @relation(fields: [contratoId], references: [id], onDelete: SetNull)
   transacaoVinculada Transacao?        @relation("TransacaoVinculo", fields: [transacaoVinculadaId], references: [id], onDelete: SetNull)
   vinculadaPor       Transacao[]       @relation("TransacaoVinculo")
   vinculoComoGuru    VinculoTransacao? @relation("VinculoGuru")
   vinculoComoAsaas   VinculoTransacao? @relation("VinculoAsaas")
+  aditivo            Aditivo?
 
   @@unique([plataformaOrigem, idOrigem], name: "transacao_chave_natural")
   @@index([statusCanonico])
@@ -2138,6 +2141,7 @@ model Produto {
   ofertas           Oferta[]
   janelasLancamento JanelaLancamento[]
   comboItens        OfertaCatalogoComboItem[]
+  contratos         Contrato[]
 
   @@map("produto")
 }
@@ -2265,4 +2269,106 @@ model CatalogoAudit {
 
   @@index([entidade, entidadeId])
   @@map("catalogo_audit")
+}
+
+// ---------------------------------------------------------------------------
+// contratos (spec 025) — `Contrato` (único por `pessoa`+`produto`, perpétuo) e
+// `Aditivo` (projeção derivada de 1 `Transacao` aplicada ao contrato). Todo
+// campo agregado (`fimAcesso`/`ticketTotal`/`valorRecebido`) é recalculado do
+// zero a cada fold (Princípio V) — nunca incremental. `statusCanonico`/
+// `acessoLiberado` são funções de leitura (`contratos/domain`), não colunas.
+// ---------------------------------------------------------------------------
+
+enum StatusContratoCanonico {
+  ATIVO
+  EXPIRADO
+  CANCELADO
+  DESCONHECIDO
+}
+
+enum AditivoRotulo {
+  COMPRA_INICIAL
+  RENOVACAO
+  PRORROGACAO
+  REEMBOLSO
+  SEM_EFEITO
+}
+
+model Contrato {
+  id        String @id @db.Uuid
+  pessoaId  String @map("pessoa_id") @db.Uuid
+  produtoId String @map("produto_id") @db.Uuid
+
+  /// Derivado (fold) — `null` enquanto nenhum aditivo concedeu acesso ainda.
+  fimAcesso     DateTime? @map("fim_acesso") @db.Timestamptz(6)
+  /// Derivado (fold) — `Record<moeda, valorInt-como-string>`, nunca soma moedas.
+  ticketTotal   Json      @default("{}") @map("ticket_total")
+  /// Derivado (fold) — idem, só aditivos que contam como receita (`contaComoReceita`).
+  valorRecebido Json      @default("{}") @map("valor_recebido")
+
+  /// Curado — aplicado na leitura sobre `fimAcesso`; sem par derivado.
+  toleranciaAtrasoDias Int     @default(0) @map("tolerancia_atraso_dias")
+  /// Curado — sem par derivado.
+  contratoAssinado     Boolean @default(false) @map("contrato_assinado")
+
+  /// Ajuste manual pontual (Regra Inviolável nº 13 / spec 025 CL-01): vence na
+  /// leitura enquanto nenhum aditivo novo chegar; o próximo fold limpa estes 4
+  /// campos incondicionalmente — a marca fica só em `ContratoAudit`.
+  ajusteManualStatus StatusContratoCanonico? @map("ajuste_manual_status")
+  ajusteManualEm     DateTime?               @map("ajuste_manual_em") @db.Timestamptz(6)
+  ajusteManualAutor  String?                 @map("ajuste_manual_autor")
+  ajusteManualMotivo String?                 @map("ajuste_manual_motivo")
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  pessoa     Pessoa      @relation(fields: [pessoaId], references: [id], onDelete: Restrict)
+  produto    Produto     @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  aditivos   Aditivo[]
+  transacoes Transacao[]
+
+  @@unique([pessoaId, produtoId], name: "contrato_pessoa_produto")
+  @@index([produtoId])
+  @@map("contrato")
+}
+
+model Aditivo {
+  id          String @id @db.Uuid
+  contratoId  String @map("contrato_id") @db.Uuid
+  transacaoId String @unique @map("transacao_id") @db.Uuid
+
+  rotulo              AditivoRotulo @map("rotulo")
+  /// Valor de `Contrato.fimAcesso` **depois** de aplicar este aditivo, na ordem
+  /// do fold — para a linha do tempo mostrar a evolução, mesmo quando este
+  /// aditivo específico não estendeu o acesso.
+  fimAcessoResultante DateTime?     @map("fim_acesso_resultante") @db.Timestamptz(6)
+
+  precisaRevisao Boolean @default(false) @map("precisa_revisao")
+  motivoRevisao  String? @map("motivo_revisao")
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  contrato  Contrato  @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  transacao Transacao @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId])
+  @@map("aditivo")
+}
+
+model ContratoAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("contrato_audit")
 }

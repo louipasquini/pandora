@@ -290,6 +290,13 @@ export const PERMISSOES = Object.freeze([
     recurso: 'transacao',
     rotulo: 'Forçar retry de vínculo Asaas↔Guru numa transação ou em todas as pendentes',
   },
+  // --- Contratos: contrato / aditivo (spec 025) ---
+  { id: 'contrato:ver', recurso: 'contrato', rotulo: 'Ver contratos e a linha do tempo de aditivos' },
+  {
+    id: 'contrato:editar',
+    recurso: 'contrato',
+    rotulo: 'Ajuste manual de contrato (tolerância de atraso, contrato assinado, status pontual)',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

@@ -153,29 +153,36 @@ describe('ingestao — evento_origem e worker (e2e)', () => {
   // --------------------------------------------------------------- worker
 
   describe('worker + etapas', () => {
-    it('processa evento com canônico → ok; CLASSIFICAR + etapas 2/3/4/5 reais (specs 018/023/024); 6 pulada', async () => {
+    it('processa evento com canônico → ok; CLASSIFICAR + etapas 2 a 6 reais (specs 018/023/024/025)', async () => {
       const ev = await h.ingerir({ eventoCanonico: montarEventoCanonico() });
       const resumo = await h.processar();
       expect(resumo).toMatchObject({ selecionados: 1, ok: 1, erro: 0, revisar: 0 });
       const det = await h.detalhe(ev.body.eventoId);
       expect(det.body.status).toBe('ok');
       expect(det.body.classificacao).toBe('VENDA_PROPRIA');
-      const st = (nome: string) =>
-        det.body.etapas.find((e: { etapa: string }) => e.etapa === nome).status;
+      const etapa = (nome: string) =>
+        det.body.etapas.find((e: { etapa: string }) => e.etapa === nome);
       // spec 018 plugou RESOLVER_PESSOA + UPSERT_TRANSACAO; spec 023 plugou
       // RESOLVER_OFERTA (a tag AEN embutida no fixture padrão de
       // `montarEventoCanonico` resolve de verdade); spec 024 plugou
       // RESOLVER_VINCULO — evento GURU_PRD sem Asaas pendente esperando por
-      // ele, então roda como no-op de negócio (`ok`, não `pulada`).
-      expect(st('RESOLVER_PESSOA')).toBe('ok');
-      expect(st('UPSERT_TRANSACAO')).toBe('ok');
-      expect(st('RESOLVER_VINCULO')).toBe('ok');
-      expect(st('RESOLVER_OFERTA')).toBe('ok');
-      // só PROJETAR_CONTRATO segue pulada (spec 25)
+      // ele, então roda como no-op de negócio (`ok`, não `pulada`). spec 025
+      // plugou PROJETAR_CONTRATO — o fixture padrão não traz `comprador`
+      // (deliberado, spec 006, para não misturar dedup nestes testes de
+      // mecânica), então `pessoa_id` fica `null` e a etapa 6 devolve `ok` sem
+      // criar contrato, também sem acrescentar revisão nova (mesma leniência
+      // da etapa 2 para "sem dado de identidade" — spec 025 §Clarifications).
+      expect(etapa('RESOLVER_PESSOA').status).toBe('ok');
+      expect(etapa('UPSERT_TRANSACAO').status).toBe('ok');
+      expect(etapa('RESOLVER_VINCULO').status).toBe('ok');
+      expect(etapa('RESOLVER_OFERTA').status).toBe('ok');
+      expect(etapa('PROJETAR_CONTRATO').status).toBe('ok');
+      expect(etapa('PROJETAR_CONTRATO').resultado).toMatchObject({ contratoId: null });
+      // nenhuma etapa fica pulada — todas as 6 já têm executor real
       const puladas = det.body.etapas.filter(
         (e: { status: string }) => e.status === 'pulada',
       );
-      expect(puladas).toHaveLength(1);
+      expect(puladas).toHaveLength(0);
     });
 
     it('idempotente: 2ª e 3ª passadas não selecionam nada', async () => {
@@ -408,7 +415,7 @@ describe('ingestao — evento_origem e worker (e2e)', () => {
   // ------------------------------------------------------------- plugável
 
   describe('etapas plugáveis (US5 / SC-012)', () => {
-    it('2/3/4/5 reais (specs 018/023/024), 6 pulada com o nº da spec dona, sem tocar outros contextos', async () => {
+    it('2 a 6 reais (specs 018/023/024/025), nenhuma etapa a mais pulada, sem tocar outros contextos', async () => {
       const ev = await h.ingerir({});
       await h.processar();
       const det = await h.detalhe(ev.body.eventoId);
@@ -428,8 +435,10 @@ describe('ingestao — evento_origem e worker (e2e)', () => {
         pendentesResolvidas: 0,
       });
       expect(por.RESOLVER_OFERTA).toMatchObject({ ofertaId: expect.any(String) });
-      // só PROJETAR_CONTRATO segue no-op (spec 25)
-      expect(por.PROJETAR_CONTRATO).toMatchObject({ implementadaNa: 25 });
+      // spec 025 — sem `comprador` no fixture, `pessoa_id` fica `null`;
+      // `PROJETAR_CONTRATO` já não carrega `implementadaNa` (etapa real).
+      expect(por.PROJETAR_CONTRATO).not.toHaveProperty('implementadaNa');
+      expect(por.PROJETAR_CONTRATO).toMatchObject({ contratoId: null });
     });
 
     it('uma etapa fake substituta é chamada pelo worker sem outra mudança', async () => {

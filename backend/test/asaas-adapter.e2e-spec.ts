@@ -73,6 +73,8 @@ describe('asaas — adaptadores de borda (e2e)', () => {
       select: { pessoaId: true },
     });
     const ids = [...new Set(refs.map((r) => r.pessoaId))];
+    // `contrato` (025) tem FK `Restrict` para `pessoa` — apaga primeiro (cascade em `aditivo`).
+    if (ids.length) await prisma.contrato.deleteMany({ where: { pessoaId: { in: ids } } });
     if (ids.length) await prisma.pessoa.deleteMany({ where: { id: { in: ids } } });
   });
 

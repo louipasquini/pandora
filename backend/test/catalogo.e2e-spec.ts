@@ -40,6 +40,9 @@ describe('catalogo — produto/oferta (e2e)', () => {
   afterEach(async () => {
     // `catalogo` (023) + `financeiro`/`ingestao` são os únicos escritores
     // destas tabelas; suíte roda serial (maxWorkers:1) — deleteMany é seguro.
+    // `contrato` (025) tem FK `Restrict` para `produto` — apaga primeiro
+    // (cascade em `aditivo`).
+    await prisma.contrato.deleteMany({});
     await prisma.transacao.deleteMany({});
     await prisma.eventoEtapa.deleteMany({});
     await prisma.eventoOrigem.deleteMany({});
