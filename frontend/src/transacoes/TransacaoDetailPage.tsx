@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
+import { TentarVincularButton } from './TentarVincularButton';
 import {
   formatarDinheiro,
   transacoesApi,
@@ -101,6 +102,38 @@ export function TransacaoDetailPage() {
           }
         />
       </div>
+
+      {(t.vinculo || t.vinculoPendente) && (
+        <div className="mt-4 rounded-lg border border-slate-200 px-4 py-3">
+          <h2 className="text-sm font-semibold text-slate-700">Vínculo Asaas↔Guru</h2>
+          {t.vinculo ? (
+            <>
+              <p className="mt-1 text-xs text-slate-500">
+                Cobrança terceirizada — vinculada à venda de registro em{' '}
+                <Link
+                  to={`/financeiro/transacoes/${t.vinculo.transacaoVinculadaId}`}
+                  className="text-brand-azul hover:underline"
+                >
+                  ver transação Guru
+                </Link>
+                . Resolvido em {new Date(t.vinculo.resolvidoEm).toLocaleString()}.
+              </p>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Essa transação não conta como receita própria — só a venda Guru soma.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 text-xs text-amber-700">
+                ⚠ pendente de vínculo — a venda Guru correspondente ainda não chegou.
+              </p>
+              <div className="mt-2">
+                <TentarVincularButton transacaoId={t.id} />
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <p className="mt-3 text-[11px] text-slate-400">
         criada em {new Date(t.criadoEm).toLocaleString()} · atualizada em{' '}

@@ -2030,6 +2030,12 @@ model Transacao {
   contratoId           String? @map("contrato_id") @db.Uuid
   transacaoVinculadaId String? @map("transacao_vinculada_id") @db.Uuid
 
+  /// Cru — `EventoCanonico.referenciaExterna.idOrigem` (spec 020/021), gravado
+  /// independente de plataforma pela etapa 3; só a spec 024 (etapa 4) o consome,
+  /// para casar a transação Asaas terceirizada com a transação Guru de registro
+  /// sem depender de reconsultar o evento original.
+  referenciaExternaIdOrigem String? @map("referencia_externa_id_origem")
+
   valorBrutoInt     BigInt? @map("valor_bruto_int")
   valorBrutoMoeda   String? @map("valor_bruto_moeda") @db.Char(3)
   valorLiquidoInt   BigInt? @map("valor_liquido_int")
@@ -2055,9 +2061,13 @@ model Transacao {
   criadoEm       DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm   DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  pessoa       Pessoa?       @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
-  eventoOrigem EventoOrigem? @relation(fields: [eventoOrigemId], references: [id], onDelete: SetNull)
-  oferta       Oferta?       @relation(fields: [ofertaId], references: [id], onDelete: SetNull)
+  pessoa             Pessoa?           @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
+  eventoOrigem       EventoOrigem?     @relation(fields: [eventoOrigemId], references: [id], onDelete: SetNull)
+  oferta             Oferta?           @relation(fields: [ofertaId], references: [id], onDelete: SetNull)
+  transacaoVinculada Transacao?        @relation("TransacaoVinculo", fields: [transacaoVinculadaId], references: [id], onDelete: SetNull)
+  vinculadaPor       Transacao[]       @relation("TransacaoVinculo")
+  vinculoComoGuru    VinculoTransacao? @relation("VinculoGuru")
+  vinculoComoAsaas   VinculoTransacao? @relation("VinculoAsaas")
 
   @@unique([plataformaOrigem, idOrigem], name: "transacao_chave_natural")
   @@index([statusCanonico])
@@ -2066,7 +2076,32 @@ model Transacao {
   @@index([plataformaOrigem])
   @@index([ocorridoEm])
   @@index([precisaRevisao])
+  @@index([plataformaOrigem, referenciaExternaIdOrigem])
   @@map("transacao")
+}
+
+// ---------------------------------------------------------------------------
+// financeiro (spec 024) — vínculo Asaas↔Guru (pipeline etapa 4, RESOLVER_VINCULO).
+// "Guru terceiriza cobrança para a Asaas": 1 vínculo = 1 par (transação Guru,
+// transação Asaas). Imutável — nunca UPDATE/DELETE (Princípio VII, reversão é
+// escopo da spec 027). "Só a Guru soma receita" é função de leitura pura sobre
+// `Transacao.classificacao = COBRANCA_TERCEIRIZADA` (financeiro/domain/vinculo),
+// nunca uma coluna nova de agregado.
+// ---------------------------------------------------------------------------
+
+model VinculoTransacao {
+  id               String   @id @db.Uuid
+  transacaoGuruId  String   @unique @map("transacao_guru_id") @db.Uuid
+  transacaoAsaasId String   @unique @map("transacao_asaas_id") @db.Uuid
+  /// valor cru que casou (`id_origem` da Guru = `referenciaExterna.idOrigem` da Asaas).
+  origemRef        String   @map("origem_ref")
+  resolvidoEm      DateTime @map("resolvido_em") @db.Timestamptz(6)
+  criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  transacaoGuru  Transacao @relation("VinculoGuru", fields: [transacaoGuruId], references: [id], onDelete: Restrict)
+  transacaoAsaas Transacao @relation("VinculoAsaas", fields: [transacaoAsaasId], references: [id], onDelete: Restrict)
+
+  @@map("vinculo_transacao")
 }
 
 // ---------------------------------------------------------------------------

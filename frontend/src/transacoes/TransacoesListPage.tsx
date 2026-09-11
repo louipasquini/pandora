@@ -1,12 +1,46 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { usePodeUsar } from '../auth/usePermissoes';
 import {
   CONTAS,
   STATUS_CANONICOS,
   formatarDinheiro,
   transacoesApi,
 } from './transacoes-api';
+
+/** Botão **Tentar vincular pendentes** (spec 024) — só com `transacao:vincular`. */
+function TentarVincularPendentesButton({ onDone }: { onDone: () => void }) {
+  const { pode } = usePodeUsar('transacao:vincular');
+  const [mensagem, setMensagem] = useState<string | null>(null);
+  const mutacao = useMutation({
+    mutationFn: () => transacoesApi.tentarVincularPendentes(),
+    onSuccess: (r) => {
+      setMensagem(`${r.resolvidos} de ${r.tentativas} resolvidos`);
+      onDone();
+    },
+    onError: () => setMensagem('não foi possível tentar os pendentes'),
+  });
+
+  if (!pode) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={mutacao.isPending}
+        onClick={() => {
+          setMensagem(null);
+          mutacao.mutate();
+        }}
+        className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-700 disabled:opacity-50"
+      >
+        {mutacao.isPending ? 'Tentando…' : 'Tentar vincular pendentes'}
+      </button>
+      {mensagem && <span className="text-xs text-slate-500">{mensagem}</span>}
+    </div>
+  );
+}
 
 const STATUS_BADGE: Record<string, string> = {
   PAGO: 'bg-emerald-100 text-emerald-700',
@@ -29,17 +63,21 @@ export function TransacoesListPage() {
   const [status, setStatus] = useState('');
   const [pagoDeFato, setPagoDeFato] = useState(false);
   const [revisao, setRevisao] = useState(false);
+  const [vinculoPendente, setVinculoPendente] = useState(false);
   const [q, setQ] = useState('');
   const [pagina, setPagina] = useState(1);
+  const qc = useQueryClient();
 
+  const queryKey = ['transacoes', conta, status, pagoDeFato, revisao, vinculoPendente, q, pagina];
   const lista = useQuery({
-    queryKey: ['transacoes', conta, status, pagoDeFato, revisao, q, pagina],
+    queryKey,
     queryFn: () =>
       transacoesApi.listar({
         plataformaOrigem: conta || undefined,
         statusCanonico: status || undefined,
         pagoDeFato: pagoDeFato || undefined,
         precisaRevisao: revisao || undefined,
+        vinculoPendente: vinculoPendente || undefined,
         q: q || undefined,
         pagina,
       }),
@@ -122,6 +160,18 @@ export function TransacoesListPage() {
           />
           precisa revisão
         </label>
+        <label className="flex items-center gap-1.5 text-xs text-slate-500">
+          <input
+            type="checkbox"
+            checked={vinculoPendente}
+            onChange={(e) => {
+              resetPagina();
+              setVinculoPendente(e.target.checked);
+            }}
+          />
+          pendente de vínculo
+        </label>
+        <TentarVincularPendentesButton onDone={() => qc.invalidateQueries({ queryKey })} />
       </div>
 
       {lista.isLoading && <p className="mt-6 text-sm text-slate-500">Carregando…</p>}
@@ -162,6 +212,11 @@ export function TransacoesListPage() {
                   {t.precisaRevisao && (
                     <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-amber-800">
                       revisar
+                    </span>
+                  )}
+                  {t.vinculoPendente && (
+                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-sky-800">
+                      vínculo pendente
                     </span>
                   )}
                   <span

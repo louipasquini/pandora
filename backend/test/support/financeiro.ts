@@ -90,6 +90,18 @@ export function financeiroHelpers(app: INestApplication) {
       return http().get(`/financeiro/transacoes/${id}`).set(authHeader());
     },
 
+    async tentarVincular(id: string, token?: string) {
+      return http()
+        .post(`/financeiro/transacoes/${id}/tentar-vincular`)
+        .set(authHeader(token));
+    },
+
+    async tentarVincularPendentes(token?: string) {
+      return http()
+        .post('/financeiro/transacoes/tentar-vincular-pendentes')
+        .set(authHeader(token));
+    },
+
     /** `{ token }` de um `Usuario` com exatamente `perms` (via /admin/rbac). */
     async sujeitoCom(perms: string[]): Promise<{ token: string; usuarioId: string }> {
       const tag = `${Date.now()}-${Math.random().toString(36).slice(2)}`;

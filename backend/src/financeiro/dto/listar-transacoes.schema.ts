@@ -37,6 +37,7 @@ export const listarTransacoesSchema = z
     pagoDeFato: bool,
     pessoaId: z.string().uuid().optional(),
     precisaRevisao: bool,
+    vinculoPendente: bool,
     ocorridoDe: z.coerce.date().optional(),
     ocorridoAte: z.coerce.date().optional(),
     q: z.string().trim().min(1).optional(),

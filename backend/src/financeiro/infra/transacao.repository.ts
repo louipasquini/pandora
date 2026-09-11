@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type PlataformaOrigem } from '@prisma/client';
+import { Classificacao, Prisma, PlataformaOrigem } from '@prisma/client';
 import {
   Dinheiro,
   EntidadeId,
@@ -14,6 +14,12 @@ import type { SnapshotTransacao } from '../domain';
 const STATUS_PAGO_DE_FATO: readonly string[] = STATUS_TRANSACAO_CANONICO.filter(
   contaComoReceita,
 );
+
+/** As 2 contas Asaas — únicas que podem ter vínculo pendente (spec 024). */
+const CONTAS_ASAAS: readonly PlataformaOrigem[] = [
+  PlataformaOrigem.ASAAS_PRD,
+  PlataformaOrigem.ASAAS_SVC,
+];
 
 /** Campos que o executor da etapa 3 passa para o upsert. */
 export interface DadosUpsertTransacao {
@@ -39,6 +45,8 @@ export interface DadosUpsertTransacao {
   precisaRevisao: boolean;
   motivoRevisao: string | null;
   eventoOrigemId: string;
+  /** Cru — `EventoCanonico.referenciaExterna.idOrigem` (spec 024). */
+  referenciaExternaIdOrigem: string | null;
 }
 
 export interface ListaFiltros {
@@ -48,6 +56,8 @@ export interface ListaFiltros {
   pagoDeFato?: boolean;
   pessoaId?: string;
   precisaRevisao?: boolean;
+  /** Asaas com referência externa e ainda sem `transacaoVinculadaId` (spec 024). */
+  vinculoPendente?: boolean;
   ocorridoDe?: Date;
   ocorridoAte?: Date;
   q?: string;
@@ -139,6 +149,7 @@ export class TransacaoRepository {
       precisaRevisao: d.precisaRevisao,
       motivoRevisao: d.motivoRevisao,
       eventoOrigemId: d.eventoOrigemId,
+      referenciaExternaIdOrigem: d.referenciaExternaIdOrigem,
     };
 
     if (criar) {
@@ -183,11 +194,21 @@ export class TransacaoRepository {
       and.push({ statusCanonico: { in: f.statusCanonico as never[] } });
     }
     if (f.pagoDeFato !== undefined) {
-      and.push({
-        statusCanonico: f.pagoDeFato
-          ? { in: STATUS_PAGO_DE_FATO as never[] }
-          : { notIn: STATUS_PAGO_DE_FATO as never[] },
-      });
+      // "Só a Guru soma receita" (spec 024, CL-03): além do status, exclui a
+      // transação Asaas já reclassificada como cobrança terceirizada.
+      const contaComoReceitaWhere: Prisma.TransacaoWhereInput = {
+        statusCanonico: { in: STATUS_PAGO_DE_FATO as never[] },
+        NOT: { classificacao: Classificacao.COBRANCA_TERCEIRIZADA },
+      };
+      and.push(f.pagoDeFato ? contaComoReceitaWhere : { NOT: contaComoReceitaWhere });
+    }
+    if (f.vinculoPendente !== undefined) {
+      const vinculoPendenteWhere: Prisma.TransacaoWhereInput = {
+        plataformaOrigem: { in: CONTAS_ASAAS as PlataformaOrigem[] },
+        referenciaExternaIdOrigem: { not: null },
+        transacaoVinculadaId: null,
+      };
+      and.push(f.vinculoPendente ? vinculoPendenteWhere : { NOT: vinculoPendenteWhere });
     }
     return {
       ...(and.length > 0 ? { AND: and } : {}),
@@ -228,7 +249,10 @@ export class TransacaoRepository {
   async detalhe(id: string) {
     return this.prisma.transacao.findUnique({
       where: { id },
-      include: { pessoa: { select: { id: true, nome: true } } },
+      include: {
+        pessoa: { select: { id: true, nome: true } },
+        vinculoComoAsaas: true,
+      },
     });
   }
 }

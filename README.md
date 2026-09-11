@@ -143,7 +143,13 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
     financeiro/  transacao normalizada (1 por (plataforma_origem, id_origem)), pipeline
                  etapas 2–3 plugadas no worker da 006 (resolver pessoa via PortaIdentidade
                  da 005; upsert transação com status_map por fonte), leitura-só
-                 GET /financeiro/transacoes[/:id] (spec 018 — subpasta transacoes/ no front)
+                 GET /financeiro/transacoes[/:id] (spec 018) + vinculo_transacao (1:1
+                 transação Guru ↔ Asaas terceirizada), pipeline etapa 4 (RESOLVER_VINCULO —
+                 2 sentidos de chegada, pareamento por conta, reclassifica p/
+                 COBRANCA_TERCEIRIZADA), pagoDeFatoTransacao (função pura de leitura — "só
+                 a Guru soma receita"), retry manual
+                 POST /financeiro/transacoes/{id,}/tentar-vincular{,-pendentes} (spec 024 —
+                 subpasta transacoes/ no front)
     catalogo/    produto (auto-criado, código de 3 letras) + oferta (resolvida por
                  (tag AEN, plataforma) — decodificador puro + auto-criação; Hotmart só por
                  catálogo importado via CSV, nunca por tag) + oferta_catalogo (ticket, preço
@@ -162,8 +168,8 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  013 + workflow 014 + disparos 015 + tarefa 016 + dashboard: meta_comercial
                  / dashboard_visao / crm_dashboard_audit 017 + transacao +
                  StatusTransacaoCanonico 018 + produto/oferta/oferta_origem_ref/
-                 oferta_catalogo(+bonus/combo)/janela_lancamento/catalogo_audit 023) +
-                 migrações + seed.ts
+                 oferta_catalogo(+bonus/combo)/janela_lancamento/catalogo_audit 023 +
+                 vinculo_transacao 024) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -320,7 +326,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fases 0 (Fundações) e 1 (CRM) concluídas —
-Fase 2 (Financeiro) em andamento** (specs 018–023 entregues; próxima 024).
+Fase 2 (Financeiro) em andamento** (specs 018–024 entregues; próxima 025).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -817,7 +823,41 @@ Fase 2 (Financeiro) em andamento** (specs 018–023 entregues; próxima 024).
   sinalizada como não confirmada na própria visão) foi ao dono do produto em 2026-09-11; as
   demais resolvidas como defaults documentados. Ver
   [`docs/023-catalogo-produto-oferta.md`](docs/023-catalogo-produto-oferta.md).
-- Próxima: **024 — vinculo-asaas-guru** (Fase 2 — Financeiro).
+- ✅ **024 — vinculo-asaas-guru** — 5ª fatia da Fase 2 (Financeiro). Materializa "Guru
+  terceiriza cobrança para a Asaas": uma venda pode existir como 2 eventos (transação Guru =
+  venda de registro; pagamento Asaas = cobrança) e **só a Guru soma receita**. **Etapa 4 do
+  pipeline (`RESOLVER_VINCULO`)** plugada via o mesmo `ExecutorEtapaExterno` do `core` —
+  **nenhuma mudança em `WorkerService`/`etapas.ts`/`classificar.ts`**. Casa a referência
+  externa que a Asaas carrega (`EventoCanonico.referenciaExterna.idOrigem`, spec 020) com a
+  transação Guru pela chave natural, **restrito à conta pareada** (`ASAAS_PRD↔GURU_PRD`,
+  `ASAAS_SVC↔GURU_SVC` — nunca cruza PRD/SVC) e **nos 2 sentidos de chegada**: quando a Asaas
+  chega, procura a Guru já persistida; quando a Guru chega, resolve as Asaas pendentes que
+  apontam para ela — tudo dentro da mesma passada do worker de ingestão já existente (spec
+  006), **0 processo novo**. Ao resolver: grava `transacao.transacao_vinculada_id`,
+  reclassifica a Asaas para `COBRANCA_TERCEIRIZADA` (valor já reservado no enum congelado
+  desde a 006) e cria **1 registro imutável `vinculo_transacao`** — nunca revertido
+  automaticamente (Princípio VII; reversão/alerta é escopo da spec 027). "Só a Guru soma
+  receita" vira **função de leitura pura** (`pagoDeFatoTransacao`) que exclui
+  `COBRANCA_TERCEIRIZADA` do filtro `pagoDeFato` já existente (spec 018) — nenhum efeito
+  colateral de escrita, nenhuma coluna nova de agregado. **18ª migração Prisma**:
+  `vinculo_transacao` (`transacaoGuruId`/`transacaoAsaasId` `@unique` cada — 1:1) + coluna
+  `transacao.referencia_externa_id_origem` (cru) + FK ativada em `transacao_vinculada_id`
+  (coluna já reservada desde a 018, não-destrutiva). Catálogo RBAC ganha
+  `transacao:vincular` (leitura reusa `transacao:ver`). **2 endpoints** de retry manual —
+  `POST /financeiro/transacoes/{id}/tentar-vincular` e `.../tentar-vincular-pendentes` —
+  reusam a mesma lógica de domínio da etapa 4 (idempotentes; 422 se a plataforma não
+  participa do vínculo; 404 se a transação não existe); `GET /financeiro/transacoes` ganha o
+  filtro `vinculoPendente`. Painel: seção "Vínculo Asaas↔Guru" + botão **Tentar vincular** no
+  detalhe de **Financeiro · Transações**, filtro e ação em lote **Tentar vincular pendentes**
+  na lista. **0 dep nova**, 1 migração, `CONTEXT_MODULES` segue 11. 3 decisões de fato
+  ambíguas (escopo do pareamento de conta, mecanismo de retry sem worker novo, onde a regra
+  de receita lê o vínculo) foram ao dono do produto em 2026-09-11 antes do plano. 928 testes
+  unitários backend + 441 e2e (Postgres real) + 134 frontend, todos verdes; lint/typecheck/
+  build limpos nos dois workspaces; validado também manualmente no navegador
+  de ponta a ponta (Guru primeiro, Asaas primeiro com resolução automática ao chegar a Guru,
+  retry manual de uma transação pendente sem par ainda disponível, cobrança terceirizada
+  excluída de `pagoDeFato`). Ver
+  [`docs/024-vinculo-asaas-guru.md`](docs/024-vinculo-asaas-guru.md).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o

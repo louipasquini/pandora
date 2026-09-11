@@ -91,6 +91,7 @@ export class UpsertTransacaoEtapaService implements ExecutorEtapaExterno {
         precisaRevisao,
         motivoRevisao: motivo,
         eventoOrigemId: entrada.eventoId,
+        referenciaExternaIdOrigem: entrada.canonico?.referenciaExterna?.idOrigem ?? null,
       },
       anterior == null,
     );
