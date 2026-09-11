@@ -75,6 +75,10 @@ export class TransacaoQueryService {
       ofertaId: r.ofertaId,
       contratoId: r.contratoId,
       transacaoVinculadaId: r.transacaoVinculadaId,
+      vinculoPendente:
+        (r.plataformaOrigem === 'ASAAS_PRD' || r.plataformaOrigem === 'ASAAS_SVC') &&
+        r.referenciaExternaIdOrigem != null &&
+        r.transacaoVinculadaId == null,
       vinculo: r.vinculoComoAsaas
         ? {
             transacaoVinculadaId: r.vinculoComoAsaas.transacaoGuruId,

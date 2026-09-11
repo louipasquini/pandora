@@ -20,6 +20,16 @@ export interface TransacaoListaItem {
   valorBruto: DinheiroView | null;
   valorLiquido: DinheiroView | null;
   eventoOrigemId: string | null;
+  /** transação Asaas já vinculada a uma Guru — `null` senão (spec 024). */
+  transacaoVinculadaId: string | null;
+  /** Asaas com referência externa, ainda sem vínculo (spec 024). */
+  vinculoPendente: boolean;
+}
+
+export interface VinculoView {
+  transacaoVinculadaId: string;
+  origemRef: string;
+  resolvidoEm: string;
 }
 
 export interface TransacaoLista {
@@ -33,7 +43,8 @@ export interface TransacaoDetalhe extends Omit<TransacaoListaItem, 'pessoaId'> {
   pessoa: { id: string; nome: string } | null;
   ofertaId: string | null;
   contratoId: string | null;
-  transacaoVinculadaId: string | null;
+  /** vínculo resolvido (transação Asaas → Guru), se houver — spec 024. */
+  vinculo: VinculoView | null;
   taxas: DinheiroView | null;
   reembolso: DinheiroView | null;
   quantidade: number | null;
@@ -57,8 +68,19 @@ export interface ListarParams {
   classificacao?: string;
   pagoDeFato?: boolean;
   precisaRevisao?: boolean;
+  /** Asaas com referência externa, ainda sem vínculo (spec 024). */
+  vinculoPendente?: boolean;
   q?: string;
   pagina?: number;
+}
+
+export interface ResultadoTentativaVinculo {
+  vinculado: boolean;
+  transacaoVinculadaId?: string;
+  vinculoId?: string;
+  pendentesResolvidas?: number;
+  papel: 'ASAAS' | 'GURU';
+  motivo?: 'sem_referencia_externa' | 'guru_nao_encontrada' | 'conflito_guru_ja_vinculada';
 }
 
 export const transacoesApi = {
@@ -69,12 +91,24 @@ export const transacoesApi = {
     if (p.classificacao) qs.set('classificacao', p.classificacao);
     if (p.pagoDeFato) qs.set('pagoDeFato', 'true');
     if (p.precisaRevisao) qs.set('precisaRevisao', 'true');
+    if (p.vinculoPendente) qs.set('vinculoPendente', 'true');
     if (p.q) qs.set('q', p.q);
     if (p.pagina) qs.set('pagina', String(p.pagina));
     return json<TransacaoLista>(await apiFetch(`/financeiro/transacoes?${qs.toString()}`));
   },
   async detalhe(id: string): Promise<TransacaoDetalhe> {
     return json<TransacaoDetalhe>(await apiFetch(`/financeiro/transacoes/${id}`));
+  },
+  /** Força uma nova tentativa de vínculo Asaas↔Guru (spec 024). */
+  async tentarVincular(id: string): Promise<ResultadoTentativaVinculo> {
+    return json<ResultadoTentativaVinculo>(
+      await apiFetch(`/financeiro/transacoes/${id}/tentar-vincular`, { method: 'POST' }),
+    );
+  },
+  async tentarVincularPendentes(): Promise<{ tentativas: number; resolvidos: number }> {
+    return json<{ tentativas: number; resolvidos: number }>(
+      await apiFetch('/financeiro/transacoes/tentar-vincular-pendentes', { method: 'POST' }),
+    );
   },
 };
 

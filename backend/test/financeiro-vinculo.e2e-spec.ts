@@ -97,6 +97,13 @@ describe('financeiro — vínculo Asaas↔Guru (e2e)', () => {
       expect(vinculos[0].transacaoGuruId).toBe(guruTx.id);
       expect(vinculos[0].origemRef).toBe(guruId);
 
+      const detalhe = await h.detalhe(asaasTx.id);
+      expect(detalhe.body.vinculoPendente).toBe(false);
+      expect(detalhe.body.vinculo).toMatchObject({
+        transacaoVinculadaId: guruTx.id,
+        origemRef: guruId,
+      });
+
       // reprocessar o mesmo evento Asaas não duplica o vínculo
       await h.reprocessar(asaas.eventoId, true);
       const vinculosDepois = await prisma.vinculoTransacao.findMany({
@@ -132,6 +139,10 @@ describe('financeiro — vínculo Asaas↔Guru (e2e)', () => {
       expect(listaPendentes.body.itens.some((i: { id: string }) => i.id === pendenteAntes.id)).toBe(
         true,
       );
+
+      const detalheAntes = await h.detalhe(pendenteAntes.id);
+      expect(detalheAntes.body.vinculoPendente).toBe(true);
+      expect(detalheAntes.body.vinculo).toBeNull();
 
       await h.ingerirEProcessar({
         plataformaOrigem: 'GURU_PRD',

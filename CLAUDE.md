@@ -439,7 +439,81 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/023-catalogo-produto-oferta/plan.md`](specs/023-catalogo-produto-oferta/plan.md)
+Plano ativo: [`specs/024-vinculo-asaas-guru/plan.md`](specs/024-vinculo-asaas-guru/plan.md)
+(Fase 2 · spec 024 — **Vínculo Asaas↔Guru (pipeline etapa 4)**: quinta fatia da Fase 2
+(Financeiro). Materializa a regra "Guru terceiriza cobrança para a Asaas": uma venda pode
+existir como **2 eventos** (transação Guru = venda de registro; pagamento Asaas = cobrança) e
+**só a Guru soma receita**. Mora no _bounded context_ **`financeiro`** (já dono de
+`transacao` desde a 018). A etapa `RESOLVER_VINCULO` (ordem 4, `especDona: 24`), reservada
+_no-op_ pela 006, é plugada via o mesmo `ExecutorEtapaExterno` do `core` +
+`src/pipeline-wiring.module.ts` (só ganha mais um import) — **nenhuma mudança em
+`WorkerService`/`etapas.ts`/`classificar.ts`**. Casa `EventoCanonico.referenciaExterna.
+idOrigem` (o `payment.externalReference` que o adapter Asaas/020 transporta **sem**
+`plataforma`, precisamente para não disparar a regra 2 de `classificar.ts` — "cravar o
+vínculo é da spec 024") com a transação Guru pela chave natural. **3 decisões de fato
+ambíguas levadas ao dono do produto em 2026-09-11** (024 não estava `⚠ clarify`): **CL-01**
+— pareamento **restrito à conta**: `ASAAS_PRD↔GURU_PRD`, `ASAAS_SVC↔GURU_SVC`, **nunca**
+cruza PRD↔SVC — mapa fechado `financeiro/domain/vinculo/conta-pareada.ts`
+(`contaGuruParDe`/`contaAsaasParDe`, devolvem `string` de propósito para não acoplar ao
+enum `PlataformaOrigem` do `core` **ou** do `@prisma/client` — dois enums TS nominalmente
+distintos com os mesmos valores), mesmo padrão "estratégia por conta é dado, não `if`" de
+`ESTRATEGIA_RESOLUCAO_OFERTA`/023 e `MAPAS_STATUS`/018. **CL-02** — os "2 sentidos de
+chegada" do ROADMAP resolvidos **de forma síncrona e bidirecional dentro da própria etapa
+4**, sem worker agendado novo: transação Asaas chega → procura a Guru já persistida;
+transação Guru chega → resolve as Asaas pendentes da conta pareada que apontam para ela —
+tudo dentro da mesma passada do `WorkerService`/`WorkerScheduler` de ingestão já existente
+(spec 006), **0 processo novo, 0 variável `.env` de worker nova**; os 2 endpoints
+(`tentar-vincular`/`tentar-vincular-pendentes`) reusam a **mesma** lógica de domínio
+(`TentarVincularService`) só como retry manual. **CL-03** — ao vincular, a transação Asaas é
+reclassificada para `classificacao = COBRANCA_TERCEIRIZADA` (valor já reservado no enum
+congelado desde a 006); "só a Guru soma receita" vira **função de leitura pura**
+`pagoDeFatoTransacao(statusCanonico, classificacao)` (`financeiro/domain/vinculo/receita.ts`)
+— o filtro `pagoDeFato` já existente (018) passa a excluir `COBRANCA_TERCEIRIZADA` além dos
+status que já não contam, **nenhum efeito colateral de escrita** em outro agregado
+(Princípio V). **Idempotência**: `VinculoRepository.criarVinculo` verifica vínculo existente
+antes de criar (corrida concorrente tratada via `catch` de `P2002`, mesmo padrão do
+`upsert`/018); `buscarVinculoPorGuru` detecta 2 Asaas apontando para a mesma Guru →
+`precisaRevisao` (motivo acumulado, nunca duplica o vínculo — Regra Inviolável nº 15, nunca
+um palpite). **18ª migração Prisma** (`20260911180358_financeiro_vinculo`):
+`vinculo_transacao` (`id` UUID v7, `transacaoGuruId`/`transacaoAsaasId` **`@unique` cada** —
+1:1, `origemRef` cru, `resolvidoEm` `@db.Timestamptz(6)`; **imutável, sem
+`UPDATE`/`DELETE`** — Princípio VII, reversão/alerta é escopo da spec 027; 2 relations
+nomeadas `"VinculoGuru"`/`"VinculoAsaas"` para `Transacao` — 1ª vez no projeto com 2 FKs pro
+mesmo model) + coluna nova `transacao.referencia_externa_id_origem` (cru, gravada pela etapa
+3 estendida, independente de plataforma — a etapa 4 a lê sem reconsultar o evento original,
+mesmo raciocínio de `oferta_codigo_origem`/018) + FK ativada em `transacao_vinculada_id`
+(coluna nua reservada desde a 018) — **não-destrutivo**. **RBAC 004 estendido**: `+1`
+permissão — `transacao:vincular` (recurso `transacao` já existente; leitura reusa
+`transacao:ver`, 0 permissão nova de leitura). **2 endpoints** de escrita:
+`POST /financeiro/transacoes/{id}/tentar-vincular` (idempotente; `422
+transacao_nao_terceirizada`/`422 plataforma_nao_aplicavel`/`404`) e
+`POST /financeiro/transacoes/tentar-vincular-pendentes` (`{tentativas, resolvidos}`, nunca
+erro por "nada pendente") + `GET /financeiro/transacoes` ganha o filtro `vinculoPendente`
+(estado **sempre derivado**, nenhuma coluna de status extra) + `GET
+/financeiro/transacoes/{id}` ganha o campo `vinculo`. **Frontend**
+`frontend/src/transacoes/` (spec 018 estendida): seção "Vínculo Asaas↔Guru" + botão
+**Tentar vincular** (`TentarVincularButton.tsx`, atrás de `transacao:vincular`, mesmo padrão
+do `ReprocessarButton.tsx`/006) no detalhe; filtro "pendente de vínculo" + ação em lote
+**Tentar vincular pendentes** na lista. **0 dep nova**, **1 migração**, **0 chave `.env`
+nova**, **0 porta nova**. `CONTEXT_MODULES` segue **11**. 928 testes unitários backend (7
+novos, domínio puro) + 441 e2e (8 novos em `financeiro-vinculo.e2e-spec.ts`, Postgres real:
+US1 Guru primeiro → vínculo automático + `COBRANCA_TERCEIRIZADA` + reprocessar não duplica,
+US2 Asaas primeiro → pendente → resolvido sozinho ao chegar a Guru sem endpoint manual, US2b
+pareamento nunca cruza PRD/SVC, US3 retry manual idempotente + sem par + `422`/`404` + bulk,
+regra de receita exclui `COBRANCA_TERCEIRIZADA` de `pagoDeFato`, RBAC 403/200; + 2 asserções
+da suíte e2e da 006/018 atualizadas — `RESOLVER_VINCULO` agora roda de verdade em vez de
+`pulada`, mesmo padrão de regressão correta e documentada das specs 018/023 anteriores) +
+134 frontend (4 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces;
+validado também manualmente no navegador de ponta a ponta (evento Guru + evento Asaas com
+referência externa → vínculo automático e reclassificação visíveis no painel; Asaas antes da
+Guru → badge "vínculo pendente" + botão "Tentar vincular" mostrando "ainda sem par";
+transação já vinculada mostrando o link para a venda Guru e a nota "não conta como receita
+própria"). Artefatos: `research.md`, `data-model.md`, `contracts/` (2), `quickstart.md` na
+mesma pasta.)
+
+<details><summary>Spec 023 — Catálogo · `produto` → `oferta` (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/023-catalogo-produto-oferta/plan.md`](specs/023-catalogo-produto-oferta/plan.md)
 (Fase 2 · spec 023 — **Catálogo · `produto` → `oferta`**: quarta fatia da Fase 2
 (Financeiro). O _bounded context_ **`catalogo`** (vazio desde a 001) passa a ser dono de
 **`produto`** ("o que se vende", auto-criado na 1ª transação com um código de 3 letras novo,
@@ -517,6 +591,8 @@ novo e correto, não regressão). Corrigido também um vazamento pré-existente 
 desenvolvimento para o modo "test" do Vite/Vitest que já quebrava 22 suítes de frontend
 antes desta spec (`.env.test` novo, sem segredo, versionado). Artefatos: `research.md`,
 `data-model.md`, `contracts/` (3), `quickstart.md` na mesma pasta.)
+
+</details>
 
 <details><summary>Spec 022 — Adaptadores de borda da Hotmart (implementada, resumo arquivado)</summary>
 
