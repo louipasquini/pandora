@@ -270,6 +270,20 @@ export const PERMISSOES = Object.freeze([
     recurso: 'transacao',
     rotulo: 'Ver o ledger de transações do Financeiro',
   },
+  // --- Catálogo: produto / oferta (spec 023) ---
+  { id: 'produto:ver', recurso: 'produto', rotulo: 'Ver produtos do catálogo' },
+  {
+    id: 'produto:editar',
+    recurso: 'produto',
+    rotulo: 'Curar nome/assinatura de produto',
+  },
+  { id: 'oferta:ver', recurso: 'oferta', rotulo: 'Ver ofertas do catálogo' },
+  { id: 'oferta:criar', recurso: 'oferta', rotulo: 'Criar oferta manualmente' },
+  {
+    id: 'oferta:editar',
+    recurso: 'oferta',
+    rotulo: 'Curar oferta e seus dados comerciais (oferta_catalogo), importar catálogo Hotmart',
+  },
 ] as const satisfies readonly PermissaoDef[]);
 
 /** União literal dos ids de permissão conhecidos. */

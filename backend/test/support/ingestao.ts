@@ -26,6 +26,12 @@ export function montarEventoCanonico(
     // (spec 018, `mapearStatus`).
     statusOrigem: 'PAGO',
     ocorridoEm: '2026-09-03T12:00:00Z',
+    // tag AEN decodificável (spec 023, `RESOLVER_OFERTA`) — sem ela, o evento
+    // "feliz" desta suíte cairia em `revisar` só por falta de oferta
+    // identificável, o que não é o que estes testes de mecânica do worker
+    // querem exercitar. Testes específicos de resolução de oferta moram em
+    // `test/catalogo.e2e-spec.ts`.
+    oferta: { codigoOrigem: 'PCS48XAV' },
     ...over,
   };
 }

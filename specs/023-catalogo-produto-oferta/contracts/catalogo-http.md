@@ -7,8 +7,8 @@ Todas as rotas exigem JWT válido (`JwtAuthGuard`, spec 003) + a permissão indi
 
 ### `GET /produtos`
 
-`produto:ver`. Query: `q` (busca em `codigo`/nome efetivo), `page`, `pageSize` (default 25,
-teto 100). Resposta: `{ items: ProdutoResumo[], total, page, pageSize }`.
+`produto:ver`. Query: `q` (busca em `codigo`/nome efetivo), `pagina`, `tamanho` (default 25,
+teto 100). Resposta: `{ itens: ProdutoResumo[], total, pagina, tamanho }`.
 
 ### `GET /produtos/:codigo`
 
@@ -27,8 +27,8 @@ que efetivamente mudou. `codigo` mal formatado (não 3 letras) → 422.
 
 ### `GET /ofertas`
 
-`oferta:ver`. Query: `produtoId?`, `produtoCodigo?`, `plataformaOrigem?`, `page`, `pageSize`.
-Resposta: `{ items: OfertaResumo[], total, page, pageSize }` — cada item inclui turma efetiva,
+`oferta:ver`. Query: `produtoId?`, `produtoCodigo?`, `plataformaOrigem?`, `pagina`, `tamanho`.
+Resposta: `{ itens: OfertaResumo[], total, pagina, tamanho }` — cada item inclui turma efetiva,
 tag(s) associadas (`oferta_origem_ref`), e se tem `oferta_catalogo`.
 
 ### `GET /ofertas/:id`

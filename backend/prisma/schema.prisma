@@ -1967,7 +1967,7 @@ model DashboardVisao {
   criadoEm              DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm          DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  dono               Usuario @relation("DashboardVisaoDono", fields: [donoUsuarioId], references: [id], onDelete: Cascade)
+  dono                Usuario @relation("DashboardVisaoDono", fields: [donoUsuarioId], references: [id], onDelete: Cascade)
   perfilCompartilhado Perfil? @relation(fields: [perfilCompartilhadoId], references: [id], onDelete: SetNull)
 
   @@index([donoUsuarioId])
@@ -2057,6 +2057,7 @@ model Transacao {
 
   pessoa       Pessoa?       @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
   eventoOrigem EventoOrigem? @relation(fields: [eventoOrigemId], references: [id], onDelete: SetNull)
+  oferta       Oferta?       @relation(fields: [ofertaId], references: [id], onDelete: SetNull)
 
   @@unique([plataformaOrigem, idOrigem], name: "transacao_chave_natural")
   @@index([statusCanonico])
@@ -2066,4 +2067,167 @@ model Transacao {
   @@index([ocorridoEm])
   @@index([precisaRevisao])
   @@map("transacao")
+}
+
+// ---------------------------------------------------------------------------
+// catalogo (spec 023) — `produto` -> `oferta`, resolução por tag AEN / catálogo
+// Hotmart. Precedência curado > derivado > null via colunas distintas (D-07).
+// ---------------------------------------------------------------------------
+
+enum TurmaTipo {
+  NUMERO
+  EVERGREEN
+  PERPETUO
+  DESCONHECIDO
+}
+
+enum OfertaOrigemRefTipo {
+  TAG
+  HOTMART_PRICE_CODE
+}
+
+model Produto {
+  id     String @id @db.Uuid
+  codigo String @unique @db.Char(3)
+
+  nomeCurado         String?  @map("nome_curado")
+  nomeDerivado       String?  @map("nome_derivado")
+  assinaturaCurada   Boolean? @map("assinatura_curada")
+  assinaturaDerivada Boolean? @map("assinatura_derivada")
+
+  camposEditados String[] @default([]) @map("campos_editados")
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  ofertas           Oferta[]
+  janelasLancamento JanelaLancamento[]
+  comboItens        OfertaCatalogoComboItem[]
+
+  @@map("produto")
+}
+
+model Oferta {
+  id        String @id @db.Uuid
+  produtoId String @map("produto_id") @db.Uuid
+
+  turmaTipoCurado     TurmaTipo? @map("turma_tipo_curado")
+  turmaNumeroCurado   Int?       @map("turma_numero_curado")
+  turmaTipoDerivado   TurmaTipo? @map("turma_tipo_derivado")
+  turmaNumeroDerivado Int?       @map("turma_numero_derivado")
+
+  subprodutoCodigoCurado        String? @map("subproduto_codigo_curado") @db.Char(1)
+  subprodutoCodigoDerivado      String? @map("subproduto_codigo_derivado") @db.Char(1)
+  modeloCobrancaCodigoCurado    String? @map("modelo_cobranca_codigo_curado") @db.Char(1)
+  modeloCobrancaCodigoDerivado  String? @map("modelo_cobranca_codigo_derivado") @db.Char(1)
+  modeloTransacaoCodigoCurado   String? @map("modelo_transacao_codigo_curado") @db.Char(1)
+  modeloTransacaoCodigoDerivado String? @map("modelo_transacao_codigo_derivado") @db.Char(1)
+
+  camposEditados String[] @default([]) @map("campos_editados")
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  produto    Produto           @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  origensRef OfertaOrigemRef[]
+  catalogo   OfertaCatalogo?
+  transacoes Transacao[]
+
+  @@index([produtoId])
+  @@map("oferta")
+}
+
+model OfertaOrigemRef {
+  id               String              @id @db.Uuid
+  ofertaId         String              @map("oferta_id") @db.Uuid
+  plataformaOrigem PlataformaOrigem    @map("plataforma_origem")
+  tipoRef          OfertaOrigemRefTipo @map("tipo_ref")
+  valorRef         String              @map("valor_ref")
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  oferta Oferta @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+
+  @@unique([plataformaOrigem, tipoRef, valorRef], name: "oferta_origem_ref_chave")
+  @@index([ofertaId])
+  @@map("oferta_origem_ref")
+}
+
+model OfertaCatalogo {
+  id       String @id @db.Uuid
+  ofertaId String @unique @map("oferta_id") @db.Uuid
+
+  ticketInt        BigInt? @map("ticket_int")
+  ticketMoeda      String? @map("ticket_moeda") @db.Char(3)
+  precoTabelaInt   BigInt? @map("preco_tabela_int")
+  precoTabelaMoeda String? @map("preco_tabela_moeda") @db.Char(3)
+  tempoAcessoDias  Int?    @map("tempo_acesso_dias")
+  combo            Boolean @default(false)
+  lancamento       Boolean @default(false)
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  oferta Oferta                    @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+  bonus  OfertaCatalogoBonus[]
+  combos OfertaCatalogoComboItem[]
+
+  @@map("oferta_catalogo")
+}
+
+model OfertaCatalogoBonus {
+  id               String @id @db.Uuid
+  ofertaCatalogoId String @map("oferta_catalogo_id") @db.Uuid
+  descricao        String
+  ordem            Int    @default(0)
+
+  ofertaCatalogo OfertaCatalogo @relation(fields: [ofertaCatalogoId], references: [id], onDelete: Cascade)
+
+  @@index([ofertaCatalogoId])
+  @@map("oferta_catalogo_bonus")
+}
+
+model OfertaCatalogoComboItem {
+  id               String @id @db.Uuid
+  ofertaCatalogoId String @map("oferta_catalogo_id") @db.Uuid
+  produtoId        String @map("produto_id") @db.Uuid
+
+  ofertaCatalogo OfertaCatalogo @relation(fields: [ofertaCatalogoId], references: [id], onDelete: Cascade)
+  produto        Produto        @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+
+  @@unique([ofertaCatalogoId, produtoId], name: "oferta_catalogo_combo_item_par")
+  @@map("oferta_catalogo_combo_item")
+}
+
+model JanelaLancamento {
+  id        String   @id @db.Uuid
+  produtoId String   @map("produto_id") @db.Uuid
+  rotulo    String
+  inicio    DateTime @db.Date
+  fim       DateTime @db.Date
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([produtoId, rotulo], name: "janela_lancamento_produto_rotulo")
+  @@index([produtoId])
+  @@map("janela_lancamento")
+}
+
+model CatalogoAudit {
+  id            String   @id @db.Uuid
+  autor         String
+  quando        DateTime @db.Timestamptz(6)
+  entidade      String
+  entidadeId    String   @map("entidade_id") @db.Uuid
+  campo         String
+  valorAnterior Json?    @map("valor_anterior")
+  valorNovo     Json?    @map("valor_novo")
+  motivo        String
+  origem        String
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([entidade, entidadeId])
+  @@map("catalogo_audit")
 }
