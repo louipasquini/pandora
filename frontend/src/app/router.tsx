@@ -36,6 +36,8 @@ import { ProdutoDetailPage } from '../produtos/ProdutoDetailPage';
 import { OfertasListPage } from '../ofertas/OfertasListPage';
 import { OfertaDetailPage } from '../ofertas/OfertaDetailPage';
 import { ImportCatalogoHotmartPage } from '../ofertas/ImportCatalogoHotmartPage';
+import { ContratosListPage } from '../contratos/ContratosListPage';
+import { ContratoDetailPage } from '../contratos/ContratoDetailPage';
 
 /**
  * Roteamento client-side. `/login` é público e fica fora do `AppShell`. Todo o
@@ -306,6 +308,22 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermissao perm="oferta:ver">
                 <OfertaDetailPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'contratos',
+            element: (
+              <RequirePermissao perm="contrato:ver">
+                <ContratosListPage />
+              </RequirePermissao>
+            ),
+          },
+          {
+            path: 'contratos/:id',
+            element: (
+              <RequirePermissao perm="contrato:ver">
+                <ContratoDetailPage />
               </RequirePermissao>
             ),
           },
