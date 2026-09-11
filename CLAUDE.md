@@ -439,7 +439,95 @@ as projeções se reconstruírem; congelar a v1 (read-only) no corte e comparar 
 - [`Documentação Asaas (LLM).md`](Documentação%20Asaas%20(LLM).md), [`Documentação Guru.md`](Documentação%20Guru.md), [`Documentação Hotmart.md`](Documentação%20Hotmart.md), [`Documentação TMB.md`](Documentação%20TMB.md) — referência das APIs de origem.
 
 <!-- SPECKIT START -->
-Plano ativo: [`specs/024-vinculo-asaas-guru/plan.md`](specs/024-vinculo-asaas-guru/plan.md)
+Plano ativo: [`specs/025-contratos-aditivos-fold/plan.md`](specs/025-contratos-aditivos-fold/plan.md)
+(Fase 2 · spec 025 — **Contratos · Aditivos · Fold (pipeline etapa 6)**: sexta fatia da Fase
+2 (Financeiro) e **1ª entidade de negócio** do _bounded context_ **`contratos`** (vazio desde
+a 001). Dono de **`Contrato`** (único por `(pessoa, produto)`, perpétuo — Regra Inviolável
+nº 3, `@@unique` no banco) e **`Aditivo`** (projeção derivada de 1 `transacao`, 1:1, upsert
+por `transacaoId`). **Fold puro e determinístico** (`contratos/domain/fold.ts`, 0 I/O)
+recalcula `fim_acesso`/`ticket_total`/`valor_recebido` **do zero** a cada transação nova —
+nunca incremental (Princípio V); `fim_acesso = max(fim_acesso vigente ?? data, data) +
+tempo_acesso` (`oferta_catalogo.tempoAcessoDias`/023), só para aditivos que liberam acesso
+(`liberaAcesso()` do `core`) e não são `REEMBOLSO`. **`status_canonico`/`acesso_liberado`
+não são colunas persistidas** — são função de leitura (`contratos/domain/status-contrato.ts`:
+`fim_acesso` + `tolerancia_atraso_dias` + relógio), exatamente como os comentários do `core`
+(`status-transacao.ts`/`status-contrato.ts`, desde a 002) já reservavam para esta spec — um
+contrato cujo `fim_acesso` já passou mostra `EXPIRADO` na próxima leitura mesmo sem nenhum
+aditivo novo. Rótulo do aditivo (`COMPRA_INICIAL`/`RENOVACAO`/`PRORROGACAO`/`REEMBOLSO`/
+`SEM_EFEITO`) derivado do estado de acesso do contrato **na data do aditivo**. **4 decisões
+de fato ambíguas resolvidas como defaults documentados no `spec.md`, 2026-09-11** (025 não
+estava `⚠ clarify`): **CL-01** — o ajuste manual pontual de status é uma **exceção
+deliberada** ao padrão geral "curado > derivado" das specs 007/023: a Regra Inviolável nº 13
+já confirmou que o fold **sobrescreve** um ajuste manual anterior — o `PATCH` vence na
+leitura só até o próximo aditivo qualificado chegar, que **limpa o override
+automaticamente** (`ajusteManualStatus/Em/Autor/Motivo` → `null`); a marca "ajustado em X
+por Y, motivo Z" fica para sempre em `contrato_audit` (forma canônica do core, append-only,
+só delta real) — `tolerancia_atraso_dias`/`contrato_assinado` são diferentes, **sem par
+derivado**, nunca tocados pelo fold. **CL-02** — só `classificacao ∈ {VENDA_PROPRIA,
+RECORRENCIA, REEMBOLSO}` vira aditivo (`VENDA_AFILIADA`/`COBRANCA_TERCEIRIZADA` seguem
+`pulada`); transação com `pessoa_id`/`oferta_id` ainda não resolvidos não cria/atualiza o
+contrato ainda, **sem acrescentar um motivo de revisão novo** — descoberto na implementação
+que a etapa 2 (`ResolverPessoaEtapaService`) já trata `pessoa_id: null` sem nenhum dado de
+identidade como resultado válido e não-revisável ("não cria '(sem nome)' só porque a venda é
+própria"), e a etapa 5 já se marca sozinha quando não resolve oferta — esta etapa só observa
+a consequência, sem duplicar o sinal (reprocessável a qualquer hora, Princípio IV). **CL-03**
+— `COMPRA_INICIAL` é um 3º rótulo além dos 2 que a visão nomeia (renovação/prorrogação) —
+extensão pragmática para o caso degenerado (1ª compra, nunca teve acesso), sem contradizer a
+regra confirmada. **CL-04** — `ticket_total[moeda]` soma `valor_bruto` de toda venda
+própria/recorrência (histórico, não afetado por reembolso posterior); `valor_recebido[moeda]`
+só soma onde `contaComoReceita()` é verdadeiro — como `transacao` é upsertada por chave
+natural, um reembolso muda o `status_canonico` da **mesma** linha, e o fold recalculando do
+zero já exclui o valor sem nenhuma lógica de reversão manual. **Etapa 6 do pipeline
+(`PROJETAR_CONTRATO`, ordem 6, `especDona: 25`)**, reservada _no-op_ pela 006, plugada via o
+mesmo `ExecutorEtapaExterno` do `core` + `src/pipeline-wiring.module.ts` — **nenhuma mudança
+em `WorkerService`/`etapas.ts`**, fechando as 6 etapas do pipeline canônico da visão 5.3.
+`contratos/infra/contrato.repository.ts` lê/escreve `transacao`/`oferta`/`oferta_catalogo`
+direto via `PrismaService` — mesmo precedente já aceito da spec 023 (`contratos` já estava
+nas zonas do ESLint `import/no-restricted-paths` desde a 001; a fronteira do Princípio VI é
+sobre import de módulo TypeScript, não sobre o schema Prisma). **Filtro de `status` em `GET
+/contratos` computado em SQL** (`CASE`, `Prisma.sql` parametrizado, paridade com a função
+pura coberta por teste) — pagina sem carregar tudo em memória, sem tabela de rollup nova
+(Princípio VIII). **19ª migração Prisma** (`20260911192337_contratos_aditivo_fold`):
+`contrato` (`ticketTotal`/`valorRecebido` como `Json` — `Record<moeda, valorInt-string>`,
+nunca soma moedas), `aditivo`, `contrato_audit` + enums `StatusContratoCanonico` (espelha o
+do `core`, paridade travada por teste, mesmo padrão de `StatusTransacaoCanonico`/018) e
+`AditivoRotulo` + FK ativada em `transacao.contrato_id` (coluna já reservada desde a 018,
+não-destrutiva) + back-relations `Pessoa.contratos`/`Produto.contratos`. **RBAC 004
+estendido**: `+2` permissões — `contrato:{ver,editar}` (`administrador`/credencial de
+serviço de graça, 0 migração de dados/seed). **3 endpoints**:
+`GET /contratos` (filtros produto/turma/pessoa/status),
+`GET /contratos/{id}` (contrato + linha do tempo de aditivos), `PATCH /contratos/{id}`
+(**único** endpoint de escrita — ajuste manual, `motivo` sempre obrigatório, `400` sem ele
+ou sem nenhum campo pra ajustar); **0 endpoint de criação/exclusão** — `contrato`/`aditivo`
+só nascem/mudam pelo pipeline (Princípio VIII). **Frontend** `frontend/src/contratos/`
+(nova): item **Financeiro · Contratos** atrás de `contrato:ver` — lista com filtros +
+paginação + badge de status, detalhe com campos derivados/curados, linha do tempo de
+aditivos (rótulo/data/valor/status da transação, aviso quando `precisaRevisao`) e formulário
+de ajuste manual atrás de `contrato:editar`. **0 dep nova** (backend e frontend), **1
+migração**, **0 porta nova no `core`**, **0 chave `.env` nova**. `CONTEXT_MODULES` segue
+**11**. 944 testes unitários backend (16 novos, domínio puro — fold + derivação de status,
+sem banco) + 456 e2e (15 novos em `contratos.e2e-spec.ts`, Postgres real: US1 status
+derivado pelo relógio + reprocesso após curadoria tardia de `tempo_acesso`, US2 prorrogação/
+renovação/1 único contrato + reembolso reclassificando a mesma transação upsertada e saindo
+de `valor_recebido` sem apagar o aditivo, US3 ajuste manual + limpeza automática pelo
+próximo aditivo + auditoria permanente + `motivo` obrigatório + campos curados sem par
+derivado, edge cases de oferta não resolvida/venda afiliada/filtros/RBAC/`/health`; +
+regressão honesta e documentada nas suítes das specs 006/018/019–024 — que dependiam de
+`PROJETAR_CONTRATO` ficar `pulada`/sem afetar `pessoa`/`produto` e passaram a exercitar a
+etapa real, incluindo o `afterEach` de 6 arquivos de teste corrigido para apagar `contrato`
+antes de `pessoa`/`produto`, já que a FK `Restrict` nova passou a bloquear a ordem antiga de
+limpeza — mesmo padrão de regressão correta e documentada das specs 018/023 anteriores) +
+139 frontend (5 novos), todos verdes; lint/typecheck/build limpos nos dois workspaces;
+validado também manualmente no navegador de ponta a ponta (venda nova com tag/produto
+inéditos → aditivo em revisão por falta de `tempo_acesso` → curadoria via `PATCH
+/ofertas/:id` + reprocesso → contrato `ATIVO` com `fim_acesso` correto e aditivo
+`COMPRA_INICIAL`; ajuste manual `CANCELADO` com motivo refletido na leitura, autor e data —
+dados de demonstração removidos do banco de dev ao final). Artefatos: `research.md`,
+`data-model.md`, `contracts/` (2), `quickstart.md` na mesma pasta.)
+
+<details><summary>Spec 024 — Vínculo Asaas↔Guru (pipeline etapa 4) (implementada, resumo arquivado)</summary>
+
+Plano: [`specs/024-vinculo-asaas-guru/plan.md`](specs/024-vinculo-asaas-guru/plan.md)
 (Fase 2 · spec 024 — **Vínculo Asaas↔Guru (pipeline etapa 4)**: quinta fatia da Fase 2
 (Financeiro). Materializa a regra "Guru terceiriza cobrança para a Asaas": uma venda pode
 existir como **2 eventos** (transação Guru = venda de registro; pagamento Asaas = cobrança) e
@@ -510,6 +598,8 @@ Guru → badge "vínculo pendente" + botão "Tentar vincular" mostrando "ainda s
 transação já vinculada mostrando o link para a venda Guru e a nota "não conta como receita
 própria"). Artefatos: `research.md`, `data-model.md`, `contracts/` (2), `quickstart.md` na
 mesma pasta.)
+
+</details>
 
 <details><summary>Spec 023 — Catálogo · `produto` → `oferta` (implementada, resumo arquivado)</summary>
 

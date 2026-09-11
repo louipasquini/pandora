@@ -1180,16 +1180,89 @@ montado aqui, etapa por etapa.
   [`specs/024-vinculo-asaas-guru/`](specs/024-vinculo-asaas-guru/) e
   [`docs/024-vinculo-asaas-guru.md`](docs/024-vinculo-asaas-guru.md).
 
-- [ ] **025 — contratos-aditivos-fold**
-  `contrato` 1 por `(pessoa, produto)`, perpétuo. Campos **derivados** por fold sobre
-  `aditivo`s (`fim_acesso`, `status_canonico`, `acesso_liberado`, `ticket_total`,
-  `valor_recebido` — todos `f(eventos)`, nunca incremental). Campos **curados**
-  (`tolerancia_atraso`, `contrato_assinado`, ajuste manual com marca de "ajustado em X").
-  `fim_acesso = max(fim vigente, data do aditivo) + tempo_acesso`. Rótulo
-  renovação/prorrogação derivado do estado de acesso na data. Recálculo determinístico e
-  idempotente, testável sem banco. Pipeline etapa 6. `GET /contratos` (busca produto +
-  turma), `GET /contratos/{id}`, `PATCH /contratos/{id}` (ajuste manual). Frontend:
-  lista/detalhe de contrato + linha do tempo de aditivos.
+- [x] **025 — contratos-aditivos-fold** — ✅ implementada e validada (2026-09-11)
+  6ª fatia da Fase 2 (Financeiro) — **última antes da 026**. `contratos` (vazio desde a 001)
+  vira dono de **`Contrato`** (único por `(pessoa, produto)`, perpétuo — Regra Inviolável
+  nº 3, `@@unique` no banco) e **`Aditivo`** (projeção derivada de 1 `transacao`, 1:1,
+  upsert por `transacaoId`). **Fold puro e determinístico**
+  (`contratos/domain/fold.ts`, 0 I/O) recalcula `fim_acesso`/`ticket_total`/
+  `valor_recebido` **do zero** a cada transação nova — nunca incremental (Princípio V);
+  `fim_acesso = max(fim_acesso vigente ?? data, data) + tempo_acesso` (`oferta_catalogo.
+  tempoAcessoDias`, spec 023), só para aditivos que liberam acesso e não são `REEMBOLSO`.
+  **`status_canonico`/`acesso_liberado` não são colunas persistidas** — são função de
+  leitura (`contratos/domain/status-contrato.ts`: `fim_acesso` + `tolerancia_atraso_dias` +
+  relógio), exatamente como os comentários do `core` (`status-transacao.ts`/
+  `status-contrato.ts`, desde a spec 002) já reservavam para esta spec. Rótulo do aditivo
+  (`COMPRA_INICIAL`/`RENOVACAO`/`PRORROGACAO`/`REEMBOLSO`/`SEM_EFEITO`) derivado do estado
+  de acesso do contrato **na data do aditivo** — `COMPRA_INICIAL` é uma extensão pragmática
+  (CL-03) para o caso que a visão não precisou nomear (1ª compra, nunca teve acesso antes).
+  **Ajuste manual pontual de status é uma exceção deliberada** à precedência geral "curado
+  > derivado" das specs 007/023 (CL-01): a Regra Inviolável nº 13 já confirmou que o fold
+  **sobrescreve** um ajuste manual anterior — o `PATCH` vence na leitura só até o próximo
+  aditivo qualificado chegar, que limpa o override automaticamente (`ajusteManualStatus/Em/
+  Autor/Motivo` voltam a `null`); a marca "ajustado em X por Y, motivo Z" fica para sempre
+  em `contrato_audit` (forma canônica do core, append-only, só delta real).
+  `toleranciaAtrasoDias`/`contratoAssinado` são curados **sem par derivado** — nunca
+  tocados pelo fold. **Etapa 6 do pipeline canônico (`PROJETAR_CONTRATO`)** plugada via o
+  mesmo `ExecutorEtapaExterno` do `core` que as specs 018/023/024 já usam +
+  `src/pipeline-wiring.module.ts` — **nenhuma mudança em `WorkerService`/`etapas.ts`**,
+  fechando as 6 etapas do pipeline da visão 5.3. Só `classificacao ∈ {VENDA_PROPRIA,
+  RECORRENCIA, REEMBOLSO}` chega a virar aditivo (CL-02) — `VENDA_AFILIADA`/
+  `COBRANCA_TERCEIRIZADA` seguem `pulada`; transação com `pessoa_id`/`oferta_id` ainda não
+  resolvidos **não** cria/atualiza o contrato ainda, mas também **não** acrescenta um
+  motivo de revisão novo (descoberta na implementação: a etapa 2 já trata `pessoa_id: null`
+  sem nenhum dado de identidade como resultado válido e não-revisável — "não cria '(sem
+  nome)' só porque a venda é própria" —, e a etapa 5 já se marca sozinha quando não resolve
+  oferta; esta etapa só observa a consequência, sem duplicar o sinal) — reprocessável a
+  qualquer hora (Princípio IV). `contratos/infra/contrato.repository.ts` lê/escreve
+  `transacao`/`oferta`/`oferta_catalogo` direto via `PrismaService` (mesmo precedente já
+  aceito da spec 023 — a fronteira do Princípio VI é sobre import de módulo TypeScript, não
+  sobre o schema Prisma; `contratos` já estava nas zonas do ESLint
+  `import/no-restricted-paths` desde a 001). **Filtro de `status` em `GET /contratos`
+  computado em SQL** (`CASE`, `Prisma.sql` parametrizado) — mesma lógica da função pura de
+  leitura, paridade coberta por teste — para paginar sem carregar tudo em memória, sem
+  tabela de rollup nova (Princípio VIII). **19ª migração Prisma**
+  (`20260911192337_contratos_aditivo_fold`): `contrato` (`ticketTotal`/`valorRecebido` como
+  `Json` — `Record<moeda, valorInt-string>`, nunca soma moedas), `aditivo`,
+  `contrato_audit` + enums `StatusContratoCanonico` (espelha o do `core`, paridade travada
+  por teste, mesmo padrão de `StatusTransacaoCanonico`/018) e `AditivoRotulo` + FK ativada
+  em `transacao.contrato_id` (coluna já reservada desde a 018, não-destrutiva) +
+  back-relations em `Pessoa`/`Produto`. **RBAC 004 estendido**: `+2` permissões
+  (`contrato:{ver,editar}`; `administrador`/credencial de serviço de graça, 0 migração de
+  dados/seed). **3 endpoints**: `GET /contratos` (filtros produto/turma/pessoa/status),
+  `GET /contratos/{id}` (contrato + linha do tempo de aditivos), `PATCH /contratos/{id}`
+  (único endpoint de escrita — ajuste manual, `motivo` sempre obrigatório, 400 sem ele ou
+  sem nenhum campo pra ajustar). **0 endpoint de criação/exclusão** — `contrato`/`aditivo`
+  só nascem/mudam pelo pipeline (Princípio VIII). Frontend `frontend/src/contratos/`: item
+  **Financeiro · Contratos** atrás de `contrato:ver` — lista com filtros + paginação +
+  badge de status, detalhe com campos derivados/curados, linha do tempo de aditivos
+  (rótulo/data/valor/status da transação de origem, com aviso quando `precisaRevisao`) e
+  formulário de ajuste manual atrás de `contrato:editar`. **0 dep nova** (backend e
+  frontend), **1 migração**, **0 porta nova no `core`**, **0 chave `.env` nova**.
+  `CONTEXT_MODULES` segue **11**. 4 decisões de fato ambíguas — destaque para CL-01 (a
+  aparente contradição entre "curado > derivado" e a Regra Inviolável nº 13, já confirmada
+  na visão) e CL-03 (o 3º rótulo `COMPRA_INICIAL`, extensão pragmática que não contradiz a
+  regra de negócio) — resolvidas como defaults documentados no `spec.md` (não marcada
+  `⚠ clarify`), 2026-09-11. 944 testes unitários backend (16 novos, domínio puro — fold +
+  derivação de status, sem banco) + 456 e2e (15 novos em `contratos.e2e-spec.ts`, Postgres
+  real: US1 status derivado pelo relógio + reprocesso após curadoria tardia de
+  `tempo_acesso`, US2 prorrogação/renovação/1 único contrato + reembolso reclassificando a
+  mesma transação upsertada e saindo de `valor_recebido` sem apagar o aditivo, US3 ajuste
+  manual + limpeza automática pelo próximo aditivo + auditoria permanente + `motivo`
+  obrigatório + campos curados sem par derivado, edge cases de oferta não resolvida/venda
+  afiliada/filtros/RBAC/`/health`; + regressão honesta e documentada nas suítes das specs
+  006/018/019–024 — que dependiam de `PROJETAR_CONTRATO` ficar `pulada`/sem afetar
+  `pessoa`/`produto` e passaram a exercitar a etapa real, incluindo um ajuste de cleanup
+  `afterEach` em 6 arquivos de teste para apagar `contrato` antes de `pessoa`/`produto`,
+  já que a FK `Restrict` nova passou a bloquear a ordem antiga) + 139 frontend (5 novos),
+  todos verdes; lint/typecheck/build limpos nos dois workspaces; validado também
+  manualmente no navegador de ponta a ponta (venda nova com tag/produto inéditos →
+  aditivo em revisão por falta de `tempo_acesso` → curadoria via `PATCH /ofertas/:id` +
+  reprocesso → contrato `ATIVO` com `fim_acesso` correto e aditivo `COMPRA_INICIAL`; ajuste
+  manual `CANCELADO` com motivo refletido na leitura, autor e data). Artefatos: `research.md`,
+  `data-model.md`, `contracts/` (2), `quickstart.md` na mesma pasta. Detalhe:
+  [`specs/025-contratos-aditivos-fold/`](specs/025-contratos-aditivos-fold/) e
+  [`docs/025-contratos-aditivos-fold.md`](docs/025-contratos-aditivos-fold.md).
 
 - [ ] **026 — vendas-como-afiliada**
   `ProdutoAfiliado` curado (import CSV). Classificação `VENDA_AFILIADA` na etapa 1 (antes

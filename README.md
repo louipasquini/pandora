@@ -159,7 +159,14 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  PUT /produtos/:codigo + POST/PATCH /ofertas; import
                  POST /catalogo/hotmart/importar-{produtos,ofertas,lancamentos} (spec 023 —
                  subpastas produtos/ ofertas/ no front)
-    contratos/ marketing/ central/
+    contratos/   contrato (único por (pessoa, produto), perpétuo) + aditivo (projeção
+                 derivada de 1 transacao, 1:1) + fold puro determinístico
+                 (fim_acesso/ticket_total/valor_recebido — nunca incremental);
+                 status_canonico/acesso_liberado são função de leitura, não coluna; pipeline
+                 etapa 6 (PROJETAR_CONTRATO) plugada via o mesmo ExecutorEtapaExterno da 018;
+                 GET /contratos[/:id] + PATCH /contratos/:id (ajuste manual, único endpoint
+                 de escrita) (spec 025 — subpasta contratos/ no front)
+    marketing/ central/
                  um módulo vazio por contexto (domain/ application/ infra/)
     api/ admin/  módulos de borda (routers finos; sync/imports/curadoria)
   prisma/        schema.prisma (RBAC 004 + pessoa/conta 005 + evento_origem 006 + crm-admin
@@ -169,7 +176,8 @@ backend/   NestJS 11 + Prisma 6 — um módulo por bounded context
                  / dashboard_visao / crm_dashboard_audit 017 + transacao +
                  StatusTransacaoCanonico 018 + produto/oferta/oferta_origem_ref/
                  oferta_catalogo(+bonus/combo)/janela_lancamento/catalogo_audit 023 +
-                 vinculo_transacao 024) + migrações + seed.ts
+                 vinculo_transacao 024 + contrato/aditivo/contrato_audit +
+                 StatusContratoCanonico/AditivoRotulo 025) + migrações + seed.ts
   test/          harness e2e contra Postgres real (schema isolado; migrate + seed por execução)
 
 frontend/  Vite 6 + React 19 + Tailwind v4 + TanStack Query + React Router 7
@@ -257,7 +265,10 @@ npm run db:up
 #    dashboard_visao/crm_dashboard_audit na 15ª; spec 018 acrescenta transacao +
 #    enum StatusTransacaoCanonico na 16ª (1ª migração do financeiro); spec 023 acrescenta
 #    produto/oferta/oferta_origem_ref/oferta_catalogo(+bonus/combo)/janela_lancamento/
-#    catalogo_audit na 17ª (1ª migração do catalogo) — todas sem seed de negócio, exceto
+#    catalogo_audit na 17ª (1ª migração do catalogo); spec 024 acrescenta
+#    vinculo_transacao na 18ª (1ª migração do financeiro com FK dupla pra transacao);
+#    spec 025 acrescenta contrato/aditivo/contrato_audit + enums StatusContratoCanonico/
+#    AditivoRotulo na 19ª (1ª migração do contratos) — todas sem seed de negócio, exceto
 #    a 014, que semeia 3 fluxo_modelo de partida)
 npm run db:migrate:deploy
 npm run prisma:seed --workspace backend      # cria o perfil de sistema "Administrador" + a biblioteca de modelos de fluxo (idempotente)
@@ -326,7 +337,7 @@ de verdade, pelos endpoints de curadoria da v2.
 ## Status
 
 Constituição ratificada em 2026-09-01 (v1.1.0). **Fases 0 (Fundações) e 1 (CRM) concluídas —
-Fase 2 (Financeiro) em andamento** (specs 018–024 entregues; próxima 025).
+Fase 2 (Financeiro) em andamento** (specs 018–025 entregues; próxima 026).
 
 - ✅ **001 — bootstrap-projeto**: esqueleto do monorepo entregue e validado (backend NestJS
   com os 11 bounded contexts, Prisma + Postgres, config zod por conta, harness de teste
@@ -858,6 +869,49 @@ Fase 2 (Financeiro) em andamento** (specs 018–024 entregues; próxima 025).
   retry manual de uma transação pendente sem par ainda disponível, cobrança terceirizada
   excluída de `pagoDeFato`). Ver
   [`docs/024-vinculo-asaas-guru.md`](docs/024-vinculo-asaas-guru.md).
+- ✅ **025 — contratos-aditivos-fold** — 6ª e última fatia planejada da Fase 2 (Financeiro)
+  antes de 026. `contratos` deixa de ser vazio: dono de **`Contrato`** (único por
+  `(pessoa, produto)`, perpétuo — Regra Inviolável nº 3) e **`Aditivo`** (projeção derivada
+  de 1 `transacao` aplicada ao contrato, 1:1). **Fold puro e determinístico**
+  (`contratos/domain/fold.ts`) recalcula `fim_acesso`/`ticket_total`/`valor_recebido` do
+  zero a cada transação nova — nunca incremental (Princípio V);
+  `fim_acesso = max(fim_acesso vigente ?? data, data) + tempo_acesso` (`oferta_catalogo`,
+  spec 023). `status_canonico`/`acesso_liberado` **não são colunas** — são funções de
+  leitura (`fim_acesso` + `tolerancia_atraso_dias` + relógio), coerente com os comentários
+  já deixados nos enums do `core` desde a spec 002 apontando para esta spec. Rótulo do
+  aditivo derivado do estado de acesso na data (`COMPRA_INICIAL`/`RENOVACAO`/`PRORROGACAO`/
+  `REEMBOLSO`/`SEM_EFEITO`). **Ajuste manual pontual de status é uma exceção deliberada** à
+  precedência geral "curado > derivado" (specs 007/023): a Regra Inviolável nº 13 já
+  confirmou que o fold **sobrescreve** um ajuste manual anterior — o override vence na
+  leitura só até o próximo aditivo qualificado chegar, que o limpa automaticamente (a marca
+  de "ajustado em X por Y" permanece para sempre em `contrato_audit`, append-only).
+  **Etapa 6 do pipeline (`PROJETAR_CONTRATO`)** plugada via o mesmo `ExecutorEtapaExterno`
+  do `core` — **nenhuma mudança em `WorkerService`/`etapas.ts`** — fechando as 6 etapas do
+  pipeline canônico da visão 5.3. Só `VENDA_PROPRIA`/`RECORRENCIA`/`REEMBOLSO` viram aditivo;
+  `pessoa_id`/`oferta_id` ainda não resolvidos **não** criam um motivo de revisão novo (a
+  etapa 2 já trata pessoa ausente como resultado válido; a etapa 5 já se marca sozinha
+  quando não resolve oferta) — reprocessável a qualquer hora. **19ª migração Prisma**:
+  `contrato`, `aditivo`, `contrato_audit` (forma canônica do core, append-only) + enums
+  `StatusContratoCanonico` (espelha o do `core`) e `AditivoRotulo` + FK ativada em
+  `transacao.contrato_id` (coluna já reservada desde a 018, não-destrutiva). Catálogo RBAC
+  ganha `contrato:{ver,editar}` (+2). **3 endpoints**: `GET /contratos` (filtros produto/
+  turma/pessoa/status — status derivado computado em SQL, paridade travada por teste, sem
+  tabela de rollup), `GET /contratos/:id` (com a linha do tempo de aditivos), `PATCH
+  /contratos/:id` (único endpoint de escrita — ajuste manual, `motivo` sempre obrigatório).
+  Painel: **Financeiro · Contratos** — lista com filtros + detalhe com linha do tempo de
+  aditivos (rótulo, data, valor, status da transação) e formulário de ajuste manual atrás de
+  `contrato:editar`. **0 dep nova**, 1 migração, 0 porta nova no `core`, 0 chave `.env` nova.
+  `CONTEXT_MODULES` segue 11. 4 decisões de fato ambíguas — destaque para a aparente
+  contradição entre "curado > derivado" e a Regra nº 13, e a extensão pragmática do rótulo
+  `COMPRA_INICIAL` (a visão só nomeia renovação/prorrogação) — resolvidas como defaults
+  documentados no `spec.md`, 2026-09-11. 944 testes unitários backend (16 novos, domínio
+  puro) + 456 e2e (15 novos + regressão honesta das specs 006/018/019–024, que passaram a
+  enxergar `PROJETAR_CONTRATO` real em vez de `pulada`) + 139 frontend (5 novos), todos
+  verdes; lint/typecheck/build limpos nos dois workspaces; validado também manualmente no
+  navegador de ponta a ponta (venda nova sem tempo de acesso curado → aditivo em revisão →
+  curadoria + reprocesso → `COMPRA_INICIAL` com `fim_acesso` correto; ajuste manual
+  `CANCELADO` refletido na leitura com autor/data/motivo). Ver
+  [`docs/025-contratos-aditivos-fold.md`](docs/025-contratos-aditivos-fold.md).
 
 Ordem de construção acordada: **CRM → Financeiro → Marketing → Central de Clientes**
 (precedidas pelas fatias transversais `core`, `clientes`, `ingestao`). Restam em aberto o
